@@ -1,4 +1,4 @@
-module github.com/patdowney/net
+module github.com/dioadconsulting/net
 
 go 1.15
 
