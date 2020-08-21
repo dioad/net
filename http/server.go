@@ -23,7 +23,6 @@ type Server struct {
 	ListenAddress   string
 	Router          *mux.Router
 	AccessLogWriter io.Writer
- 	tlsConfig *tls.Config
 	EnablePrometheusMetrics bool
 	EnableDebug bool
 	Resources []Resource
@@ -80,7 +79,7 @@ func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
 		Addr:         s.ListenAddress,
 	}
 
-	if s.tlsConfig != nil {
+	if tlsConfig != nil {
 		log.Printf("TLS serving on: %v", server.Addr)
 		return server.ListenAndServeTLS("","")
 	} else {
