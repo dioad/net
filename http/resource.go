@@ -6,5 +6,5 @@ import (
 
 type Resource interface {
 	RegisterRoutes(*mux.Router)
-        Status() (interface{}, error)
+	Status() (interface{}, error)
 }
