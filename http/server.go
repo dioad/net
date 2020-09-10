@@ -20,6 +20,7 @@ type Config struct {
 	ListenAddress           string
 	EnablePrometheusMetrics bool
 	EnableDebug             bool
+	EnableStatus            bool
 }
 
 // Server ...
@@ -28,7 +29,7 @@ type Server struct {
 	ListenAddress   string
 	Router          *mux.Router
 	AccessLogWriter io.Writer
-	Resources       []Resource
+	ResourceMap     map[string]Resource
 }
 
 // NewServer ...
@@ -38,14 +39,14 @@ func NewServer(config Config, accessLogWriter io.Writer) *Server {
 		ListenAddress:   config.ListenAddress,
 		Router:          mux.NewRouter(),
 		AccessLogWriter: accessLogWriter,
-		Resources:       make([]Resource, 0)}
+		ResourceMap:     make(map[string]Resource, 0)}
 }
 
 // AddResource ...
 func (s *Server) AddResource(pathPrefix string, r Resource) {
 	subrouter := s.Router.PathPrefix(pathPrefix).Subrouter()
 	r.RegisterRoutes(subrouter)
-	s.Resources = append(s.Resources, r)
+	s.ResourceMap[pathPrefix] = r
 }
 
 func (s *Server) handler() http.Handler {
@@ -54,7 +55,11 @@ func (s *Server) handler() http.Handler {
 	return handlers.CombinedLoggingHandler(s.AccessLogWriter, s.Router)
 }
 
-func (s *Server) AddHandleFunc(path string, handler http.HandlerFunc) {
+func (s *Server) AddHandler(path string, handler http.Handler) {
+	s.Router.Handle(path, handler)
+}
+
+func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
 	s.Router.HandleFunc(path, handler)
 }
 
@@ -66,7 +71,10 @@ func (s *Server) addDefaultHandlers() {
 	if s.Config.EnableDebug {
 		s.Router.HandleFunc("/debug", s.debugHandler())
 	}
-	s.Router.Handle("/status", s.aggregateStatusHandler())
+
+	if s.Config.EnableStatus {
+		s.Router.Handle("/status", s.aggregateStatusHandler())
+	}
 }
 
 func (s *Server) debugHandler() http.HandlerFunc {
@@ -80,14 +88,14 @@ func (s *Server) debugHandler() http.HandlerFunc {
 
 func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		statuses := make([]interface{}, 0)
+		statusMap := make(map[string]interface{}, 0)
 		httpStatus := http.StatusOK
-		for _, resource := range s.Resources {
+		for path, resource := range s.ResourceMap {
 			status, err := resource.Status()
 			if err != nil {
 				httpStatus = http.StatusInternalServerError
 			}
-			statuses = append(statuses, status)
+			statusMap[path] = status
 		}
 
 		w.Header().Set("Content-Type", "text/json; charset=utf-8") // normal header
@@ -95,8 +103,7 @@ func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 		w.WriteHeader(httpStatus)
 
 		encoder := json.NewEncoder(w)
-		encoder.Encode(statuses)
-
+		encoder.Encode(statusMap)
 	}
 }
 
