@@ -33,5 +33,13 @@ func ConvertConfig(c TLSConfig) (*tls.Config, error) {
 		tlsConfig.Certificates = []tls.Certificate{*serverCertificate}
 	}
 
+	if c.TLSServerCAFile != "" {
+		rootCAs, err := LoadCertPoolFromFile(c.TLSServerCAFile)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig.RootCAs = rootCAs
+	}
+
 	return tlsConfig, nil
 }
