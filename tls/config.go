@@ -5,27 +5,51 @@ import (
 	// "golang.org/x/crypto/acme/autocert"
 )
 
-type TLSConfig struct {
-	TLSServerName string `mapstructure:"tls-server-name"`
+type ServerConfig struct {
+	ServerName string `mapstructure:"tls-server-name"`
 
-	TLSServerCertificate  string `mapstructure:"tls-server-cert"`
-	TLSServerKey          string `mapstructure:"tls-server-key"`
-	TLSServerCAFile       string `mapstructure:"tls-server-ca-file"`
-	TLSServerClientAuth   string `mapstructure:"tls-server-client-auth"`
-	TLSServerClientCAFile string `mapstructure:"tls-server-client-ca-file"`
+	Certificate string `mapstructure:"tls-server-cert"`
+	Key         string `mapstructure:"tls-server-key"`
 
-	TLSClientCertificate string `mapstructure:"tls-client-cert"`
-	TLSClientKey         string `mapstructure:"tls-client-key"`
-	TLSClientSkipVerify  bool   `mapstructure:"tls-client-skip-verify"`
+	ClientAuthType string `mapstructure:"client-auth-type"`
+	ClientCAFile   string `mapstructure:"client-ca-file"`
 }
 
-func ConvertConfig(c TLSConfig) (*tls.Config, error) {
+type ClientConfig struct {
+	RootCAFile         string `mapstructure:"root-ca-file"`
+	Certificate        string `mapstructure:"cert"`
+	Key                string `mapstructure:"key"`
+	InsecureSkipVerify bool   `mapstructure:"insecure-skip-verify"`
+}
+
+func convertClientAuthType(authType string) tls.ClientAuthType {
+	switch authType {
+	case "RequestClientCert":
+		return tls.RequestClientCert
+	case "RequireAnyClientCert":
+		return tls.RequireAnyClientCert
+	case "VerifyClientCertIfGiven":
+		return tls.VerifyClientCertIfGiven
+	case "RequireAndVerifyClientCert":
+		return tls.RequireAndVerifyClientCert
+	default:
+		return tls.NoClientCert
+	}
+}
+
+func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 	var tlsConfig = &tls.Config{}
+
+	if c.ServerName != "" {
+		tlsConfig.ServerName = c.ServerName
+	}
+
+	tlsConfig.ClientAuth = convertClientAuthType(c.ClientAuthType)
 
 	//if autocertManager != nil {
 	//	tlsConfig.GetCertificate = autocertManager.GetCertificate
-	if c.TLSServerCertificate != "" {
-		serverCertificate, err := LoadKeyPairFromFiles(c.TLSServerCertificate, c.TLSServerKey)
+	if c.Certificate != "" {
+		serverCertificate, err := LoadKeyPairFromFiles(c.Certificate, c.Key)
 
 		if err != nil {
 			return nil, err
@@ -33,13 +57,38 @@ func ConvertConfig(c TLSConfig) (*tls.Config, error) {
 		tlsConfig.Certificates = []tls.Certificate{*serverCertificate}
 	}
 
-	if c.TLSServerCAFile != "" {
-		rootCAs, err := LoadCertPoolFromFile(c.TLSServerCAFile)
+	if c.ClientCAFile != "" {
+		clientCAs, err := LoadCertPoolFromFile(c.ClientCAFile)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig.ClientCAs = clientCAs
+	}
+
+	return tlsConfig, nil
+}
+
+func ConvertClientConfig(c ClientConfig) (*tls.Config, error) {
+	var tlsConfig = &tls.Config{}
+
+	if c.Certificate != "" {
+		serverCertificate, err := LoadKeyPairFromFiles(c.Certificate, c.Key)
+
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig.Certificates = []tls.Certificate{*serverCertificate}
+	}
+
+	if c.RootCAFile != "" {
+		rootCAs, err := LoadCertPoolFromFile(c.RootCAFile)
 		if err != nil {
 			return nil, err
 		}
 		tlsConfig.RootCAs = rootCAs
 	}
+
+	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
 
 	return tlsConfig, nil
 }
