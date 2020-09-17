@@ -6,10 +6,10 @@ import (
 )
 
 type ServerConfig struct {
-	ServerName string `mapstructure:"tls-server-name"`
+	ServerName string `mapstructure:"server-name"`
 
-	Certificate string `mapstructure:"tls-server-cert"`
-	Key         string `mapstructure:"tls-server-key"`
+	Certificate string `mapstructure:"cert"`
+	Key         string `mapstructure:"key"`
 
 	ClientAuthType string `mapstructure:"client-auth-type"`
 	ClientCAFile   string `mapstructure:"client-ca-file"`
