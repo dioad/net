@@ -49,12 +49,12 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 	//if autocertManager != nil {
 	//	tlsConfig.GetCertificate = autocertManager.GetCertificate
 	if c.Certificate != "" {
-		serverCertificate, err := LoadKeyPairFromFiles(c.Certificate, c.Key)
+		serverCertificate, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
 
 		if err != nil {
 			return nil, err
 		}
-		tlsConfig.Certificates = []tls.Certificate{*serverCertificate}
+		tlsConfig.Certificates = []tls.Certificate{serverCertificate}
 	}
 
 	if c.ClientCAFile != "" {
@@ -72,12 +72,12 @@ func ConvertClientConfig(c ClientConfig) (*tls.Config, error) {
 	var tlsConfig = &tls.Config{}
 
 	if c.Certificate != "" {
-		serverCertificate, err := LoadKeyPairFromFiles(c.Certificate, c.Key)
+		clientCertificate, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
 
 		if err != nil {
 			return nil, err
 		}
-		tlsConfig.Certificates = []tls.Certificate{*serverCertificate}
+		tlsConfig.Certificates = []tls.Certificate{clientCertificate}
 	}
 
 	if c.RootCAFile != "" {

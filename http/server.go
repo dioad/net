@@ -21,6 +21,7 @@ type Config struct {
 	EnablePrometheusMetrics bool
 	EnableDebug             bool
 	EnableStatus            bool
+	TLSConfig               *tls.Config
 }
 
 // Server ...
@@ -108,7 +109,7 @@ func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 }
 
 func (s *Server) ListenAndServe() error {
-	return s.ListenAndServeTLS(nil)
+	return s.ListenAndServeTLS(s.Config.TLSConfig)
 }
 
 // ListenAndServe ...
