@@ -8,17 +8,17 @@ import (
 type ServerConfig struct {
 	ServerName string `mapstructure:"server-name"`
 
-	Certificate string `mapstructure:"cert"`
-	Key         string `mapstructure:"key"`
+	Certificate string `mapstructure:"cert" json:"omitempty"`
+	Key         string `mapstructure:"key" json:"omitempty"`
 
-	ClientAuthType string `mapstructure:"client-auth-type"`
-	ClientCAFile   string `mapstructure:"client-ca-file"`
+	ClientAuthType string `mapstructure:"client-auth-type" json:"omitempty"`
+	ClientCAFile   string `mapstructure:"client-ca-file" json:"omitempty"`
 }
 
 type ClientConfig struct {
-	RootCAFile         string `mapstructure:"root-ca-file"`
-	Certificate        string `mapstructure:"cert"`
-	Key                string `mapstructure:"key"`
+	RootCAFile         string `mapstructure:"root-ca-file" json:"omitempty"`
+	Certificate        string `mapstructure:"cert" json:"omitempty"`
+	Key                string `mapstructure:"key" json:"omitempty"`
 	InsecureSkipVerify bool   `mapstructure:"insecure-skip-verify"`
 }
 

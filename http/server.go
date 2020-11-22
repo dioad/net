@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"runtime"
@@ -123,10 +122,8 @@ func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
 	}
 
 	if tlsConfig != nil {
-		log.Printf("TLS serving on: %v", server.Addr)
 		return server.ListenAndServeTLS("", "")
 	} else {
-		log.Printf("Serving on: %v", server.Addr)
 		return server.ListenAndServe()
 	}
 }
