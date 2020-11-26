@@ -2,6 +2,7 @@ package tls
 
 import (
 	"crypto/tls"
+	"fmt"
 	// "golang.org/x/crypto/acme/autocert"
 )
 
@@ -71,7 +72,11 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 func ConvertClientConfig(c ClientConfig) (*tls.Config, error) {
 	var tlsConfig = &tls.Config{}
 
-	if c.Certificate != "" {
+	if (c.Certificate != "" && c.Key == "") || (c.Certificate == "" && c.Key != "") {
+		return nil, fmt.Errorf("both certificate and key need to be specified")
+	}
+
+	if c.Certificate != "" && c.Key != "" {
 		clientCertificate, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
 
 		if err != nil {
