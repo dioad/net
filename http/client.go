@@ -1,0 +1,78 @@
+package http
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+)
+
+type Client struct {
+	Config *ClientConfig
+}
+
+type ClientConfig struct {
+	BaseURL   *url.URL
+	Client    *http.Client
+	UserAgent string
+}
+
+func (c *Client) checkConfig() error {
+	if c.Config == nil {
+		return fmt.Errorf("no config not specified for client")
+	}
+
+	if c.Config.Client == nil {
+		// Do we just want to use the default one here instead of failing?
+		return fmt.Errorf("no HTTP client specified for client")
+	}
+
+	if c.Config.BaseURL == nil {
+		return fmt.Errorf("no base url specified for client")
+	}
+
+	return nil
+}
+
+func (c *Client) Request(req *http.Request) (*http.Response, error) {
+	if err := c.checkConfig(); err != nil {
+		return nil, err
+	}
+
+	if c.Config.UserAgent != "" {
+		req.Header.Set("User-Agent", fmt.Sprintf("%s DioadClient/VERSION", c.Config.UserAgent))
+	} else {
+		req.Header.Set("User-Agent", fmt.Sprintf("DioadClient/VERSION"))
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	return c.Config.Client.Do(req)
+}
+
+func (c *Client) ResolveRelativeRequestPath(requestPath string) (*url.URL, error) {
+	if err := c.checkConfig(); err != nil {
+		return nil, err
+	}
+
+	relativePathURL, err := url.Parse(requestPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.Config.BaseURL.ResolveReference(relativePathURL), nil
+}
+
+func NewDefaultClient() *Client {
+	return NewClient(&ClientConfig{
+		Client:    &http.Client{},
+		UserAgent: "",
+	})
+}
+
+func NewClient(config *ClientConfig) *Client {
+	log.Printf("%v", config)
+	return &Client{
+		Config: config,
+	}
+}
