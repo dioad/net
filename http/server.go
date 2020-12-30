@@ -52,7 +52,11 @@ func (s *Server) AddResource(pathPrefix string, r Resource) {
 func (s *Server) handler() http.Handler {
 	s.addDefaultHandlers()
 
-	return handlers.CombinedLoggingHandler(s.AccessLogWriter, s.Router)
+	if s.AccessLogWriter != nil {
+		return handlers.CombinedLoggingHandler(s.AccessLogWriter, s.Router)
+	}
+
+	return s.Router
 }
 
 func (s *Server) AddHandler(path string, handler http.Handler) {
