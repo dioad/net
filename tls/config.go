@@ -10,7 +10,7 @@ type ServerConfig struct {
 	ServerName string `mapstructure:"server-name"`
 
 	Certificate string `mapstructure:"cert" json:",omitempty"`
-	Key         string `mapstructure:"key" json:"-,omitempty"`
+	Key         string `mapstructure:"key" json:",omitempty"`
 
 	ClientAuthType string `mapstructure:"client-auth-type" json:",omitempty"`
 	ClientCAFile   string `mapstructure:"client-ca-file" json:",omitempty"`
@@ -19,7 +19,7 @@ type ServerConfig struct {
 type ClientConfig struct {
 	RootCAFile         string `mapstructure:"root-ca-file" json:",omitempty"`
 	Certificate        string `mapstructure:"cert" json:",omitempty"`
-	Key                string `mapstructure:"key" json:"-,omitempty"`
+	Key                string `mapstructure:"key" json:",omitempty"`
 	InsecureSkipVerify bool   `mapstructure:"insecure-skip-verify"`
 }
 
