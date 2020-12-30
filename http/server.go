@@ -6,12 +6,14 @@ import (
 	"io"
 	"net"
 	"net/http"
+	// "os"
 	"runtime"
 	"time"
 
-	"github.com/gorilla/handlers"
+	//"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
 )
 
 // Config ...
@@ -28,7 +30,8 @@ type Server struct {
 	Config          Config
 	ListenAddress   string
 	Router          *mux.Router
-	AccessLogWriter io.Writer
+	accessLogWriter io.Writer
+	accessLogger    zerolog.Logger
 	ResourceMap     map[string]Resource
 }
 
@@ -38,8 +41,17 @@ func NewServer(config Config, accessLogWriter io.Writer) *Server {
 		Config:          config,
 		ListenAddress:   config.ListenAddress,
 		Router:          mux.NewRouter(),
-		AccessLogWriter: accessLogWriter,
+		accessLogWriter: accessLogWriter,
 		ResourceMap:     make(map[string]Resource, 0)}
+}
+
+func NewServerWithLogger(config Config, accessLogger zerolog.Logger) *Server {
+	return &Server{
+		Config:        config,
+		ListenAddress: config.ListenAddress,
+		Router:        mux.NewRouter(),
+		accessLogger:  accessLogger,
+		ResourceMap:   make(map[string]Resource, 0)}
 }
 
 // AddResource ...
@@ -52,11 +64,12 @@ func (s *Server) AddResource(pathPrefix string, r Resource) {
 func (s *Server) handler() http.Handler {
 	s.addDefaultHandlers()
 
-	if s.AccessLogWriter != nil {
-		return handlers.CombinedLoggingHandler(s.AccessLogWriter, s.Router)
+	logHandler := ZerologStructuredLogHandler(s.accessLogger)
+	if s.accessLogWriter != nil {
+		logHandler = DefaultCombinedLogHandler(s.accessLogWriter)
 	}
 
-	return s.Router
+	return logHandler(s.Router)
 }
 
 func (s *Server) AddHandler(path string, handler http.Handler) {
