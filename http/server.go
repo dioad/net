@@ -150,7 +150,7 @@ func (s *Server) Serve(ln net.Listener) error {
 		Handler: s.handler(),
 	}
 
-	if tlsConfig != nil {
+	if s.Config.TLSConfig != nil {
 		return server.ServeTLS(ln, "", "")
 	}
 
