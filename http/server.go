@@ -152,3 +152,11 @@ func (s *Server) Serve(ln net.Listener) error {
 
 	return server.Serve(ln)
 }
+
+func (s *Server) ServeTLS(ln net.Listener) error {
+	server := &http.Server{
+		Handler: s.handler(),
+	}
+
+	return server.ServeTLS(ln, "", "")
+}
