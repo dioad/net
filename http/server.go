@@ -147,7 +147,8 @@ func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
 
 func (s *Server) Serve(ln net.Listener) error {
 	server := &http.Server{
-		Handler: s.handler(),
+		TLSConfig: s.Config.TLSConfig,
+		Handler:   s.handler(),
 	}
 
 	if s.Config.TLSConfig != nil {
