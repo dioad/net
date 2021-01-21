@@ -4,6 +4,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	// "golang.org/x/crypto/acme/autocert"
+
+	"github.com/pkg/errors"
 )
 
 type ServerConfig struct {
@@ -23,6 +25,11 @@ type ClientConfig struct {
 	InsecureSkipVerify bool   `mapstructure:"insecure-skip-verify"`
 }
 
+var (
+	EmptyClientConfig = ClientConfig{}
+	EmptyServerConfig = ServerConfig{}
+)
+
 func convertClientAuthType(authType string) tls.ClientAuthType {
 	switch authType {
 	case "RequestClientCert":
@@ -39,13 +46,15 @@ func convertClientAuthType(authType string) tls.ClientAuthType {
 }
 
 func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
+	if c == EmptyServerConfig {
+		return nil, nil
+	}
+
 	var tlsConfig = &tls.Config{}
 
 	if c.ServerName != "" {
 		tlsConfig.ServerName = c.ServerName
 	}
-
-	tlsConfig.ClientAuth = convertClientAuthType(c.ClientAuthType)
 
 	//if autocertManager != nil {
 	//	tlsConfig.GetCertificate = autocertManager.GetCertificate
@@ -53,15 +62,17 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 		serverCertificate, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
 
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "error reading server certificates")
 		}
 		tlsConfig.Certificates = []tls.Certificate{serverCertificate}
 	}
 
 	if c.ClientCAFile != "" {
+		tlsConfig.ClientAuth = convertClientAuthType(c.ClientAuthType)
+
 		clientCAs, err := LoadCertPoolFromFile(c.ClientCAFile)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "error reading client CAs")
 		}
 		tlsConfig.ClientCAs = clientCAs
 	}
@@ -70,6 +81,10 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 }
 
 func ConvertClientConfig(c ClientConfig) (*tls.Config, error) {
+	if c == EmptyClientConfig {
+		return nil, nil
+	}
+
 	var tlsConfig = &tls.Config{}
 
 	if (c.Certificate != "" && c.Key == "") || (c.Certificate == "" && c.Key != "") {
