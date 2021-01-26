@@ -82,7 +82,7 @@ func (s *Conn) ResetMetrics() {
 }
 
 func (s Conn) Read(b []byte) (int, error) {
-    n, err := s.conn.Read(b)
+	n, err := s.conn.Read(b)
 	s.metrics.bytesRead += n
 	return n, err
 }
@@ -130,4 +130,3 @@ func NewConnWithStartTime(c net.Conn, startTime time.Time) *Conn {
 		},
 	}
 }
-
