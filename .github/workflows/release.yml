@@ -72,7 +72,6 @@ jobs:
     env:
       GOOS: ${{ matrix.os }}
       GOARCH: ${{ matrix.arch }}
-      OUTPUT_FILE: ${{ github.event.repository.name }}_${{ needs.metadata.outputs.version }}_${{ matrix.os }}_${{ matrix.arch }}
 
     steps:
     - name: Set up Go 1.x
@@ -98,13 +97,7 @@ jobs:
 
     - name: Go Build
       run: |
-        go build -o "${{ env.OUTPUT_FILE }}" -v .
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: ${{ env.OUTPUT_FILE }}
-        path: ${{ env.OUTPUT_FILE }}
+        go build -v ./...
 
   release:
     name: Create Release
@@ -123,42 +116,5 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: true
-
-  release_assets:
-    name: Attach Release Assets
-    needs:
-      - metadata
-      - release
-    runs-on: ubuntu-20.04
-
-    strategy:
-      matrix:
-        os: [darwin, linux]
-        arch: [amd64]
-        include:
-        - os: linux
-          arch: arm64
-    env:
-      OUTPUT_FILE: ${{ github.event.repository.name }}_${{ needs.metadata.outputs.version }}_${{ matrix.os }}_${{ matrix.arch }}
-
-    steps:
-      - name: Download Asset
-        uses: actions/download-artifact@v2
-        with:
-          name: ${{ env.OUTPUT_FILE }}
-
-      - name: Zip Asset
-        run: zip "./${{ env.OUTPUT_FILE }}.zip" "${{ env.OUTPUT_FILE }}"
-
-      - name: Attach Release Asset
-        id: upload-release-asset 
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_content_type: application/zip
-          asset_path: ./${{ env.OUTPUT_FILE }}.zip
-          asset_name: ${{ env.OUTPUT_FILE }}.zip
 
 
