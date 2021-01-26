@@ -17,7 +17,7 @@ func (l *Listener) AcceptedCount() int {
 	return l.acceptedCount
 }
 
-func (l *Listener) Accept() (*Conn, error) {
+func (l *Listener) Accept() (net.Conn, error) {
 	conn, err := l.ln.Accept()
 
 	if err != nil {
