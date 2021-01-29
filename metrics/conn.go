@@ -35,11 +35,6 @@ type connMetrics struct {
 	endTime   time.Time
 }
 
-type ListenerMetrics interface {
-	AcceptedCount() int
-	ResetMetrics()
-}
-
 type Conn struct {
 	conn    net.Conn
 	metrics *connMetrics

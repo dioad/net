@@ -3,13 +3,30 @@ package tls
 import (
 	"crypto/tls"
 	"fmt"
+	"reflect"
+
+	//"crypto/x509/pkix"
+	"golang.org/x/crypto/acme/autocert"
+
+	//"time"
+
 	// "golang.org/x/crypto/acme/autocert"
 
 	"github.com/pkg/errors"
 )
 
+type AutoCertConfig struct {
+	CacheDirectory string   `mapstructure:"cache-directory" json:",omitempty"`
+	Email          string   `mapstructure:"email" json:",omitempty"`
+	AllowedHosts   []string `mapstructure:"allowed-hosts" json:",omitempty"`
+}
+
 type ServerConfig struct {
 	ServerName string `mapstructure:"server-name"`
+
+	AutoCertConfig AutoCertConfig `mapstructure:"auto-cert-config"`
+	// EnableAutoCertManager       bool     `mapstructure:"enable-auto-cert-manager" json:",omitempty"`
+	// AutoCertManagerAllowedHosts []string `mapstructure:"" json:",omitempty"`
 
 	Certificate string `mapstructure:"cert" json:",omitempty"`
 	Key         string `mapstructure:"key" json:",omitempty"`
@@ -26,8 +43,9 @@ type ClientConfig struct {
 }
 
 var (
-	EmptyClientConfig = ClientConfig{}
-	EmptyServerConfig = ServerConfig{}
+	EmptyClientConfig   = ClientConfig{}
+	EmptyServerConfig   = ServerConfig{}
+	EmptyAutoCertConfig = AutoCertConfig{}
 )
 
 func convertClientAuthType(authType string) tls.ClientAuthType {
@@ -46,7 +64,7 @@ func convertClientAuthType(authType string) tls.ClientAuthType {
 }
 
 func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
-	if c == EmptyServerConfig {
+	if reflect.DeepEqual(c, EmptyServerConfig) {
 		return nil, nil
 	}
 
@@ -56,8 +74,6 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 		tlsConfig.ServerName = c.ServerName
 	}
 
-	//if autocertManager != nil {
-	//	tlsConfig.GetCertificate = autocertManager.GetCertificate
 	if c.Certificate != "" {
 		serverCertificate, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
 
@@ -65,6 +81,57 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 			return nil, errors.Wrap(err, "error reading server certificates")
 		}
 		tlsConfig.Certificates = []tls.Certificate{serverCertificate}
+	} else {
+		if ! reflect.DeepEqual(c.AutoCertConfig, EmptyAutoCertConfig) {
+			autoCertManager := autocert.Manager{
+				Prompt: autocert.AcceptTOS,
+				Cache:  autocert.DirCache(c.AutoCertConfig.CacheDirectory),
+				// Cache optionally stores and retrieves previously-obtained certificates
+				// and other state. If nil, certs will only be cached for the lifetime of
+				// the Manager. Multiple Managers can share the same Cache.
+				//
+				// Using a persistent Cache, such as DirCache, is strongly recommended.
+				// Cache Cache
+
+				// HostPolicy controls which domains the Manager will attempt
+				// to retrieve new certificates for. It does not affect cached certs.
+				//
+				// If non-nil, HostPolicy is called before requesting a new cert.
+				// If nil, all hosts are currently allowed. This is not recommended,
+				// as it opens a potential attack where clients connect to a server
+				// by IP address and pretend to be asking for an incorrect host name.
+				// Manager will attempt to obtain a certificate for that host, incorrectly,
+				// eventually reaching the CA's rate limit for certificate requests
+				// and making it impossible to obtain actual certificates.
+				//
+				// See GetCertificate for more details.
+				HostPolicy: autocert.HostWhitelist(c.AutoCertConfig.AllowedHosts...),
+
+				// RenewBefore optionally specifies how early certificates should
+				// be renewed before they expire.
+				//
+				// If zero, they're renewed 30 days before expiration.
+				// RenewBefore time.Duration
+
+				// Email optionally specifies a contact email address.
+				// This is used by CAs, such as Let's Encrypt, to notify about problems
+				// with issued certificates.
+				//
+				// If the Client's account key is already registered, Email is not used.
+				Email: c.AutoCertConfig.Email,
+
+				// ExtraExtensions are used when generating a new CSR (Certificate Request),
+				// thus allowing customization of the resulting certificate.
+				// For instance, TLS Feature Extension (RFC 7633) can be used
+				// to prevent an OCSP downgrade attack.
+				//
+				// The field value is passed to crypto/x509.CreateCertificateRequest
+				// in the template's ExtraExtensions field as is.
+				//ExtraExtensions, []pkix.Extension
+				// contains filtered or unexported fields
+			}
+			tlsConfig.GetCertificate = autoCertManager.GetCertificate
+		}
 	}
 
 	if c.ClientCAFile != "" {

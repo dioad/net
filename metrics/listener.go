@@ -4,6 +4,11 @@ import (
 	"net"
 )
 
+type ListenerMetrics interface {
+	AcceptedCount() int
+	ResetMetrics()
+}
+
 type Listener struct {
 	ln            net.Listener
 	acceptedCount int
