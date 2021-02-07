@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"golang.org/x/crypto/acme"
 	//"crypto/x509/pkix"
 	"golang.org/x/crypto/acme/autocert"
 
@@ -33,6 +34,8 @@ type ServerConfig struct {
 
 	ClientAuthType string `mapstructure:"client-auth-type" json:",omitempty"`
 	ClientCAFile   string `mapstructure:"client-ca-file" json:",omitempty"`
+
+	NextProtos []string `mapstructure:"next-protos"`
 }
 
 type ClientConfig struct {
@@ -74,6 +77,10 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 		tlsConfig.ServerName = c.ServerName
 	}
 
+	if len(c.NextProtos) != 0 {
+		tlsConfig.NextProtos = []string{"h2", "http/1.1"}
+	}
+
 	if c.Certificate != "" {
 		serverCertificate, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
 
@@ -82,7 +89,7 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 		}
 		tlsConfig.Certificates = []tls.Certificate{serverCertificate}
 	} else {
-		if ! reflect.DeepEqual(c.AutoCertConfig, EmptyAutoCertConfig) {
+		if !reflect.DeepEqual(c.AutoCertConfig, EmptyAutoCertConfig) {
 			autoCertManager := autocert.Manager{
 				Prompt: autocert.AcceptTOS,
 				Cache:  autocert.DirCache(c.AutoCertConfig.CacheDirectory),
@@ -131,6 +138,8 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 				// contains filtered or unexported fields
 			}
 			tlsConfig.GetCertificate = autoCertManager.GetCertificate
+
+			tlsConfig.NextProtos = append(tlsConfig.NextProtos, acme.ALPNProto)
 		}
 	}
 
