@@ -6,11 +6,9 @@ import (
 	"io"
 	"net"
 	"net/http"
-	// "os"
 	"runtime"
 	"time"
 
-	//"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
@@ -23,6 +21,11 @@ type Config struct {
 	EnableDebug             bool
 	EnableStatus            bool
 	TLSConfig               *tls.Config
+	AuthConfig              AuthConfig
+}
+
+type AuthConfig struct {
+	BasicAuthConfig BasicAuthConfig `mapstructure:"basic"`
 }
 
 // Server ...

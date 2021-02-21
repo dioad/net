@@ -23,6 +23,11 @@ func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
 	return true, nil
 }
 
+type BasicAuthConfig struct {
+	File  string   `mapstructure:"file"`
+	Users []string `mapstructure:"users"`
+}
+
 type BasicAuthMap map[string]BasicAuthPair
 
 func (m BasicAuthMap) UserExists(user string) bool {
