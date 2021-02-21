@@ -20,7 +20,7 @@ func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
-func NewBasicAuthHandler(handler http.HandlerFunc, authMap BasicAuthMap) BasicAuthHandler {
+func NewBasicAuthHandler(handler http.Handler, authMap BasicAuthMap) BasicAuthHandler {
 	h := BasicAuthHandler{
 		handler: handler,
 		authMap: authMap,
