@@ -3,6 +3,7 @@ package auth
 import (
 	"bufio"
 	"io"
+	"os"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -70,8 +71,12 @@ func NewBasicAuthPairWithPlainPassword(user, password string) (BasicAuthPair, er
 	return BasicAuthPair{User: user, HashedPassword: hashedPassword}, nil
 }
 
-func LoadBasicAuthFromFile(filePath string) BasicAuthMap {
-	return nil
+func LoadBasicAuthFromFile(filePath string) (BasicAuthMap, error) {
+	f, err := os.OpenFile(filePath, os.O_RDONLY, 0600)
+	if err != nil {
+		return nil, err
+	}
+	return LoadBasicAuthFromReader(f), nil
 }
 
 func LoadBasicAuthFromReader(reader io.Reader) BasicAuthMap {
