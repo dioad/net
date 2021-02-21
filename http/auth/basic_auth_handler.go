@@ -1,14 +1,12 @@
-package handler
+package auth
 
 import (
 	"net/http"
-
-	dch "github.com/dioad/net/http"
 )
 
 type BasicAuthHandler struct {
 	handler http.Handler
-	authMap dch.BasicAuthMap
+	authMap BasicAuthMap
 }
 
 func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -22,7 +20,7 @@ func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
-func NewBasicAuthHandler(handler http.HandlerFunc, authMap dch.BasicAuthMap) BasicAuthHandler {
+func NewBasicAuthHandler(handler http.HandlerFunc, authMap BasicAuthMap) BasicAuthHandler {
 	h := BasicAuthHandler{
 		handler: handler,
 		authMap: authMap,

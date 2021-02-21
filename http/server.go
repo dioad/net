@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/dioad/net/http/auth"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
@@ -25,7 +26,7 @@ type Config struct {
 }
 
 type AuthConfig struct {
-	BasicAuthConfig BasicAuthConfig `mapstructure:"basic"`
+	BasicAuthConfig auth.BasicAuthConfig `mapstructure:"basic"`
 }
 
 // Server ...
