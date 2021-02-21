@@ -13,6 +13,16 @@ type BasicAuthPair struct {
 	HashedPassword string
 }
 
+func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
+	byteHash := []byte(p.HashedPassword)
+	err := bcrypt.CompareHashAndPassword(byteHash, []byte(password))
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 type BasicAuthMap map[string]BasicAuthPair
 
 func (m BasicAuthMap) UserExists(user string) bool {
@@ -27,14 +37,15 @@ func (m BasicAuthMap) Authenticate(user, password string) (bool, error) {
 	return false, nil
 }
 
-func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
-	byteHash := []byte(p.HashedPassword)
-	err := bcrypt.CompareHashAndPassword(byteHash, []byte(password))
-	if err != nil {
-		return false, err
-	}
+// if user already exists it will over ride it
+func (m BasicAuthMap) AddUserWithPlainPassword(user, password string) {
+	authPair, _ := NewBasicAuthPairWithPlainPassword(user, password)
+	m[user] = authPair
+}
 
-	return true, nil
+// if user already exists it will over ride it
+func (m BasicAuthMap) AddUserWithHashedPassword(user, hashedPassword string) {
+	m[user] = BasicAuthPair{User: user, HashedPassword: hashedPassword}
 }
 
 func hashPassword(password string) (string, error) {
@@ -54,6 +65,10 @@ func NewBasicAuthPairWithPlainPassword(user, password string) (BasicAuthPair, er
 	return BasicAuthPair{User: user, HashedPassword: hashedPassword}, nil
 }
 
+func LoadBasicAuthFromFile(filePath string) BasicAuthMap {
+	return nil
+}
+
 func LoadBasicAuthFromReader(reader io.Reader) BasicAuthMap {
 	scanner := bufio.NewScanner(reader)
 
@@ -61,10 +76,10 @@ func LoadBasicAuthFromReader(reader io.Reader) BasicAuthMap {
 }
 
 func LoadBasicAuthFromScanner(scanner *bufio.Scanner) BasicAuthMap {
-	userMap := make(map[string]BasicAuthPair)
+	userMap := make(BasicAuthMap)
 	for scanner.Scan() {
 		parts := strings.Split(scanner.Text(), ":")
-		userMap[parts[0]] = BasicAuthPair{User: parts[0], HashedPassword: parts[1]}
+		userMap.AddUserWithHashedPassword(parts[0], parts[1])
 	}
 	return userMap
 }
