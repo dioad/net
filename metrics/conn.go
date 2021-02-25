@@ -3,6 +3,9 @@ package metrics
 import (
 	"net"
 	"time"
+
+	net2 "github.com/dioad/net"
+	"github.com/rs/zerolog"
 )
 
 type ReadWriteCounter interface {
@@ -113,15 +116,31 @@ func (s Conn) SetWriteDeadline(t time.Time) error {
 	return s.conn.SetWriteDeadline(t)
 }
 
-func NewConn(c net.Conn) *Conn {
+func NewConn(c net.Conn) net.Conn {
 	return NewConnWithStartTime(c, time.Now())
 }
 
-func NewConnWithStartTime(c net.Conn, startTime time.Time) *Conn {
+func NewConnWithStartTime(c net.Conn, startTime time.Time) net.Conn {
 	return &Conn{
 		conn: c,
 		metrics: &connMetrics{
 			startTime: startTime,
 		},
 	}
+}
+
+func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net.Conn {
+	metricsConn := NewConn(c)
+	closerConn := net2.NewConnWithCloser(metricsConn, func(c net.Conn) {
+		c.Close()
+		if metricsConn, ok := c.(*Conn); ok {
+			logger.Info().Int("bytesRead", metricsConn.BytesRead()).
+				Int("bytesWritten", metricsConn.BytesWritten()).
+				Time("startTime", metricsConn.StartTime()).
+				Time("endTime", metricsConn.EndTime()).
+				Dur("duration", metricsConn.Duration())
+		}
+		logger.Info().Msg("closeRequest")
+	})
+	return closerConn
 }
