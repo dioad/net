@@ -52,4 +52,3 @@ func NewConnWithCloser(c net.Conn, closer func(net.Conn)) net.Conn {
 		onClose: closer,
 	}
 }
-

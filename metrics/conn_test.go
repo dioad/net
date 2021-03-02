@@ -17,16 +17,16 @@ func TestConnDuration(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 	c.(*Conn).Close()
 	d2 := c.(*Conn).Duration()
-	time.Sleep (100 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	roundedD1 := d1.Round(10 * time.Millisecond)
-	if roundedD1 != 250 * time.Millisecond {
-		t.Fatalf( "middle duration mismatch: %v != %v", roundedD1, 250 * time.Millisecond)
+	if roundedD1 != 250*time.Millisecond {
+		t.Fatalf("middle duration mismatch: %v != %v", roundedD1, 250*time.Millisecond)
 	}
 
 	roundedD2 := d2.Round(10 * time.Millisecond)
-	if roundedD2 != 500 * time.Millisecond {
-		t.Fatalf( "end duration mismatch: %v != %v", roundedD2, 500 * time.Millisecond)
+	if roundedD2 != 500*time.Millisecond {
+		t.Fatalf("end duration mismatch: %v != %v", roundedD2, 500*time.Millisecond)
 	}
 }
 
@@ -46,7 +46,7 @@ func TestConnBytesWritten(t *testing.T) {
 		t.Fatalf("failed to pass-through write")
 	}
 
-	if len(bytesWritten) !=  c.(*Conn).BytesWritten() {
+	if len(bytesWritten) != c.(*Conn).BytesWritten() {
 		t.Fatalf("c.BytesWritten() not equal to bytes written")
 	}
 }
@@ -67,7 +67,7 @@ func TestConnBytesRead(t *testing.T) {
 		t.Fatalf("failed to pass-through read")
 	}
 
-    if len(bytesToWrite) !=  c.(*Conn).BytesRead() {
+	if len(bytesToWrite) != c.(*Conn).BytesRead() {
 		t.Fatalf("c.BytesRead() not equal to bytes read")
 	}
 }

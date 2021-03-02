@@ -17,7 +17,7 @@ type Status struct {
 
 // RegisterRoutes ...
 func (dr *Resource) RegisterRoutes(parentRouter *mux.Router) {
-parentRouter.HandleFunc("/", pprof.Index)
+	parentRouter.HandleFunc("/", pprof.Index)
 	parentRouter.HandleFunc("/cmdline", pprof.Cmdline)
 	parentRouter.HandleFunc("/profile", pprof.Profile)
 	parentRouter.HandleFunc("/symbol", pprof.Symbol)
@@ -27,6 +27,8 @@ parentRouter.HandleFunc("/", pprof.Index)
 	parentRouter.Handle("/heap", pprof.Handler("heap"))
 	parentRouter.Handle("/threadcreate", pprof.Handler("threadcreate"))
 	parentRouter.Handle("/block", pprof.Handler("block"))
+	parentRouter.Handle("/trace", pprof.Handler("trace"))
+	parentRouter.Handle("/mutex", pprof.Handler("mutex"))
 }
 
 func (dr *Resource) Status() (interface{}, error) {

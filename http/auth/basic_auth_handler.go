@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 )
 
@@ -9,15 +10,21 @@ type BasicAuthHandler struct {
 	authMap BasicAuthMap
 }
 
+func BasicAuthHandlerFunc(authMap BasicAuthMap, next http.Handler) http.HandlerFunc {
+	h := BasicAuthHandler{handler: next, authMap: authMap}
+	return h.ServeHTTP
+}
+
 func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reqUser, reqPass, _ := r.BasicAuth()
-	result, err := h.authMap.Authenticate(reqUser, reqPass)
-	if !result || err != nil {
+	principal, err := h.authMap.Authenticate(reqUser, reqPass)
+	if !principal || err != nil {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
+	ctx := context.WithValue(r.Context(), AuthenticatedPrincipal{}, principal)
 
-	h.handler.ServeHTTP(w, r)
+	h.handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
 func NewBasicAuthHandler(handler http.Handler, authMap BasicAuthMap) BasicAuthHandler {

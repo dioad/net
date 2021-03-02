@@ -140,7 +140,7 @@ func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net.Conn {
 				Time("endTime", metricsConn.EndTime()).
 				Dur("duration", metricsConn.Duration())
 		}
-		logger.Info().Msg("closeRequest")
+		logger.Info().Msg("connectionStats")
 	})
 	return closerConn
 }
