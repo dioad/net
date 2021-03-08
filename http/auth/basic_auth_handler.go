@@ -16,6 +16,11 @@ func BasicAuthHandlerFunc(authMap BasicAuthMap, next http.Handler) http.HandlerF
 }
 
 func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.TLS == nil {
+		http.Error(w, "basic auth requires SSL", http.StatusForbidden)
+		return
+	}
+
 	reqUser, reqPass, _ := r.BasicAuth()
 	principal, err := h.authMap.Authenticate(reqUser, reqPass)
 	if !principal || err != nil {
