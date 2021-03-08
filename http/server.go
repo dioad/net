@@ -22,11 +22,13 @@ type Config struct {
 	EnableDebug             bool
 	EnableStatus            bool
 	TLSConfig               *tls.Config
-	AuthConfig              AuthConfig
+	AuthConfig              AuthenticationConfig
 }
 
-type AuthConfig struct {
-	BasicAuthConfig auth.BasicAuthConfig `mapstructure:"basic"`
+type AuthenticationConfig struct {
+	BasicAuthConfig  auth.BasicAuthConfig  `mapstructure:"basic"`
+	GitHubAuthConfig auth.GitHubAuthConfig `mapstructure:"github"`
+	HMACAuthConfig   auth.HMACAuthConfig   `mapstructure:"hmac"`
 }
 
 // Server ...
