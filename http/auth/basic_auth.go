@@ -24,9 +24,20 @@ func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
 	return true, nil
 }
 
-type BasicAuthConfig struct {
-	File  string   `mapstructure:"file"`
-	Users []string `mapstructure:"users"`
+type BasicAuthClientConfig struct {
+	// https://everything.curl.dev/usingcurl/netrc
+	//
+	// machine connect.lab.dioad.net
+	// login blah
+	// password blah
+	NetRCFile string `mapstructure:"netrc-file"`
+	User      string `mapstructure:"user"`
+	Password  string `mapstructure:"password"`
+}
+
+type BasicAuthServerConfig struct {
+	HTPasswdFile string   `mapstructure:"htpasswd-file"`
+	Users        []string `mapstructure:"users"`
 }
 
 type BasicAuthMap map[string]BasicAuthPair

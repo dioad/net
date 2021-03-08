@@ -14,7 +14,7 @@ func TestGitHubAuthenticator_AuthenticateToken(t *testing.T) {
 		"invalid token": {token: "somethinegelse", userNil: true},
 	}
 
-	authenticator := NewGitHubAuthenticator(GitHubAuthConfig{
+	authenticator := NewGitHubAuthenticator(GitHubAuthServerConfig{
 		ClientID:     "bbf369ec17928529a7e8",
 		ClientSecret: "491c7ea4efeff78bb7944fb70381cb9c33aca7a3",
 	})

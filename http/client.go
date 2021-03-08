@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/dioad/net/http/auth"
 )
 
 type Client struct {
@@ -12,9 +14,10 @@ type Client struct {
 }
 
 type ClientConfig struct {
-	BaseURL   *url.URL
-	Client    *http.Client
-	UserAgent string
+	BaseURL    *url.URL
+	Client     *http.Client
+	UserAgent  string
+	AuthConfig auth.AuthenticationClientConfig
 }
 
 func (c *Client) checkConfig() error {

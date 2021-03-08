@@ -7,12 +7,22 @@ import (
 	"io"
 )
 
-type HMACAuthConfig struct {
+type HMACAuthCommonConfig struct {
+	// Inline shared key used to HMAC with value from HTTPHeader
 	SharedKey string `mapstructure:"shared-key"`
+	// Path to read shared key from
 	SharedKeyPath string `mapstructure:"shared-key-path"`
 }
 
+type HMACAuthClientConfig struct {
+	HMACAuthCommonConfig `mapstructure:",squash"`
+}
 
+type HMACAuthServerConfig struct {
+	HMACAuthCommonConfig `mapstructure:",squash"`
+	// HTTP Header to use as data input
+	HTTPHeader string `mapstructure:"http-header"`
+}
 
 func HMACKeyBytes(sharedKey, data string) ([]byte, error) {
 	h := hmac.New(sha256.New, []byte(sharedKey))
