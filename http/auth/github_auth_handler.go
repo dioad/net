@@ -6,12 +6,22 @@ import (
 	"strings"
 )
 
+func GitHubAuthHandlerFunc(authenticator *GitHubAuthenticator, next http.Handler) http.HandlerFunc {
+	h := GitHubAuthHandler{next: next, Authenticator: authenticator}
+	return h.ServeHTTP
+}
+
 type GitHubAuthHandler struct {
 	Authenticator *GitHubAuthenticator
 	next          http.Handler
 }
 
 func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.TLS == nil {
+		http.Error(w, "github auth requires SSL", http.StatusForbidden)
+		return
+	}
+
 	authHeader := r.Header.Get("Authorization")
 
 	if authHeader == "" {

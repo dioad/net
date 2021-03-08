@@ -8,13 +8,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-type GitHubConfig struct {
+type GitHubAuthConfig struct {
 	ClientID     string `mapstructure:"client-id"`
 	ClientSecret string `mapstructure:"client-secret"`
 }
 
 type GitHubAuthenticator struct {
-	Config GitHubConfig
+	Config GitHubAuthConfig
 	Client *github.Client
 }
 
@@ -31,7 +31,7 @@ func (a *GitHubAuthenticator) AuthenticateToken(accessToken string) (*github.Use
 	return authorization.User, nil
 }
 
-func NewGitHubAuthenticator(cfg GitHubConfig) *GitHubAuthenticator {
+func NewGitHubAuthenticator(cfg GitHubAuthConfig) *GitHubAuthenticator {
 	basicAuthTransport := github.BasicAuthTransport{
 		Username: cfg.ClientID,
 		Password: cfg.ClientSecret,
