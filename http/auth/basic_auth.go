@@ -3,6 +3,7 @@ package auth
 import (
 	"bufio"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -33,6 +34,33 @@ type BasicAuthClientConfig struct {
 	NetRCFile string `mapstructure:"netrc-file"`
 	User      string `mapstructure:"user"`
 	Password  string `mapstructure:"password"`
+}
+
+type BasicClientAuth struct {
+	Config   BasicAuthClientConfig
+	User     string
+	Password string
+}
+
+func (a BasicClientAuth) AddAuth(req *http.Request) error {
+	if a.User == "" {
+		if a.Config.User != "" {
+			a.User = a.Config.User
+			a.Password = a.Config.Password
+		} else {
+			host := req.URL.Hostname()
+
+			netrcOnce.Do(readNetrc)
+			for _, l := range netrc {
+				if l.machine == host {
+					a.User = l.login
+					a.Password = l.password
+				}
+			}
+		}
+	}
+	req.SetBasicAuth(a.User, a.Password)
+	return nil
 }
 
 type BasicAuthServerConfig struct {

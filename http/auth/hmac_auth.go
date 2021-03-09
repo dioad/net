@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"net/http"
 )
 
 type HMACAuthCommonConfig struct {
@@ -41,4 +42,20 @@ func HMACKey(sharedKey, data string) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", keyBytes), nil
+}
+
+type HMACClientAuth struct {
+	Config HMACAuthClientConfig
+	Data   string
+}
+
+func (a HMACClientAuth) AddAuth(req *http.Request) error {
+	token, err := HMACKey(a.Config.SharedKey, a.Data)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("bearer %v", token))
+
+	return nil
 }

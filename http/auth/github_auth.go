@@ -2,12 +2,14 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/google/go-github/v33/github"
 	"github.com/pkg/errors"
 )
 
+// only need ClientID for device flow
 type GitHubAuthCommonConfig struct {
 	ClientID     string `mapstructure:"client-id"`
 	ClientSecret string `mapstructure:"client-secret"`
@@ -18,6 +20,44 @@ type GitHubAuthCommonConfig struct {
 
 type GitHubAuthClientConfig struct {
 	GitHubAuthCommonConfig `mapstructure:",squash"`
+	AccessToken            string `mapstructure:"access-token"`
+	AccessTokenFile        string `mapstructure:"access-token-file"`
+}
+
+func loadAccessTokenFromFile(filePath string) (string, error) {
+	return "", nil
+}
+
+func resolveAccessToken(c GitHubAuthClientConfig) (string, error) {
+	if c.AccessToken == "" {
+		// load from c.AccessTokenFile
+		token, err := loadAccessTokenFromFile(c.AccessTokenFile)
+		if err != nil {
+			return "", err
+		}
+		return token, nil
+	}
+
+	return c.AccessToken, nil
+}
+
+type GitHubClientAuth struct {
+	Config      GitHubAuthClientConfig
+	AccessToken string
+}
+
+func (a GitHubClientAuth) AddAuth(req *http.Request) error {
+	if a.AccessToken == "" {
+		var err error
+		a.AccessToken, err = resolveAccessToken(a.Config)
+		if err != nil {
+			return err
+		}
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("bearer %v", a.AccessToken))
+
+	return nil
 }
 
 type GitHubAuthServerConfig struct {
