@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/cli/oauth v0.8.0
-	github.com/google/go-cmp v0.5.4
+	github.com/google/go-cmp v0.5.5
 	github.com/google/go-github/v33 v33.0.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
