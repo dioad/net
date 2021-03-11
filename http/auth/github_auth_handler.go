@@ -1,18 +1,17 @@
 package auth
 
 import (
-	"context"
 	"net/http"
 	"strings"
 )
 
-func GitHubAuthHandlerFunc(authenticator *GitHubAuthenticator, next http.Handler) http.HandlerFunc {
+func GitHubAuthHandlerFunc(authenticator *gitHubAuthenticator, next http.Handler) http.HandlerFunc {
 	h := GitHubAuthHandler{next: next, Authenticator: authenticator}
 	return h.ServeHTTP
 }
 
 type GitHubAuthHandler struct {
-	Authenticator *GitHubAuthenticator
+	Authenticator *gitHubAuthenticator
 	next          http.Handler
 }
 
@@ -30,6 +29,11 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authParts := strings.Split(authHeader, " ")
+	if len(authParts) != 2 {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
 	authType := authParts[0]
 
 	if !(authType == "bearer" || authType == "token") {
@@ -45,7 +49,7 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.WithValue(r.Context(), AuthenticatedPrincipal{}, *user.Login)
+	ctx := NewContextWithAuthenticatedPrincipal(r.Context(), *user.Login)
 
 	h.next.ServeHTTP(w, r.WithContext(ctx))
 }

@@ -38,28 +38,28 @@ type BasicAuthClientConfig struct {
 
 type BasicClientAuth struct {
 	Config   BasicAuthClientConfig
-	User     string
-	Password string
+	user     string
+	password string
 }
 
 func (a BasicClientAuth) AddAuth(req *http.Request) error {
-	if a.User == "" {
+	if a.user == "" {
 		if a.Config.User != "" {
-			a.User = a.Config.User
-			a.Password = a.Config.Password
+			a.user = a.Config.User
+			a.password = a.Config.Password
 		} else {
 			host := req.URL.Hostname()
 
 			netrcOnce.Do(readNetrc)
 			for _, l := range netrc {
 				if l.machine == host {
-					a.User = l.login
-					a.Password = l.password
+					a.user = l.login
+					a.password = l.password
 				}
 			}
 		}
 	}
-	req.SetBasicAuth(a.User, a.Password)
+	req.SetBasicAuth(a.user, a.password)
 	return nil
 }
 

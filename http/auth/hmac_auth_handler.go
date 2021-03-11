@@ -47,6 +47,8 @@ func HMACAuthHandlerFunc(next http.HandlerFunc, sharedKey string, principalHeade
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		ctx := NewContextWithAuthenticatedPrincipal(r.Context(), authPrincipal)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }
