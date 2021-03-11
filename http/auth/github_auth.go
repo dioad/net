@@ -16,6 +16,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var (
+	EmptyGitHubAuthClientConfig = GitHubAuthClientConfig{}
+	EmptyGitHubAuthServerConfig = GitHubAuthServerConfig{}
+)
+
 // only need ClientID for device flow
 type GitHubAuthCommonConfig struct {
 	ClientID     string `mapstructure:"client-id"`

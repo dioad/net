@@ -8,6 +8,11 @@ import (
 	"net/http"
 )
 
+var (
+	EmptyHMACAuthClientConfig = HMACAuthClientConfig{}
+	EmptyHMACAuthServerConfig = HMACAuthServerConfig{}
+)
+
 type HMACAuthCommonConfig struct {
 	// Inline shared key used to HMAC with value from HTTPHeader
 	SharedKey string `mapstructure:"shared-key"`

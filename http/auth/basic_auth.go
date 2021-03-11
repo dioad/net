@@ -10,6 +10,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	EmptyBasicAuthClientConfig = BasicAuthClientConfig{}
+	EmptyBasicAuthServerConfig = BasicAuthServerConfig{}
+)
+
 type BasicAuthPair struct {
 	User           string
 	HashedPassword string
