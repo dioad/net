@@ -95,6 +95,8 @@ func (a GitHubClientAuth) AddAuth(req *http.Request) error {
 
 type GitHubAuthServerConfig struct {
 	GitHubAuthCommonConfig `mapstructure:",squash"`
+	UserAllowList          []string `mapstructure:"user-allow-list"`
+	UserDenyList           []string `mapstructure:"user-deny-list"`
 }
 
 type gitHubAuthenticator struct {

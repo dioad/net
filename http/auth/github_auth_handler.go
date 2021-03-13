@@ -49,7 +49,18 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := NewContextWithAuthenticatedPrincipal(r.Context(), *user.Login)
+	ctx := NewContextWithAuthenticatedPrincipal(r.Context(), user.GetLogin())
+	r = r.WithContext(ctx)
 
-	h.next.ServeHTTP(w, r.WithContext(ctx))
+	userAuthorised := IsUserAuthorised(
+		user.GetLogin(),
+		h.Authenticator.Config.UserAllowList,
+		h.Authenticator.Config.UserDenyList)
+
+	if !userAuthorised {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	h.next.ServeHTTP(w, r)
 }
