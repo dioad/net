@@ -42,3 +42,12 @@ func NewBasicAuthHandler(handler http.Handler, cfg BasicAuthServerConfig) BasicA
 
 	return h
 }
+
+func NewBasicAuthHandlerWithMap(handler http.Handler, authMap BasicAuthMap) BasicAuthHandler {
+	h := BasicAuthHandler{
+		handler: handler,
+		authMap: authMap,
+	}
+
+	return h
+}
