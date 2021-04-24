@@ -3,9 +3,12 @@ package auth
 import (
 	"net/http"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
-func GitHubAuthHandlerFunc(authenticator *gitHubAuthenticator, next http.Handler) http.HandlerFunc {
+func GitHubAuthHandlerFunc(cfg GitHubAuthServerConfig, next http.Handler) http.HandlerFunc {
+	authenticator := NewGitHubAuthenticator(cfg)
 	h := GitHubAuthHandler{next: next, Authenticator: authenticator}
 	return h.ServeHTTP
 }
@@ -23,10 +26,10 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	authHeader := r.Header.Get("Authorization")
 
-	if authHeader == "" {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
+	//if authHeader == "" {
+	//	http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+	//	return
+	//}
 
 	authParts := strings.Split(authHeader, " ")
 	if len(authParts) != 2 {
@@ -50,17 +53,20 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := NewContextWithAuthenticatedPrincipal(r.Context(), user.GetLogin())
-	r = r.WithContext(ctx)
+
+	log.Info().Str("principal", user.GetLogin()).Msg("authn")
 
 	userAuthorised := IsUserAuthorised(
 		user.GetLogin(),
 		h.Authenticator.Config.UserAllowList,
 		h.Authenticator.Config.UserDenyList)
 
+	log.Info().Str("principal", user.GetLogin()).Bool("authorised", userAuthorised).Msg("authz")
+
 	if !userAuthorised {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
-	h.next.ServeHTTP(w, r)
+	h.next.ServeHTTP(w, r.WithContext(ctx))
 }

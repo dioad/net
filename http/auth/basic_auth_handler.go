@@ -9,8 +9,8 @@ type BasicAuthHandler struct {
 	authMap BasicAuthMap
 }
 
-func BasicAuthHandlerFunc(authMap BasicAuthMap, next http.Handler) http.HandlerFunc {
-	h := BasicAuthHandler{handler: next, authMap: authMap}
+func BasicAuthHandlerFunc(cfg BasicAuthServerConfig, next http.Handler) http.HandlerFunc {
+	h := NewBasicAuthHandler(next, cfg)
 	return h.ServeHTTP
 }
 
@@ -32,7 +32,9 @@ func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-func NewBasicAuthHandler(handler http.Handler, authMap BasicAuthMap) BasicAuthHandler {
+func NewBasicAuthHandler(handler http.Handler, cfg BasicAuthServerConfig) BasicAuthHandler {
+	authMap, _ := LoadBasicAuthFromFile(cfg.HTPasswdFile)
+
 	h := BasicAuthHandler{
 		handler: handler,
 		authMap: authMap,

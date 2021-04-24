@@ -5,7 +5,10 @@ import (
 	"strings"
 )
 
-func HMACAuthHandlerFunc(next http.HandlerFunc, sharedKey string, principalHeader string) http.HandlerFunc {
+func HMACAuthHandlerFunc(cfg HMACAuthServerConfig, next http.HandlerFunc) http.HandlerFunc {
+	sharedKey := cfg.SharedKey
+	principalHeader := cfg.HTTPHeader
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.TLS == nil {
 			http.Error(w, "hmac auth requires SSL", http.StatusForbidden)
