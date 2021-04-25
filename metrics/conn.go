@@ -138,9 +138,9 @@ func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net.Conn {
 				Int("bytesWritten", metricsConn.BytesWritten()).
 				Time("startTime", metricsConn.StartTime()).
 				Time("endTime", metricsConn.EndTime()).
-				Dur("duration", metricsConn.Duration())
+				Dur("duration", metricsConn.Duration()).
+				Msg("connectionStats")
 		}
-		logger.Info().Msg("connectionStats")
 	})
 	return closerConn
 }
