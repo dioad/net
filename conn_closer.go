@@ -10,6 +10,10 @@ type ConnWithCloser struct {
 	onClose func(net.Conn)
 }
 
+func (s *ConnWithCloser) RawConn() net.Conn {
+	return s.conn
+}
+
 func (s *ConnWithCloser) Read(b []byte) (int, error) {
 	return s.conn.Read(b)
 }
