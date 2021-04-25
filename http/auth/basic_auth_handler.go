@@ -23,6 +23,7 @@ func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reqUser, reqPass, _ := r.BasicAuth()
 	authenticated, err := h.authMap.Authenticate(reqUser, reqPass)
 	if !authenticated || err != nil {
+		w.Header().Add("WWW-Authenticate", "Basic realm=\"Dioad Connect\"")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
