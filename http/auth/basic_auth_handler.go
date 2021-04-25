@@ -23,7 +23,7 @@ func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reqUser, reqPass, _ := r.BasicAuth()
 	authenticated, err := h.authMap.Authenticate(reqUser, reqPass)
 	if !authenticated || err != nil {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
