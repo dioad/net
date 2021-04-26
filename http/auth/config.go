@@ -1,14 +1,20 @@
 package auth
 
+import (
+	"github.com/dioad/net/http/auth/basic"
+	"github.com/dioad/net/http/auth/github"
+	"github.com/dioad/net/http/auth/hmac"
+)
+
 // need something to deserialize and append details to http.Request
 type AuthenticationClientConfig struct {
-	BasicAuthConfig  BasicAuthClientConfig  `mapstructure:"basic"`
-	GitHubAuthConfig GitHubAuthClientConfig `mapstructure:"github"`
-	HMACAuthConfig   HMACAuthClientConfig   `mapstructure:"hmac"`
+	BasicAuthConfig  basic.BasicAuthClientConfig   `mapstructure:"basic"`
+	GitHubAuthConfig github.GitHubAuthClientConfig `mapstructure:"github"`
+	HMACAuthConfig   hmac.HMACAuthClientConfig     `mapstructure:"hmac"`
 }
 
 type AuthenticationServerConfig struct {
-	BasicAuthConfig  BasicAuthServerConfig  `mapstructure:"basic"`
-	GitHubAuthConfig GitHubAuthServerConfig `mapstructure:"github"`
-	HMACAuthConfig   HMACAuthServerConfig   `mapstructure:"hmac"`
+	BasicAuthConfig  basic.BasicAuthServerConfig   `mapstructure:"basic"`
+	GitHubAuthConfig github.GitHubAuthServerConfig `mapstructure:"github"`
+	HMACAuthConfig   hmac.HMACAuthServerConfig     `mapstructure:"hmac"`
 }

@@ -1,4 +1,4 @@
-package auth
+package github
 
 import (
 	"context"
@@ -15,26 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
-
-var (
-	EmptyGitHubAuthClientConfig = GitHubAuthClientConfig{}
-	EmptyGitHubAuthServerConfig = GitHubAuthServerConfig{}
-)
-
-// only need ClientID for device flow
-type GitHubAuthCommonConfig struct {
-	ClientID     string `mapstructure:"client-id"`
-	ClientSecret string `mapstructure:"client-secret"`
-
-	// ConfigFile containing ClientID and ClientSecret
-	ConfigFile string `mapstructure:"config-file"`
-}
-
-type GitHubAuthClientConfig struct {
-	GitHubAuthCommonConfig `mapstructure:",squash"`
-	AccessToken            string `mapstructure:"access-token"`
-	AccessTokenFile        string `mapstructure:"access-token-file"`
-}
 
 func loadAccessTokenFromYamlFile(filePath string) (*api.AccessToken, error) {
 	authFile, err := os.Open(filePath)
@@ -71,32 +51,6 @@ func resolveAccessToken(c GitHubAuthClientConfig) (string, error) {
 	}
 
 	return c.AccessToken, nil
-}
-
-type GitHubClientAuth struct {
-	Config      GitHubAuthClientConfig
-	accessToken string
-}
-
-func (a GitHubClientAuth) AddAuth(req *http.Request) error {
-	if a.accessToken == "" {
-		var err error
-		a.accessToken, err = resolveAccessToken(a.Config)
-		log.Debug().Str("accessTokenPrefix", a.accessToken[0:5]).Msg("readAccessToken")
-		if err != nil {
-			return err
-		}
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("bearer %v", a.accessToken))
-
-	return nil
-}
-
-type GitHubAuthServerConfig struct {
-	GitHubAuthCommonConfig `mapstructure:",squash"`
-	UserAllowList          []string `mapstructure:"user-allow-list"`
-	UserDenyList           []string `mapstructure:"user-deny-list"`
 }
 
 type gitHubAuthenticator struct {

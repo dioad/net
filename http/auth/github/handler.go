@@ -1,9 +1,10 @@
-package auth
+package github
 
 import (
 	"net/http"
 	"strings"
 
+	"github.com/dioad/net/http/auth"
 	"github.com/rs/zerolog/log"
 )
 
@@ -48,15 +49,16 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.Authenticator.AuthenticateToken(authToken)
 	if err != nil {
+		w.Header().Add("WWW-Authenticate", "Bearer realm=\"Dioad Connect\"")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
-	ctx := NewContextWithAuthenticatedPrincipal(r.Context(), user.GetLogin())
+	ctx := auth.NewContextWithAuthenticatedPrincipal(r.Context(), user.GetLogin())
 
 	log.Info().Str("principal", user.GetLogin()).Msg("authn")
 
-	userAuthorised := IsUserAuthorised(
+	userAuthorised := auth.IsUserAuthorised(
 		user.GetLogin(),
 		h.Authenticator.Config.UserAllowList,
 		h.Authenticator.Config.UserDenyList)
@@ -64,7 +66,7 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("principal", user.GetLogin()).Bool("authorised", userAuthorised).Msg("authz")
 
 	if !userAuthorised {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
 

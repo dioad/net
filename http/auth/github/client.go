@@ -1,0 +1,28 @@
+package github
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/rs/zerolog/log"
+)
+
+type GitHubClientAuth struct {
+	Config      GitHubAuthClientConfig
+	accessToken string
+}
+
+func (a GitHubClientAuth) AddAuth(req *http.Request) error {
+	if a.accessToken == "" {
+		var err error
+		a.accessToken, err = resolveAccessToken(a.Config)
+		log.Debug().Str("accessTokenPrefix", a.accessToken[0:5]).Msg("readAccessToken")
+		if err != nil {
+			return err
+		}
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("bearer %v", a.accessToken))
+
+	return nil
+}

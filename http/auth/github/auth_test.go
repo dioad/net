@@ -1,7 +1,9 @@
-package auth
+package github
 
 import (
 	"testing"
+
+	"github.com/dioad/net/http/auth"
 )
 
 func TestGitHubAuthenticator_AuthenticateToken(t *testing.T) {
@@ -58,7 +60,7 @@ func TestIsUserAuthorised(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got := IsUserAuthorised(tc.user, tc.allowList, tc.denyList)
+			got := auth.IsUserAuthorised(tc.user, tc.allowList, tc.denyList)
 			if got != tc.expected {
 				t.Fatalf("expected %v , got %v", tc.expected, got)
 			}

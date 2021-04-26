@@ -1,7 +1,9 @@
-package auth
+package basic
 
 import (
 	"net/http"
+
+	"github.com/dioad/net/http/auth"
 )
 
 type BasicAuthHandler struct {
@@ -28,7 +30,7 @@ func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := NewContextWithAuthenticatedPrincipal(r.Context(), reqUser)
+	ctx := auth.NewContextWithAuthenticatedPrincipal(r.Context(), reqUser)
 
 	h.handler.ServeHTTP(w, r.WithContext(ctx))
 }

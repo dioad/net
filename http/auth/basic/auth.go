@@ -1,4 +1,4 @@
-package auth
+package basic
 
 import (
 	"bufio"
@@ -8,11 +8,6 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
-)
-
-var (
-	EmptyBasicAuthClientConfig = BasicAuthClientConfig{}
-	EmptyBasicAuthServerConfig = BasicAuthServerConfig{}
 )
 
 type BasicAuthPair struct {
@@ -28,17 +23,6 @@ func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
 	}
 
 	return true, nil
-}
-
-type BasicAuthClientConfig struct {
-	// https://everything.curl.dev/usingcurl/netrc
-	//
-	// machine connect.lab.dioad.net
-	// login blah
-	// password blah
-	NetRCFile string `mapstructure:"netrc-file"`
-	User      string `mapstructure:"user"`
-	Password  string `mapstructure:"password"`
 }
 
 type BasicClientAuth struct {
@@ -66,36 +50,6 @@ func (a BasicClientAuth) AddAuth(req *http.Request) error {
 	}
 	req.SetBasicAuth(a.user, a.password)
 	return nil
-}
-
-type BasicAuthServerConfig struct {
-	HTPasswdFile string   `mapstructure:"htpasswd-file"`
-	Users        []string `mapstructure:"users"`
-}
-
-type BasicAuthMap map[string]BasicAuthPair
-
-func (m BasicAuthMap) UserExists(user string) bool {
-	_, ok := m[user]
-	return ok
-}
-
-func (m BasicAuthMap) Authenticate(user, password string) (bool, error) {
-	if m.UserExists(user) {
-		return m[user].VerifyPassword(password)
-	}
-	return false, nil
-}
-
-// if user already exists it will over ride it
-func (m BasicAuthMap) AddUserWithPlainPassword(user, password string) {
-	authPair, _ := NewBasicAuthPairWithPlainPassword(user, password)
-	m[user] = authPair
-}
-
-// if user already exists it will over ride it
-func (m BasicAuthMap) AddUserWithHashedPassword(user, hashedPassword string) {
-	m[user] = BasicAuthPair{User: user, HashedPassword: hashedPassword}
 }
 
 func hashPassword(password string) (string, error) {
