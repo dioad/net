@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/dioad/net/http/auth"
+	"github.com/dioad/net/http/auth/context"
 )
 
 func HMACAuthHandlerFunc(cfg HMACAuthServerConfig, next http.HandlerFunc) http.HandlerFunc {
@@ -52,7 +52,7 @@ func HMACAuthHandlerFunc(cfg HMACAuthServerConfig, next http.HandlerFunc) http.H
 			return
 		}
 
-		ctx := auth.NewContextWithAuthenticatedPrincipal(r.Context(), authPrincipal)
+		ctx := context.NewContextWithAuthenticatedPrincipal(r.Context(), authPrincipal)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}

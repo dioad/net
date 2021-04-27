@@ -3,7 +3,7 @@ package basic
 import (
 	"net/http"
 
-	"github.com/dioad/net/http/auth"
+	"github.com/dioad/net/http/auth/context"
 )
 
 type BasicAuthHandler struct {
@@ -30,7 +30,7 @@ func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := auth.NewContextWithAuthenticatedPrincipal(r.Context(), reqUser)
+	ctx := context.NewContextWithAuthenticatedPrincipal(r.Context(), reqUser)
 
 	h.handler.ServeHTTP(w, r.WithContext(ctx))
 }

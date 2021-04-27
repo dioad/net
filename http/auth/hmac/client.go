@@ -7,11 +7,10 @@ import (
 
 type HMACClientAuth struct {
 	Config HMACAuthClientConfig
-	Data   string
 }
 
 func (a HMACClientAuth) AddAuth(req *http.Request) error {
-	token, err := HMACKey(a.Config.SharedKey, a.Data)
+	token, err := HMACKey(a.Config.SharedKey, a.Config.Data)
 	if err != nil {
 		return err
 	}

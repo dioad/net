@@ -7,7 +7,6 @@ import (
 	"io"
 )
 
-
 func HMACKeyBytes(sharedKey, data string) ([]byte, error) {
 	h := hmac.New(sha256.New, []byte(sharedKey))
 	_, err := io.WriteString(h, data)
@@ -26,5 +25,3 @@ func HMACKey(sharedKey, data string) (string, error) {
 
 	return fmt.Sprintf("%x", keyBytes), nil
 }
-
-

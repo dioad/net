@@ -24,4 +24,3 @@ func (m BasicAuthMap) AddUserWithPlainPassword(user, password string) {
 func (m BasicAuthMap) AddUserWithHashedPassword(user, hashedPassword string) {
 	m[user] = BasicAuthPair{User: user, HashedPassword: hashedPassword}
 }
-

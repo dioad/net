@@ -10,6 +10,7 @@ type HMACAuthCommonConfig struct {
 	SharedKey string `mapstructure:"shared-key"`
 	// Path to read shared key from
 	SharedKeyPath string `mapstructure:"shared-key-path"`
+	Data          string `mapstructure:"data"`
 }
 
 type HMACAuthClientConfig struct {

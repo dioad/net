@@ -4,7 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/dioad/net/http/auth"
+	"github.com/dioad/net/http/auth/util"
+
+	//"github.com/dioad/net/http/auth"
+	"github.com/dioad/net/http/auth/context"
 	"github.com/rs/zerolog/log"
 )
 
@@ -54,11 +57,11 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := auth.NewContextWithAuthenticatedPrincipal(r.Context(), user.GetLogin())
+	ctx := context.NewContextWithAuthenticatedPrincipal(r.Context(), user.GetLogin())
 
 	log.Info().Str("principal", user.GetLogin()).Msg("authn")
 
-	userAuthorised := auth.IsUserAuthorised(
+	userAuthorised := util.IsUserAuthorised(
 		user.GetLogin(),
 		h.Authenticator.Config.UserAllowList,
 		h.Authenticator.Config.UserDenyList)

@@ -20,4 +20,3 @@ type BasicAuthServerConfig struct {
 	HTPasswdFile string   `mapstructure:"htpasswd-file"`
 	Users        []string `mapstructure:"users"`
 }
-
