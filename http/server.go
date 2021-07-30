@@ -6,13 +6,14 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"runtime"
 	"time"
 
 	"github.com/dioad/net/http/auth"
+	"github.com/dioad/net/http/pprof"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // Config ...
@@ -86,20 +87,11 @@ func (s *Server) addDefaultHandlers() {
 	}
 
 	if s.Config.EnableDebug {
-		s.Router.HandleFunc("/debug", s.debugHandler())
+		s.AddResource("/debug", pprof.NewResource(log.Logger))
 	}
 
 	if s.Config.EnableStatus {
 		s.Router.Handle("/status", s.aggregateStatusHandler())
-	}
-}
-
-func (s *Server) debugHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		buf := make([]byte, 1<<20)
-		buf = buf[:runtime.Stack(buf, true)]
-		w.Write(buf)
 	}
 }
 
