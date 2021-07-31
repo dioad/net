@@ -9,6 +9,7 @@ import (
 type BasicAuthHandler struct {
 	handler http.Handler
 	authMap BasicAuthMap
+	config  BasicAuthServerConfig
 }
 
 func BasicAuthHandlerFunc(cfg BasicAuthServerConfig, next http.Handler) http.HandlerFunc {
@@ -17,9 +18,11 @@ func BasicAuthHandlerFunc(cfg BasicAuthServerConfig, next http.Handler) http.Han
 }
 
 func (h BasicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.TLS == nil {
-		http.Error(w, "basic auth requires SSL", http.StatusForbidden)
-		return
+	if !h.config.AllowInsecureHTTP {
+		if r.TLS == nil {
+			http.Error(w, "basic auth requires SSL", http.StatusForbidden)
+			return
+		}
 	}
 
 	reqUser, reqPass, _ := r.BasicAuth()
@@ -41,6 +44,7 @@ func NewBasicAuthHandler(handler http.Handler, cfg BasicAuthServerConfig) BasicA
 	h := BasicAuthHandler{
 		handler: handler,
 		authMap: authMap,
+		config:  cfg,
 	}
 
 	return h

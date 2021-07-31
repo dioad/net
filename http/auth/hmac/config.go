@@ -6,6 +6,7 @@ var (
 )
 
 type HMACAuthCommonConfig struct {
+	AllowInsecureHTTP bool `mapstructure:"allow-insecure-http"`
 	// Inline shared key used to HMAC with value from HTTPHeader
 	SharedKey string `mapstructure:"shared-key"`
 	// Path to read shared key from

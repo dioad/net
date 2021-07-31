@@ -17,6 +17,7 @@ type BasicAuthClientConfig struct {
 }
 
 type BasicAuthServerConfig struct {
-	HTPasswdFile string   `mapstructure:"htpasswd-file"`
-	Users        []string `mapstructure:"users"`
+	AllowInsecureHTTP bool     `mapstructure:"allow-insecure-http"`
+	HTPasswdFile      string   `mapstructure:"htpasswd-file"`
+	Users             []string `mapstructure:"users"`
 }

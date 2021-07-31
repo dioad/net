@@ -23,9 +23,11 @@ type GitHubAuthHandler struct {
 }
 
 func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.TLS == nil {
-		http.Error(w, "github auth requires SSL", http.StatusForbidden)
-		return
+	if !h.Authenticator.Config.AllowInsecureHTTP {
+		if r.TLS == nil {
+			http.Error(w, "github auth requires SSL", http.StatusForbidden)
+			return
+		}
 	}
 
 	authHeader := r.Header.Get("Authorization")

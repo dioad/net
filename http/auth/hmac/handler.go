@@ -12,9 +12,11 @@ func HMACAuthHandlerFunc(cfg HMACAuthServerConfig, next http.HandlerFunc) http.H
 	principalHeader := cfg.HTTPHeader
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.TLS == nil {
-			http.Error(w, "hmac auth requires SSL", http.StatusForbidden)
-			return
+		if !cfg.AllowInsecureHTTP {
+			if r.TLS == nil {
+				http.Error(w, "hmac auth requires SSL", http.StatusForbidden)
+				return
+			}
 		}
 
 		authHeader := r.Header.Get("Authorization")

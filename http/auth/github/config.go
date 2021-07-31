@@ -7,8 +7,9 @@ var (
 
 // only need ClientID for device flow
 type GitHubAuthCommonConfig struct {
-	ClientID     string `mapstructure:"client-id"`
-	ClientSecret string `mapstructure:"client-secret"`
+	AllowInsecureHTTP bool   `mapstructure:"allow-insecure-http"`
+	ClientID          string `mapstructure:"client-id"`
+	ClientSecret      string `mapstructure:"client-secret"`
 
 	// ConfigFile containing ClientID and ClientSecret
 	ConfigFile string `mapstructure:"config-file"`
