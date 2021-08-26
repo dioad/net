@@ -11,6 +11,7 @@ import (
 	"github.com/dioad/net/http/auth"
 	"github.com/dioad/net/http/pprof"
 	"github.com/gorilla/mux"
+	"github.com/pires/go-proxyproto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -22,6 +23,7 @@ type Config struct {
 	EnablePrometheusMetrics bool
 	EnableDebug             bool
 	EnableStatus            bool
+	EnableProxyProtocol     bool
 	TLSConfig               *tls.Config
 	AuthConfig              auth.AuthenticationServerConfig
 }
@@ -147,12 +149,25 @@ func (s *Server) Serve(ln net.Listener) error {
 		return server.ServeTLS(ln, "", "")
 	}
 
+	if s.Config.EnableProxyProtocol {
+		ln = &proxyproto.Listener{
+			Listener:          ln,
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+	}
+
 	return server.Serve(ln)
 }
 
 func (s *Server) ServeTLS(ln net.Listener) error {
 	server := &http.Server{
 		Handler: s.handler(),
+	}
+
+	if s.Config.EnableProxyProtocol {
+		ln = &proxyproto.Listener{
+			Listener: ln,
+		}
 	}
 
 	return server.ServeTLS(ln, "", "")
