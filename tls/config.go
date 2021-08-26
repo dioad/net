@@ -71,7 +71,9 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 		return nil, nil
 	}
 
-	var tlsConfig = &tls.Config{}
+	var tlsConfig = &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
 
 	if c.ServerName != "" {
 		tlsConfig.ServerName = c.ServerName
@@ -161,7 +163,9 @@ func ConvertClientConfig(c ClientConfig) (*tls.Config, error) {
 		return nil, nil
 	}
 
-	var tlsConfig = &tls.Config{}
+	var tlsConfig = &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
 
 	if (c.Certificate != "" && c.Key == "") || (c.Certificate == "" && c.Key != "") {
 		return nil, fmt.Errorf("both certificate and key need to be specified")

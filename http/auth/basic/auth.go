@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -70,7 +71,8 @@ func NewBasicAuthPairWithPlainPassword(user, password string) (BasicAuthPair, er
 }
 
 func LoadBasicAuthFromFile(filePath string) (BasicAuthMap, error) {
-	f, err := os.OpenFile(filePath, os.O_RDONLY, 0600)
+	filePathClean := filepath.Clean(filePath)
+	f, err := os.OpenFile(filePathClean, os.O_RDONLY, 0600)
 	if err != nil {
 		return nil, err
 	}

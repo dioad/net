@@ -4,15 +4,17 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
+	"path/filepath"
 )
 
 func LoadKeyPairFromFiles(certPath, keyPath string) (*tls.Certificate, error) {
-	certPEM, err := ioutil.ReadFile(certPath)
+	certPathClean := filepath.Clean(certPath)
+	certPEM, err := ioutil.ReadFile(certPathClean)
 	if err != nil {
 		return nil, err
 	}
-
-	keyPEM, err := ioutil.ReadFile(keyPath)
+	keyPathClean := filepath.Clean(keyPath)
+	keyPEM, err := ioutil.ReadFile(keyPathClean)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +27,8 @@ func LoadKeyPairFromFiles(certPath, keyPath string) (*tls.Certificate, error) {
 }
 
 func LoadCertPoolFromFile(certPoolPath string) (*x509.CertPool, error) {
-	certPoolPEM, err := ioutil.ReadFile(certPoolPath)
+	certPoolPathClean := filepath.Clean(certPoolPath)
+	certPoolPEM, err := ioutil.ReadFile(certPoolPathClean)
 	if err != nil {
 		return nil, err
 	}
