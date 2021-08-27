@@ -1,11 +1,13 @@
 package http
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"io"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/dioad/net/http/auth"
@@ -36,6 +38,8 @@ type Server struct {
 	accessLogWriter io.Writer
 	accessLogger    zerolog.Logger
 	ResourceMap     map[string]Resource
+	server          *http.Server
+	serverInitOnce  sync.Once
 }
 
 // NewServer ...
@@ -122,32 +126,32 @@ func (s *Server) ListenAndServe() error {
 	return s.ListenAndServeTLS(s.Config.TLSConfig)
 }
 
+func (s *Server) initialiseServer() {
+	s.serverInitOnce.Do(func() {
+		s.server = &http.Server{
+			ReadTimeout:  time.Minute,
+			WriteTimeout: time.Minute,
+			Handler:      s.handler(),
+			Addr:         s.ListenAddress,
+		}
+	})
+}
+
 // ListenAndServe ...
 func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
-	server := &http.Server{
-		TLSConfig:    tlsConfig,
-		ReadTimeout:  time.Minute,
-		WriteTimeout: time.Minute,
-		Handler:      s.handler(),
-		Addr:         s.ListenAddress,
-	}
+	s.initialiseServer()
+	s.server.TLSConfig = tlsConfig
 
 	if tlsConfig != nil {
-		return server.ListenAndServeTLS("", "")
+		return s.server.ListenAndServeTLS("", "")
 	} else {
-		return server.ListenAndServe()
+		return s.server.ListenAndServe()
 	}
 }
 
 func (s *Server) Serve(ln net.Listener) error {
-	server := &http.Server{
-		TLSConfig: s.Config.TLSConfig,
-		Handler:   s.handler(),
-	}
-
-	if s.Config.TLSConfig != nil {
-		return server.ServeTLS(ln, "", "")
-	}
+	s.initialiseServer()
+	s.server.TLSConfig = s.Config.TLSConfig
 
 	if s.Config.EnableProxyProtocol {
 		ln = &proxyproto.Listener{
@@ -156,19 +160,23 @@ func (s *Server) Serve(ln net.Listener) error {
 		}
 	}
 
-	return server.Serve(ln)
+	if s.Config.TLSConfig != nil {
+		return s.server.ServeTLS(ln, "", "")
+	}
+
+	return s.server.Serve(ln)
 }
 
 func (s *Server) ServeTLS(ln net.Listener) error {
-	server := &http.Server{
-		Handler: s.handler(),
-	}
+	return s.Serve(ln)
+}
 
-	if s.Config.EnableProxyProtocol {
-		ln = &proxyproto.Listener{
-			Listener: ln,
-		}
-	}
+func (s *Server) RegisterOnShutdown(f func()) {
+	s.initialiseServer()
+	s.server.RegisterOnShutdown(f)
+}
 
-	return server.ServeTLS(ln, "", "")
+func (s *Server)  Shutdown(ctx context.Context) error {
+	s.initialiseServer()
+	return s.server.Shutdown(ctx)
 }
