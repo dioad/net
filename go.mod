@@ -1,6 +1,6 @@
 module github.com/dioad/net
 
-go 1.16
+go 1.17
 
 require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -17,6 +17,7 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/rs/xid v1.3.0 // indirect
 	github.com/rs/zerolog v1.25.0
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
@@ -24,4 +25,10 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0
+)
+
+require (
+	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/prometheus/client_model v0.2.0 // indirect
 )
