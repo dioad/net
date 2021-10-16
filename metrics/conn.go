@@ -24,8 +24,8 @@ type WrittenCounter interface {
 }
 
 type ConnMetrics interface {
-	BytesRead() int
-	BytesWritten() int
+	BytesRead() uint64
+	BytesWritten() uint64
 	ResetMetrics()
 	Duration() time.Duration
 	StartTime() time.Time
