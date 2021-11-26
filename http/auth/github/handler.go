@@ -61,14 +61,20 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.NewContextWithAuthenticatedPrincipal(r.Context(), user.GetLogin())
 
-	log.Info().Str("principal", user.GetLogin()).Msg("authn")
+	log.Info().
+		Str("principal", user.GetLogin()).
+		Str("email", user.GetEmail()).
+		Str("company", user.GetCompany()).
+		Msg("authn")
 
 	userAuthorised := util.IsUserAuthorised(
 		user.GetLogin(),
 		h.Authenticator.Config.UserAllowList,
 		h.Authenticator.Config.UserDenyList)
 
-	log.Info().Str("principal", user.GetLogin()).Bool("authorised", userAuthorised).Msg("authz")
+	log.Info().
+		Str("principal", user.GetLogin()).
+		Bool("authorised", userAuthorised).Msg("authz")
 
 	if !userAuthorised {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
