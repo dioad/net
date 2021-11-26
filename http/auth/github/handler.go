@@ -65,6 +65,7 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Str("principal", user.GetLogin()).
 		Str("email", user.GetEmail()).
 		Str("company", user.GetCompany()).
+		Interface("user", user).
 		Msg("authn")
 
 	userAuthorised := util.IsUserAuthorised(
