@@ -15,20 +15,26 @@ require (
 	github.com/pires/go-proxyproto v0.6.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
-	github.com/prometheus/common v0.31.1 // indirect
+	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rs/xid v1.3.0 // indirect
-	github.com/rs/zerolog v1.25.0
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
-	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
-	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
+	github.com/rs/zerolog v1.26.0
+	golang.org/x/crypto v0.0.0-20211209193657-4570a0811e8b
+	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
+	golang.org/x/sys v0.0.0-20211210111614-af8b64212486 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
+	github.com/mitchellh/go-homedir v1.1.0
+	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
+)
+
+require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
+	google.golang.org/appengine v1.6.7 // indirect
 )

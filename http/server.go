@@ -176,7 +176,7 @@ func (s *Server) RegisterOnShutdown(f func()) {
 	s.server.RegisterOnShutdown(f)
 }
 
-func (s *Server)  Shutdown(ctx context.Context) error {
+func (s *Server) Shutdown(ctx context.Context) error {
 	s.initialiseServer()
 	return s.server.Shutdown(ctx)
 }

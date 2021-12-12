@@ -14,8 +14,6 @@ func TestConnDuration(t *testing.T) {
 	controlConn, testConn := net.Pipe()
 	c := NewConn(testConn)
 
-
-
 	wg := sync.WaitGroup{}
 
 	//startTime := time.Now()
@@ -56,7 +54,7 @@ func TestConnDuration(t *testing.T) {
 	}
 
 	roundedEndDuration := endDuration.Truncate(10 * time.Millisecond)
-	if roundedEndDuration != 100 * time.Millisecond {
+	if roundedEndDuration != 100*time.Millisecond {
 		t.Errorf("end duration mismatch: %v(rounded=%v) != %v", endDuration, roundedEndDuration, 200*time.Millisecond)
 	}
 
