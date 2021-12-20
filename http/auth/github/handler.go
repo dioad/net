@@ -62,7 +62,6 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.NewContextWithAuthenticatedPrincipal(r.Context(), user.Login)
 
 	ctx = NewContextWithGitHubUserInfo(ctx, user)
-
 	log.Info().
 		Str("principal", user.Login).
 		Str("email", user.PrimaryEmail).

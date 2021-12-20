@@ -43,6 +43,7 @@ func fetchUserInfo(accessToken string) (*UserInfo, error) {
 	emails, _, err := client.Users.ListEmails(context.Background(), &github.ListOptions{PerPage: 10})
 
 	userInfo := &UserInfo{
+		Login:    u.GetLogin(),
 		Name:     u.GetName(),
 		WebSite:  u.GetBlog(),
 		Company:  u.GetCompany(),

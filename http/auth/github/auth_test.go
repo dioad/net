@@ -32,7 +32,7 @@ func TestGitHubAuthenticator_AuthenticateToken(t *testing.T) {
 				if user == nil {
 					t.Fatalf("did not expect nil user")
 				}
-				if *user.Login != tc.login {
+				if user.Login != tc.login {
 					t.Fatalf("expected %v, got %v", tc.login, user.Login)
 				}
 			}
