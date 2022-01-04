@@ -23,7 +23,9 @@ import (
 type metrics struct {
 	requestCounter  *prometheus.CounterVec
 	requestDuration *prometheus.HistogramVec
+	requestSize     *prometheus.HistogramVec
 	responseSize    *prometheus.HistogramVec
+	inFlightGauge   *prometheus.GaugeVec
 }
 
 func newMetrics(r prometheus.Registerer) *metrics {
@@ -43,11 +45,26 @@ func newMetrics(r prometheus.Registerer) *metrics {
 			},
 			[]string{"handler"},
 		),
+		requestSize: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "prometheus_http_response_size_bytes",
+				Help:    "Histogram of request size for HTTP requests.",
+				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
+			},
+			[]string{"handler"},
+		),
 		responseSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "prometheus_http_response_size_bytes",
 				Help:    "Histogram of response size for HTTP requests.",
 				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
+			},
+			[]string{"handler"},
+		),
+		inFlightGauge: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "prometheus_http_in_flight_requests",
+				Help: "Gauge of requests currently being served by the wrapped handler.",
 			},
 			[]string{"handler"},
 		),
