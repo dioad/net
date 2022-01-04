@@ -14,6 +14,7 @@ import (
 	"github.com/dioad/net/http/pprof"
 	"github.com/gorilla/mux"
 	"github.com/pires/go-proxyproto"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -40,25 +41,31 @@ type Server struct {
 	ResourceMap     map[string]Resource
 	server          *http.Server
 	serverInitOnce  sync.Once
+	metrics         *metrics
 }
 
-// NewServer ...
-func NewServer(config Config, accessLogWriter io.Writer) *Server {
-	return &Server{
-		Config:          config,
-		ListenAddress:   config.ListenAddress,
-		Router:          mux.NewRouter(),
-		accessLogWriter: accessLogWriter,
-		ResourceMap:     make(map[string]Resource, 0)}
-}
-
-func NewServerWithLogger(config Config, accessLogger zerolog.Logger) *Server {
+func newDefaultServer(config Config) *Server {
 	return &Server{
 		Config:        config,
 		ListenAddress: config.ListenAddress,
 		Router:        mux.NewRouter(),
-		accessLogger:  accessLogger,
-		ResourceMap:   make(map[string]Resource, 0)}
+		ResourceMap:   make(map[string]Resource, 0),
+		metrics:       newMetrics(prometheus.DefaultRegisterer)}
+}
+
+// NewServer ...
+func NewServer(config Config, accessLogWriter io.Writer) *Server {
+	server := newDefaultServer(config)
+	server.accessLogWriter = accessLogWriter
+
+	return server
+}
+
+func NewServerWithLogger(config Config, accessLogger zerolog.Logger) *Server {
+	server := newDefaultServer(config)
+	server.accessLogger = accessLogger
+
+	return server
 }
 
 // AddResource ...
@@ -80,10 +87,14 @@ func (s *Server) handler() http.Handler {
 }
 
 func (s *Server) AddHandler(path string, handler http.Handler) {
-	s.Router.Handle(path, handler)
+	s.AddHandlerFunc(path, handler.ServeHTTP)
 }
 
 func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
+	h := handler
+	if s.Config.EnablePrometheusMetrics {
+		h = s.metrics.instrumentHandler(path, h)
+	}
 	s.Router.HandleFunc(path, handler)
 }
 
