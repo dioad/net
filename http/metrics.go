@@ -47,7 +47,7 @@ func newMetrics(r prometheus.Registerer) *metrics {
 		),
 		requestSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Name:    "prometheus_http_response_size_bytes",
+				Name:    "prometheus_http_request_size_bytes",
 				Help:    "Histogram of request size for HTTP requests.",
 				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
 			},
