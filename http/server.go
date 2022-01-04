@@ -95,7 +95,7 @@ func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
 	if s.Config.EnablePrometheusMetrics {
 		h = s.metrics.instrumentHandler(path, h)
 	}
-	s.Router.HandleFunc(path, handler)
+	s.Router.HandleFunc(path, h)
 }
 
 func (s *Server) addDefaultHandlers() {
