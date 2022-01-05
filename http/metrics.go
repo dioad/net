@@ -32,14 +32,14 @@ func newMetrics(r prometheus.Registerer) *metrics {
 	m := &metrics{
 		requestCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Name: "prometheus_http_requests_total",
+				Name: "dioad_net_http_requests_total",
 				Help: "Counter of HTTP requests.",
 			},
 			[]string{"handler", "code"},
 		),
 		requestDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Name:    "prometheus_http_request_duration_seconds",
+				Name:    "dioad_net_http_request_duration_seconds",
 				Help:    "Histogram of latencies for HTTP requests.",
 				Buckets: []float64{.1, .2, .4, 1, 3, 8, 20, 60, 120},
 			},
@@ -47,7 +47,7 @@ func newMetrics(r prometheus.Registerer) *metrics {
 		),
 		requestSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Name:    "prometheus_http_request_size_bytes",
+				Name:    "dioad_net_http_request_size_bytes",
 				Help:    "Histogram of request size for HTTP requests.",
 				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
 			},
@@ -55,7 +55,7 @@ func newMetrics(r prometheus.Registerer) *metrics {
 		),
 		responseSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Name:    "prometheus_http_response_size_bytes",
+				Name:    "dioad_net_http_response_size_bytes",
 				Help:    "Histogram of response size for HTTP requests.",
 				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
 			},
@@ -63,7 +63,7 @@ func newMetrics(r prometheus.Registerer) *metrics {
 		),
 		inFlightGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: "prometheus_http_in_flight_requests",
+				Name: "dioad_net_http_in_flight_requests",
 				Help: "Gauge of requests currently being served by the wrapped handler.",
 			},
 			[]string{"handler"},

@@ -45,12 +45,13 @@ type Server struct {
 }
 
 func newDefaultServer(config Config) *Server {
+	r := prometheus.NewPedanticRegistry()
 	return &Server{
 		Config:        config,
 		ListenAddress: config.ListenAddress,
 		Router:        mux.NewRouter(),
 		ResourceMap:   make(map[string]Resource, 0),
-		metrics:       newMetrics(prometheus.DefaultRegisterer)}
+		metrics:       newMetrics(r)}
 }
 
 // NewServer ...
