@@ -41,17 +41,22 @@ type Server struct {
 	ResourceMap     map[string]Resource
 	server          *http.Server
 	serverInitOnce  sync.Once
-	metrics         *metrics
+	metricSet       *MetricSet
 }
 
 func newDefaultServer(config Config) *Server {
-	r := prometheus.NewPedanticRegistry()
+	r := prometheus.NewRegistry()
+	m := NewMetricSet(r)
+	rtr := mux.NewRouter()
+	//if config.EnablePrometheusMetrics {
+	//	rtr.Use(m.Middleware)
+	//}
 	return &Server{
 		Config:        config,
 		ListenAddress: config.ListenAddress,
-		Router:        mux.NewRouter(),
+		Router:        rtr,
 		ResourceMap:   make(map[string]Resource, 0),
-		metrics:       newMetrics(r)}
+		metricSet:     m}
 }
 
 // NewServer ...
@@ -69,9 +74,16 @@ func NewServerWithLogger(config Config, accessLogger zerolog.Logger) *Server {
 	return server
 }
 
+func (s *Server) ConfigurePrometheusRegistry(r prometheus.Registerer) {
+	s.metricSet.Register(r)
+}
+
 // AddResource ...
 func (s *Server) AddResource(pathPrefix string, r Resource) {
 	subrouter := s.Router.PathPrefix(pathPrefix).Subrouter()
+	if s.Config.EnablePrometheusMetrics {
+		subrouter.Use(s.metricSet.Middleware)
+	}
 	r.RegisterRoutes(subrouter)
 	s.ResourceMap[pathPrefix] = r
 }
@@ -83,7 +95,8 @@ func (s *Server) handler() http.Handler {
 	if s.accessLogWriter != nil {
 		logHandler = DefaultCombinedLogHandler(s.accessLogWriter)
 	}
-
+	// ensure that 404's get picked up by metrics
+	// s.Router.NotFoundHandler = s.Router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
 	return logHandler(s.Router)
 }
 
@@ -94,7 +107,7 @@ func (s *Server) AddHandler(path string, handler http.Handler) {
 func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
 	h := handler
 	if s.Config.EnablePrometheusMetrics {
-		h = s.metrics.instrumentHandler(path, h)
+		h = s.metricSet.instrumentHandlerFunc(path, h)
 	}
 	s.Router.HandleFunc(path, h)
 }
@@ -109,7 +122,8 @@ func (s *Server) addDefaultHandlers() {
 	}
 
 	if s.Config.EnableStatus {
-		s.Router.Handle("/status", s.aggregateStatusHandler())
+		s.AddHandler("/status", s.aggregateStatusHandler())
+		//s.Router.Handle("/status", s.aggregateStatusHandler())
 	}
 }
 

@@ -16,28 +16,29 @@ package http
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-type metrics struct {
-	requestCounter  *prometheus.CounterVec
-	requestDuration *prometheus.HistogramVec
-	requestSize     *prometheus.HistogramVec
-	responseSize    *prometheus.HistogramVec
-	inFlightGauge   *prometheus.GaugeVec
+type MetricSet struct {
+	RequestCounter  *prometheus.CounterVec
+	RequestDuration *prometheus.HistogramVec
+	RequestSize     *prometheus.HistogramVec
+	ResponseSize    *prometheus.HistogramVec
+	InFlightGauge   prometheus.Gauge
 }
 
-func newMetrics(r prometheus.Registerer) *metrics {
-	m := &metrics{
-		requestCounter: prometheus.NewCounterVec(
+func NewMetricSet(r *prometheus.Registry) *MetricSet {
+	m := &MetricSet{
+		RequestCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "dioad_net_http_requests_total",
 				Help: "Counter of HTTP requests.",
 			},
 			[]string{"handler", "code"},
 		),
-		requestDuration: prometheus.NewHistogramVec(
+		RequestDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "dioad_net_http_request_duration_seconds",
 				Help:    "Histogram of latencies for HTTP requests.",
@@ -45,7 +46,7 @@ func newMetrics(r prometheus.Registerer) *metrics {
 			},
 			[]string{"handler"},
 		),
-		requestSize: prometheus.NewHistogramVec(
+		RequestSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "dioad_net_http_request_size_bytes",
 				Help:    "Histogram of request size for HTTP requests.",
@@ -53,7 +54,7 @@ func newMetrics(r prometheus.Registerer) *metrics {
 			},
 			[]string{"handler"},
 		),
-		responseSize: prometheus.NewHistogramVec(
+		ResponseSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "dioad_net_http_response_size_bytes",
 				Help:    "Histogram of response size for HTTP requests.",
@@ -61,35 +62,76 @@ func newMetrics(r prometheus.Registerer) *metrics {
 			},
 			[]string{"handler"},
 		),
-		inFlightGauge: prometheus.NewGaugeVec(
+		InFlightGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "dioad_net_http_in_flight_requests",
 				Help: "Gauge of requests currently being served by the wrapped handler.",
 			},
-			[]string{"handler"},
 		),
 	}
 
-	if r != nil {
-		r.MustRegister(m.requestCounter, m.requestDuration, m.responseSize)
-	}
 	return m
 }
 
-func (m *metrics) instrumentHandlerWithPrefix(prefix string) func(handlerName string, handler http.HandlerFunc) http.HandlerFunc {
+func (m *MetricSet) Register(r prometheus.Registerer) {
+	//if r != nil {
+	r.MustRegister(
+		m.RequestCounter,
+		m.RequestDuration,
+		m.ResponseSize,
+		m.RequestSize,
+		m.InFlightGauge)
+	//}
+}
+
+func (m *MetricSet) instrumentHandlerWithPrefix(prefix string) func(handlerName string, handler http.HandlerFunc) http.HandlerFunc {
 	return func(handlerName string, handler http.HandlerFunc) http.HandlerFunc {
-		return m.instrumentHandler(prefix+handlerName, handler)
+		return m.instrumentHandlerFunc(prefix+handlerName, handler)
 	}
 }
 
-func (m *metrics) instrumentHandler(handlerName string, handler http.HandlerFunc) http.HandlerFunc {
+type instrumentHandler struct {
+	m *MetricSet
+}
+
+// Middleware - to make it a middleware for mux probably a better way.
+// TODO: need to extract this from this struct to remove the coupling with mux
+func (m *MetricSet) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		route := mux.CurrentRoute(r)
+		path, _ := route.GetPathTemplate()
+		promhttp.InstrumentHandlerInFlight(
+			m.InFlightGauge,
+			promhttp.InstrumentHandlerCounter(
+				m.RequestCounter.MustCurryWith(prometheus.Labels{"handler": path}),
+				promhttp.InstrumentHandlerDuration(
+					m.RequestDuration.MustCurryWith(prometheus.Labels{"handler": path}),
+					promhttp.InstrumentHandlerResponseSize(
+						m.ResponseSize.MustCurryWith(prometheus.Labels{"handler": path}),
+						promhttp.InstrumentHandlerRequestSize(
+							m.RequestSize.MustCurryWith(prometheus.Labels{"handler": path}),
+							next),
+					),
+				),
+			)).ServeHTTP(w, r)
+	})
+
+}
+
+//func (m *MetricSet) InstrumentHandler() http.Handler {
+//	return &instrumentHandler{m: m}
+//}
+
+func (m *MetricSet) instrumentHandlerFunc(handlerName string, handler http.HandlerFunc) http.HandlerFunc {
 	return promhttp.InstrumentHandlerCounter(
-		m.requestCounter.MustCurryWith(prometheus.Labels{"handler": handlerName}),
+		m.RequestCounter.MustCurryWith(prometheus.Labels{"handler": handlerName}),
 		promhttp.InstrumentHandlerDuration(
-			m.requestDuration.MustCurryWith(prometheus.Labels{"handler": handlerName}),
+			m.RequestDuration.MustCurryWith(prometheus.Labels{"handler": handlerName}),
 			promhttp.InstrumentHandlerResponseSize(
-				m.responseSize.MustCurryWith(prometheus.Labels{"handler": handlerName}),
-				handler,
+				m.ResponseSize.MustCurryWith(prometheus.Labels{"handler": handlerName}),
+				promhttp.InstrumentHandlerRequestSize(
+					m.RequestSize.MustCurryWith(prometheus.Labels{"handler": handlerName}),
+					handler),
 			),
 		),
 	)
