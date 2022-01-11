@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/weaveworks/common/middleware"
 )
 
 // Config ...
@@ -42,15 +43,14 @@ type Server struct {
 	server          *http.Server
 	serverInitOnce  sync.Once
 	metricSet       *MetricSet
+	instrument      middleware.Instrument
 }
 
 func newDefaultServer(config Config) *Server {
 	r := prometheus.NewRegistry()
 	m := NewMetricSet(r)
 	rtr := mux.NewRouter()
-	//if config.EnablePrometheusMetrics {
-	//	rtr.Use(m.Middleware)
-	//}
+
 	return &Server{
 		Config:        config,
 		ListenAddress: config.ListenAddress,
@@ -74,6 +74,11 @@ func NewServerWithLogger(config Config, accessLogger zerolog.Logger) *Server {
 	return server
 }
 
+func (s *Server) ConfigureTelemetryInstrument(i middleware.Instrument) {
+	s.instrument = i
+	s.Router.Use(s.instrument.Wrap)
+}
+
 func (s *Server) ConfigurePrometheusRegistry(r prometheus.Registerer) {
 	s.metricSet.Register(r)
 }
@@ -82,7 +87,7 @@ func (s *Server) ConfigurePrometheusRegistry(r prometheus.Registerer) {
 func (s *Server) AddResource(pathPrefix string, r Resource) {
 	subrouter := s.Router.PathPrefix(pathPrefix).Subrouter()
 	if s.Config.EnablePrometheusMetrics {
-		subrouter.Use(s.metricSet.Middleware)
+		subrouter.Use(s.instrument.Wrap)
 	}
 	r.RegisterRoutes(subrouter)
 	s.ResourceMap[pathPrefix] = r
@@ -95,6 +100,7 @@ func (s *Server) handler() http.Handler {
 	if s.accessLogWriter != nil {
 		logHandler = DefaultCombinedLogHandler(s.accessLogWriter)
 	}
+
 	// ensure that 404's get picked up by metrics
 	// s.Router.NotFoundHandler = s.Router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
 	return logHandler(s.Router)
@@ -107,7 +113,7 @@ func (s *Server) AddHandler(path string, handler http.Handler) {
 func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
 	h := handler
 	if s.Config.EnablePrometheusMetrics {
-		h = s.metricSet.instrumentHandlerFunc(path, h)
+		h = s.instrument.Wrap(h).ServeHTTP
 	}
 	s.Router.HandleFunc(path, h)
 }
@@ -123,7 +129,6 @@ func (s *Server) addDefaultHandlers() {
 
 	if s.Config.EnableStatus {
 		s.AddHandler("/status", s.aggregateStatusHandler())
-		//s.Router.Handle("/status", s.aggregateStatusHandler())
 	}
 }
 
