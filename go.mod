@@ -12,16 +12,16 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/pires/go-proxyproto v0.6.1
+	github.com/pires/go-proxyproto v0.6.2
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rs/xid v1.3.0 // indirect
 	github.com/rs/zerolog v1.26.1
-	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e
-	golang.org/x/net v0.0.0-20220111093109-d55c255bac03
-	golang.org/x/sys v0.0.0-20220111092808-5a964db01320 // indirect
+	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
+	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0
@@ -30,8 +30,8 @@ require (
 require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/stretchr/testify v1.7.0
-	github.com/weaveworks/common v0.0.0-20211222122857-933588f98737
-	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
+	github.com/weaveworks/common v0.0.0-20220302160857-00e2e238a230
+	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
 )
 
 require (
@@ -55,8 +55,8 @@ require (
 	github.com/weaveworks/promrus v1.2.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220111164026-67b88f271998 // indirect
-	google.golang.org/grpc v1.43.0 // indirect
+	google.golang.org/genproto v0.0.0-20220302033224-9aa15565e42a // indirect
+	google.golang.org/grpc v1.44.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 )

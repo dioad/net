@@ -43,7 +43,8 @@ type Server struct {
 	server          *http.Server
 	serverInitOnce  sync.Once
 	metricSet       *MetricSet
-	instrument      middleware.Instrument
+	instrument      *middleware.Instrument
+	rootResource    RootResource
 }
 
 func newDefaultServer(config Config) *Server {
@@ -75,7 +76,7 @@ func NewServerWithLogger(config Config, accessLogger zerolog.Logger) *Server {
 }
 
 func (s *Server) ConfigureTelemetryInstrument(i middleware.Instrument) {
-	s.instrument = i
+	s.instrument = &i
 	s.Router.Use(s.instrument.Wrap)
 }
 
@@ -86,11 +87,20 @@ func (s *Server) ConfigurePrometheusRegistry(r prometheus.Registerer) {
 // AddResource ...
 func (s *Server) AddResource(pathPrefix string, r Resource) {
 	subrouter := s.Router.PathPrefix(pathPrefix).Subrouter()
-	if s.Config.EnablePrometheusMetrics {
+	if s.instrument != nil {
 		subrouter.Use(s.instrument.Wrap)
 	}
-	r.RegisterRoutes(subrouter)
+	if rp, ok := r.(PathResource); ok {
+		rp.RegisterRoutesWithPrefix(subrouter, pathPrefix)
+	} else if rp, ok := r.(DefaultResource); ok {
+		rp.RegisterRoutes(subrouter)
+	}
 	s.ResourceMap[pathPrefix] = r
+}
+
+func (s *Server) AddRootResource(r RootResource) {
+	s.rootResource = r
+	// s.AddResource("/", r)
 }
 
 func (s *Server) handler() http.Handler {
@@ -101,7 +111,15 @@ func (s *Server) handler() http.Handler {
 		logHandler = DefaultCombinedLogHandler(s.accessLogWriter)
 	}
 
-	// ensure that 404's get picked up by metrics
+	// s.addDefaultHandlers()
+	if s.rootResource != nil {
+		//s.rootResource.RegisterRoutes(s.Router.Path("/").Subrouter())
+		//s.AddResource("/", s.rootResource)
+
+		s.AddHandler("/", s.rootResource.Index())
+	}
+
+	// uncomment if ensure that 404's get picked up by metrics
 	// s.Router.NotFoundHandler = s.Router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
 	return logHandler(s.Router)
 }
@@ -112,9 +130,11 @@ func (s *Server) AddHandler(path string, handler http.Handler) {
 
 func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
 	h := handler
-	if s.Config.EnablePrometheusMetrics {
+	//if s.Config.EnablePrometheusMetrics {
+	if s.instrument != nil {
 		h = s.instrument.Wrap(h).ServeHTTP
 	}
+	//}
 	s.Router.HandleFunc(path, h)
 }
 
@@ -136,12 +156,16 @@ func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		statusMap := make(map[string]interface{}, 0)
 		httpStatus := http.StatusOK
+
 		for path, resource := range s.ResourceMap {
-			status, err := resource.Status()
-			if err != nil {
-				httpStatus = http.StatusInternalServerError
+			if sr, ok := resource.(StatusResource); ok {
+
+				status, err := sr.Status()
+				if err != nil {
+					httpStatus = http.StatusInternalServerError
+				}
+				statusMap[path] = status
 			}
-			statusMap[path] = status
 		}
 
 		w.Header().Set("Content-Type", "text/json; charset=utf-8") // normal header
