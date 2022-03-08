@@ -88,3 +88,19 @@ func TestAuthoriserAllowByDefault(t *testing.T) {
 
 	require.True(t, got)
 }
+
+func TestAuthoriserAllowFromString(t *testing.T) {
+	c := NetworkACLConfig{
+		AllowedNets:    []string{"192.168.0.0/16"},
+		DeniedNets:     []string{},
+		AllowByDefault: false,
+	}
+
+	a := NewNetworkACL(c)
+	got, err := a.AuthoriseFromString("192.168.4.5:1234")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	require.True(t, got)
+}

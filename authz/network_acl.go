@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type NetworkACL struct {
@@ -13,14 +15,34 @@ type NetworkACL struct {
 	denyNetworks  []*net.IPNet
 }
 
-func NewNetworkACL(cfg NetworkACLConfig) *NetworkACL {
+func NewNetworkACL(cfg NetworkACLConfig) (*NetworkACL, error) {
 	a := &NetworkACL{
 		Config:        cfg,
 		allowNetworks: make([]*net.IPNet, 0),
 		denyNetworks:  make([]*net.IPNet, 0),
 	}
 
-	return a
+	// not sure this is the right place
+	err := a.parseConfig()
+
+	return a, err
+}
+
+func (a *NetworkACL) parseConfig() error {
+	for _, allowStr := range a.Config.AllowedNets {
+		err := a.AllowFromString(allowStr)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("failed to parse %v", allowStr))
+		}
+	}
+
+	for _, denyStr := range a.Config.DeniedNets {
+		err := a.DenyFromString(denyStr)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("failed to parse %v", denyStr))
+		}
+	}
+	return nil
 }
 
 func (a *NetworkACL) AllowFromString(n string) error {
