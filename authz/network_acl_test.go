@@ -64,7 +64,11 @@ func TestAuthoriserDenyByDefault(t *testing.T) {
 		DeniedNets:     []string{},
 		AllowByDefault: false,
 	}
-	a := NewNetworkACL(c)
+	a, err := NewNetworkACL(c)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
 	got, err := a.AuthoriseFromString("192.168.4.5:12345")
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -80,7 +84,11 @@ func TestAuthoriserAllowByDefault(t *testing.T) {
 		AllowByDefault: true,
 	}
 
-	a := NewNetworkACL(c)
+	a, err := NewNetworkACL(c)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
 	got, err := a.AuthoriseFromString("192.168.4.5:12354")
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -96,7 +104,11 @@ func TestAuthoriserAllowFromString(t *testing.T) {
 		AllowByDefault: false,
 	}
 
-	a := NewNetworkACL(c)
+	a, err := NewNetworkACL(c)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
 	got, err := a.AuthoriseFromString("192.168.4.5:1234")
 	if err != nil {
 		t.Fatalf("err: %v", err)

@@ -7,7 +7,7 @@ import (
 )
 
 func HandlerFunc(cfg authz.NetworkACLConfig, next http.Handler) http.HandlerFunc {
-	authoriser := authz.NewNetworkACL(cfg)
+	authoriser, _ := authz.NewNetworkACL(cfg)
 	h := AuthzHandler{next: next, Authoriser: authoriser}
 	return h.ServeHTTP
 }
