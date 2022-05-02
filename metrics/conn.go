@@ -96,6 +96,10 @@ type Conn struct {
 	metrics *connMetrics
 }
 
+func (s *Conn) NetConn() net.Conn {
+	return s.conn
+}
+
 func (s *Conn) StartTime() time.Time {
 	return s.metrics.StartTime()
 }

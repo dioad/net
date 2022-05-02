@@ -10,7 +10,7 @@ type ConnWithCloser struct {
 	onClose func(net.Conn)
 }
 
-func (s *ConnWithCloser) RawConn() net.Conn {
+func (s *ConnWithCloser) NetConn() net.Conn {
 	return s.conn
 }
 
