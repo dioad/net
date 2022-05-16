@@ -79,8 +79,10 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 		tlsConfig.ServerName = c.ServerName
 	}
 
-	if len(c.NextProtos) != 0 {
+	if len(c.NextProtos) == 0 {
 		tlsConfig.NextProtos = []string{"h2", "http/1.1"}
+	} else {
+		tlsConfig.NextProtos = c.NextProtos
 	}
 
 	if c.Certificate != "" {
