@@ -16,10 +16,20 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	EmptyClientConfig   = ClientConfig{}
+	EmptyServerConfig   = ServerConfig{}
+	EmptyAutoCertConfig = AutoCertConfig{}
+)
+
 type AutoCertConfig struct {
 	CacheDirectory string   `mapstructure:"cache-directory" json:",omitempty"`
 	Email          string   `mapstructure:"email" json:",omitempty"`
 	AllowedHosts   []string `mapstructure:"allowed-hosts" json:",omitempty"`
+}
+
+func (c AutoCertConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyAutoCertConfig)
 }
 
 type ServerConfig struct {
@@ -38,6 +48,10 @@ type ServerConfig struct {
 	NextProtos []string `mapstructure:"next-protos"`
 }
 
+func (s ServerConfig) IsEmpty() bool {
+	return reflect.DeepEqual(s, EmptyServerConfig)
+}
+
 type ClientConfig struct {
 	RootCAFile         string `mapstructure:"root-ca-file" json:",omitempty"`
 	Certificate        string `mapstructure:"cert" json:",omitempty"`
@@ -45,11 +59,9 @@ type ClientConfig struct {
 	InsecureSkipVerify bool   `mapstructure:"insecure-skip-verify"`
 }
 
-var (
-	EmptyClientConfig   = ClientConfig{}
-	EmptyServerConfig   = ServerConfig{}
-	EmptyAutoCertConfig = AutoCertConfig{}
-)
+func (c ClientConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyClientConfig)
+}
 
 func convertClientAuthType(authType string) tls.ClientAuthType {
 	switch authType {
@@ -67,7 +79,7 @@ func convertClientAuthType(authType string) tls.ClientAuthType {
 }
 
 func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
-	if reflect.DeepEqual(c, EmptyServerConfig) {
+	if c.IsEmpty() {
 		return nil, nil
 	}
 
@@ -93,7 +105,7 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 		}
 		tlsConfig.Certificates = []tls.Certificate{serverCertificate}
 	} else {
-		if !reflect.DeepEqual(c.AutoCertConfig, EmptyAutoCertConfig) {
+		if !c.AutoCertConfig.IsEmpty() {
 			autoCertManager := autocert.Manager{
 				Prompt: autocert.AcceptTOS,
 				Cache:  autocert.DirCache(c.AutoCertConfig.CacheDirectory),

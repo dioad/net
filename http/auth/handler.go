@@ -2,7 +2,6 @@ package auth
 
 import (
 	"net/http"
-	"reflect"
 
 	"github.com/dioad/net/http/auth/basic"
 	"github.com/dioad/net/http/auth/github"
@@ -12,11 +11,11 @@ import (
 func AuthHandlerFunc(cfg *AuthenticationServerConfig, origHandler http.HandlerFunc) http.HandlerFunc {
 	h := origHandler
 
-	if !reflect.DeepEqual(cfg.GitHubAuthConfig, github.EmptyGitHubAuthServerConfig) {
+	if !cfg.GitHubAuthConfig.IsEmpty() {
 		h = github.GitHubAuthHandlerFunc(cfg.GitHubAuthConfig, h)
-	} else if !reflect.DeepEqual(cfg.BasicAuthConfig, basic.EmptyBasicAuthServerConfig) {
+	} else if !cfg.BasicAuthConfig.IsEmpty() {
 		h = basic.BasicAuthHandlerFunc(cfg.BasicAuthConfig, h)
-	} else if !reflect.DeepEqual(cfg.HMACAuthConfig, hmac.EmptyHMACAuthServerConfig) {
+	} else if !cfg.HMACAuthConfig.IsEmpty() {
 		h = hmac.HMACAuthHandlerFunc(cfg.HMACAuthConfig, h)
 	}
 

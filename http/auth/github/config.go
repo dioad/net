@@ -1,5 +1,7 @@
 package github
 
+import "reflect"
+
 var (
 	EmptyGitHubAuthClientConfig = GitHubAuthClientConfig{}
 	EmptyGitHubAuthServerConfig = GitHubAuthServerConfig{}
@@ -21,8 +23,16 @@ type GitHubAuthClientConfig struct {
 	AccessTokenFile        string `mapstructure:"access-token-file"`
 }
 
+func (c GitHubAuthClientConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyGitHubAuthClientConfig)
+}
+
 type GitHubAuthServerConfig struct {
 	GitHubAuthCommonConfig `mapstructure:",squash"`
 	UserAllowList          []string `mapstructure:"user-allow-list"`
 	UserDenyList           []string `mapstructure:"user-deny-list"`
+}
+
+func (c GitHubAuthServerConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyGitHubAuthServerConfig)
 }

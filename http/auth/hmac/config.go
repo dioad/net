@@ -1,5 +1,7 @@
 package hmac
 
+import "reflect"
+
 var (
 	EmptyHMACAuthClientConfig = HMACAuthClientConfig{}
 	EmptyHMACAuthServerConfig = HMACAuthServerConfig{}
@@ -18,8 +20,16 @@ type HMACAuthClientConfig struct {
 	HMACAuthCommonConfig `mapstructure:",squash"`
 }
 
+func (c HMACAuthClientConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyHMACAuthClientConfig)
+}
+
 type HMACAuthServerConfig struct {
 	HMACAuthCommonConfig `mapstructure:",squash"`
 	// HTTP Header to use as data input
 	HTTPHeader string `mapstructure:"http-header"`
+}
+
+func (c HMACAuthServerConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyHMACAuthServerConfig)
 }
