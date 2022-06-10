@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"io"
+	stdlog "log"
 	"net"
 	"net/http"
 	"sync"
@@ -34,23 +35,24 @@ type Config struct {
 
 // Server ...
 type Server struct {
-	Config          Config
-	ListenAddress   string
-	Router          *mux.Router
-	accessLogWriter io.Writer
-	accessLogger    zerolog.Logger
-	ResourceMap     map[string]Resource
-	server          *http.Server
-	serverInitOnce  sync.Once
-	metricSet       *MetricSet
-	instrument      *middleware.Instrument
-	rootResource    RootResource
+	Config         Config
+	ListenAddress  string
+	Router         *mux.Router
+	logWriter      io.Writer
+	logger         zerolog.Logger
+	ResourceMap    map[string]Resource
+	server         *http.Server
+	serverInitOnce sync.Once
+	metricSet      *MetricSet
+	instrument     *middleware.Instrument
+	rootResource   RootResource
 }
 
 func newDefaultServer(config Config) *Server {
 	r := prometheus.NewRegistry()
 	m := NewMetricSet(r)
 	rtr := mux.NewRouter()
+	// rtr.Use()
 
 	return &Server{
 		Config:        config,
@@ -61,16 +63,16 @@ func newDefaultServer(config Config) *Server {
 }
 
 // NewServer ...
-func NewServer(config Config, accessLogWriter io.Writer) *Server {
+func NewServer(config Config, logWriter io.Writer) *Server {
 	server := newDefaultServer(config)
-	server.accessLogWriter = accessLogWriter
+	server.logWriter = logWriter
 
 	return server
 }
 
-func NewServerWithLogger(config Config, accessLogger zerolog.Logger) *Server {
+func NewServerWithLogger(config Config, logger zerolog.Logger) *Server {
 	server := newDefaultServer(config)
-	server.accessLogger = accessLogger
+	server.logger = logger
 
 	return server
 }
@@ -106,9 +108,9 @@ func (s *Server) AddRootResource(r RootResource) {
 func (s *Server) handler() http.Handler {
 	s.addDefaultHandlers()
 
-	logHandler := ZerologStructuredLogHandler(s.accessLogger)
-	if s.accessLogWriter != nil {
-		logHandler = DefaultCombinedLogHandler(s.accessLogWriter)
+	logHandler := ZerologStructuredLogHandler(s.logger)
+	if s.logWriter != nil {
+		logHandler = DefaultCombinedLogHandler(s.logWriter)
 	}
 
 	// s.addDefaultHandlers()
@@ -182,17 +184,21 @@ func (s *Server) ListenAndServe() error {
 }
 
 func (s *Server) initialiseServer() {
+
 	s.serverInitOnce.Do(func() {
+		l := stdlog.New(s.logger.With().Str("level", "error").Logger(), "", stdlog.Lshortfile)
+
 		s.server = &http.Server{
 			ReadTimeout:  time.Minute,
 			WriteTimeout: time.Minute,
 			Handler:      s.handler(),
 			Addr:         s.ListenAddress,
+			ErrorLog:     l,
 		}
 	})
 }
 
-// ListenAndServe ...
+// ListenAndServeTLS ...
 func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
 	s.initialiseServer()
 	s.server.TLSConfig = tlsConfig
