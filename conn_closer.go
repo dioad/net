@@ -49,7 +49,6 @@ func (s *ConnWithCloser) SetWriteDeadline(t time.Time) error {
 	return s.conn.SetWriteDeadline(t)
 }
 
-//func NewConnWithCloser(c net.Conn, closer func ()) *ConnWithCloser {
 func NewConnWithCloser(c net.Conn, closer func(net.Conn)) net.Conn {
 	return &ConnWithCloser{
 		conn:    c,
