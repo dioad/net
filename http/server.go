@@ -179,10 +179,6 @@ func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 	}
 }
 
-func (s *Server) ListenAndServe() error {
-	return s.ListenAndServeTLS(s.Config.TLSConfig)
-}
-
 func (s *Server) initialiseServer() {
 
 	s.serverInitOnce.Do(func() {
@@ -198,16 +194,18 @@ func (s *Server) initialiseServer() {
 	})
 }
 
+func (s *Server) ListenAndServe() error {
+	return s.ListenAndServeTLS(s.Config.TLSConfig)
+}
+
 // ListenAndServeTLS ...
 func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
-	s.initialiseServer()
-	s.server.TLSConfig = tlsConfig
-
-	if tlsConfig != nil {
-		return s.server.ListenAndServeTLS("", "")
-	} else {
-		return s.server.ListenAndServe()
+	ln, err := net.Listen("tcp", s.ListenAddress)
+	if err != nil {
+		return err
 	}
+
+	return s.Serve(ln)
 }
 
 func (s *Server) Serve(ln net.Listener) error {
