@@ -24,9 +24,8 @@ func (l *Listener) Accept() (net.Conn, error) {
 	}
 
 	if !authorised {
-		l.Logger.Warn().Str("remoteAddr", c.RemoteAddr().String()).Msg("access denied")
+		l.Logger.Warn().Stringer("remoteAddr", c.RemoteAddr()).Msg("access denied")
 		c.Close()
-		return c, nil
 	}
 
 	return c, nil

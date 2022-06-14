@@ -205,7 +205,7 @@ func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net.Conn {
 				Dur("duration", metricsConn.Duration()).
 				Msg("connectionStats")
 		}
-		logger.Info().
+		logger.Trace().
 			Msg("connectionClosed")
 	})
 	return closerConn
