@@ -29,7 +29,7 @@ require (
 
 require (
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.4
 	github.com/weaveworks/common v0.0.0-20220302160857-00e2e238a230
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
 )
@@ -58,5 +58,5 @@ require (
 	google.golang.org/genproto v0.0.0-20220302033224-9aa15565e42a // indirect
 	google.golang.org/grpc v1.44.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
