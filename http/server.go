@@ -46,6 +46,7 @@ type Server struct {
 	metricSet      *MetricSet
 	instrument     *middleware.Instrument
 	rootResource   RootResource
+	ListenAddr     net.Addr
 }
 
 func newDefaultServer(config Config) *Server {
@@ -175,7 +176,10 @@ func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 		w.WriteHeader(httpStatus)
 
 		encoder := json.NewEncoder(w)
-		encoder.Encode(statusMap)
+		err := encoder.Encode(statusMap)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error calling json.Encode")
+		}
 	}
 }
 
@@ -199,7 +203,9 @@ func (s *Server) ListenAndServe() error {
 }
 
 // ListenAndServeTLS ...
+// tlsConfig will override any prior configuration in s.Config
 func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
+	s.Config.TLSConfig = tlsConfig
 	ln, err := net.Listen("tcp", s.ListenAddress)
 	if err != nil {
 		return err
@@ -209,6 +215,7 @@ func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
 }
 
 func (s *Server) Serve(ln net.Listener) error {
+	s.ListenAddr = ln.Addr()
 	s.initialiseServer()
 	s.server.TLSConfig = s.Config.TLSConfig
 
