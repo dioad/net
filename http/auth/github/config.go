@@ -1,6 +1,10 @@
 package github
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/dioad/net/authz"
+)
 
 var (
 	EmptyGitHubAuthClientConfig = GitHubAuthClientConfig{}
@@ -29,8 +33,8 @@ func (c GitHubAuthClientConfig) IsEmpty() bool {
 
 type GitHubAuthServerConfig struct {
 	GitHubAuthCommonConfig `mapstructure:",squash"`
-	UserAllowList          []string `mapstructure:"user-allow-list"`
-	UserDenyList           []string `mapstructure:"user-deny-list"`
+
+	PrincipalACLConfig authz.PrincipalACLConfig `mapstructure:"principals"`
 }
 
 func (c GitHubAuthServerConfig) IsEmpty() bool {

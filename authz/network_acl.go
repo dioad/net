@@ -107,6 +107,8 @@ func (a *NetworkACL) Authorise(addr *net.TCPAddr) bool {
 	return a.Config.AllowByDefault
 }
 
+// TODO: investigate if there is a more optimal way
+// of searching address space
 func containsAddress(netList []*net.IPNet, ip net.IP) bool {
 	for _, n := range netList {
 		if n.Contains(ip) {

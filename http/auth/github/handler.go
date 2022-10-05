@@ -4,8 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/dioad/net/http/auth/util"
-
+	"github.com/dioad/net/authz"
 	//"github.com/dioad/net/http/auth"
 	"github.com/dioad/net/http/auth/context"
 	"github.com/rs/zerolog/log"
@@ -62,25 +61,13 @@ func (h GitHubAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.NewContextWithAuthenticatedPrincipal(r.Context(), user.Login)
 
 	ctx = NewContextWithGitHubUserInfo(ctx, user)
-	log.Info().
+	log.Debug().
 		Str("principal", user.Login).
 		Str("email", user.PrimaryEmail).
 		Str("company", user.Company).
 		Msg("authn")
 
-	userAuthorised := util.IsUserAuthorised(
-		user.Login,
-		h.Authenticator.Config.UserAllowList,
-		h.Authenticator.Config.UserDenyList)
+	authzHandleFunc := authz.PrincipalACLHandlerFunc(h.Authenticator.Config.PrincipalACLConfig, log.Logger, h.next)
 
-	log.Info().
-		Str("principal", user.Login).
-		Bool("authorised", userAuthorised).Msg("authz")
-
-	if !userAuthorised {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
-
-	h.next.ServeHTTP(w, r.WithContext(ctx))
+	authzHandleFunc.ServeHTTP(w, r.WithContext(ctx))
 }
