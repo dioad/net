@@ -2,7 +2,7 @@ package util
 
 import "testing"
 
-//IsUserAuthorised
+// IsUserAuthorised
 func TestIsUserAuthorised(t *testing.T) {
 	tests := map[string]struct {
 		user      string

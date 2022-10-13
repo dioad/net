@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-//style borrowed from https://dave.cheney.net/2019/05/07/prefer-table-driven-tests
+// style borrowed from https://dave.cheney.net/2019/05/07/prefer-table-driven-tests
 func TestTcpPortFromURL(t *testing.T) {
 	tests := map[string]struct {
 		input url.URL

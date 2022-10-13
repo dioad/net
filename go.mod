@@ -1,6 +1,6 @@
 module github.com/dioad/net
 
-go 1.17
+go 1.18
 
 require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -28,8 +28,11 @@ require (
 )
 
 require (
+	github.com/google/uuid v1.1.2
+	github.com/gorilla/sessions v1.2.1
+	github.com/markbates/goth v1.74.1
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/weaveworks/common v0.0.0-20220927162600-d0a1a93a15be
 	golang.org/x/oauth2 v0.0.0-20220909003341-f21342109be1
 )
@@ -43,6 +46,7 @@ require (
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gogo/status v1.1.1 // indirect
+	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2 // indirect
