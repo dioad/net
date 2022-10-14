@@ -32,7 +32,7 @@ require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/markbates/goth v1.74.1
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.8.0
 	github.com/weaveworks/common v0.0.0-20220927162600-d0a1a93a15be
 	golang.org/x/oauth2 v0.0.0-20221006150949-b44042a4b9c1
 )
@@ -64,5 +64,5 @@ require (
 	google.golang.org/genproto v0.0.0-20221013201013-33fc6f83cba4 // indirect
 	google.golang.org/grpc v1.50.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
