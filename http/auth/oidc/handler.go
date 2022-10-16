@@ -25,10 +25,13 @@ type SessionData struct {
 	ID        uuid.UUID
 	Principal string
 	Provider  string
+	User      goth.User
 }
 
 func init() {
 	gob.Register(SessionData{})
+	gob.Register(uuid.UUID{})
+	gob.Register(goth.User{})
 }
 
 func (h *Handler) AuthWrapper(next http.HandlerFunc) http.HandlerFunc {
@@ -51,6 +54,7 @@ func (h *Handler) AuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 		data := session.Values["data"].(SessionData)
 
 		ctx := context.NewContextWithAuthenticatedPrincipal(req.Context(), data.Principal)
+		ctx = NewContextWithOIDCUserInfo(ctx, &data.User)
 
 		next(w, req.WithContext(ctx))
 	}
@@ -78,8 +82,11 @@ func (h *Handler) Callback() http.HandlerFunc {
 		params := mux.Vars(req)
 		provider := params["provider"]
 
+		user.RawData = nil
+
 		session.Values["data"] = SessionData{
 			ID:        uuid.New(),
+			User:      user,
 			Principal: user.NickName,
 			Provider:  provider,
 		}
@@ -129,7 +136,7 @@ func NewHandler(config Config, store sessions.Store) *Handler {
 	provider := config.ProviderMap["github"]
 
 	goth.UseProviders(
-		github.New(provider.ClientID, provider.ClientSecret, provider.Callback),
+		github.New(provider.ClientID, provider.ClientSecret, provider.Callback, "read:user", "user:email"),
 	)
 
 	return &Handler{
