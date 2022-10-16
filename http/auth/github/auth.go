@@ -60,7 +60,7 @@ func resolveAccessToken(c GitHubAuthClientConfig) (string, error) {
 	return c.AccessToken, nil
 }
 
-type gitHubAuthenticator struct {
+type authenticator struct {
 	Config GitHubAuthServerConfig
 	Client *github.Client
 }
@@ -76,7 +76,7 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-func (a *gitHubAuthenticator) AuthenticateToken(accessToken string) (*UserInfo, error) {
+func (a *authenticator) AuthenticateToken(accessToken string) (*UserInfo, error) {
 	_, response, err := a.Client.Authorizations.Check(context.Background(), a.Config.ClientID, accessToken)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (a *gitHubAuthenticator) AuthenticateToken(accessToken string) (*UserInfo, 
 	}
 
 	// get some info
-	u, err := fetchUserInfo(accessToken)
+	u, err := FetchUserInfo(accessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -95,13 +95,13 @@ func (a *gitHubAuthenticator) AuthenticateToken(accessToken string) (*UserInfo, 
 	return u, nil
 }
 
-func NewGitHubAuthenticator(cfg GitHubAuthServerConfig) *gitHubAuthenticator {
+func NewGitHubAuthenticator(cfg GitHubAuthServerConfig) *authenticator {
 	basicAuthTransport := github.BasicAuthTransport{
 		Username: cfg.ClientID,
 		Password: cfg.ClientSecret,
 	}
 
-	return &gitHubAuthenticator{
+	return &authenticator{
 		Config: cfg,
 		Client: github.NewClient(basicAuthTransport.Client()),
 	}

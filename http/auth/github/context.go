@@ -32,7 +32,7 @@ func GitHubUserInfoFromContext(ctx context.Context) *UserInfo {
 	return nil
 }
 
-func fetchUserInfo(accessToken string) (*UserInfo, error) {
+func FetchUserInfo(accessToken string) (*UserInfo, error) {
 	t := &TokenSource{AccessToken: accessToken}
 	oauthClient := oauth2.NewClient(context.Background(), t)
 	client := github.NewClient(oauthClient)

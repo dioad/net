@@ -17,7 +17,7 @@ func GitHubAuthHandlerFunc(cfg GitHubAuthServerConfig, next http.Handler) http.H
 }
 
 type GitHubAuthHandler struct {
-	Authenticator *gitHubAuthenticator
+	Authenticator *authenticator
 	next          http.Handler
 }
 
