@@ -114,12 +114,8 @@ func (s *Server) handler() http.Handler {
 		logHandler = DefaultCombinedLogHandler(s.logWriter)
 	}
 
-	// s.addDefaultHandlers()
 	if s.rootResource != nil {
-		//s.rootResource.RegisterRoutes(s.Router.Path("/").Subrouter())
-		//s.AddResource("/", s.rootResource)
-
-		s.AddHandler("/", s.rootResource.Index())
+		s.AddHandler("/{path:.*}", s.rootResource.Index())
 	}
 
 	// uncomment if ensure that 404's get picked up by metrics
