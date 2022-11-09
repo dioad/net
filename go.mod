@@ -14,7 +14,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/pires/go-proxyproto v0.6.2
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.13.0
+	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/rs/xid v1.4.0 // indirect
@@ -54,7 +54,7 @@ require (
 	github.com/opentracing-contrib/go-stdlib v1.0.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_model v0.2.0 // indirect
+	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
