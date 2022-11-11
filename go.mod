@@ -32,7 +32,7 @@ require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/markbates/goth v1.74.1
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/weaveworks/common v0.0.0-20220927162600-d0a1a93a15be
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
 )
