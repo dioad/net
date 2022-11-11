@@ -30,7 +30,7 @@ require (
 require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/sessions v1.2.1
-	github.com/markbates/goth v1.74.1
+	github.com/markbates/goth v1.75.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/stretchr/testify v1.8.1
 	github.com/weaveworks/common v0.0.0-20220927162600-d0a1a93a15be
