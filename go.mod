@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/cli/oauth v0.9.0
+	github.com/cli/oauth v1.0.0
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.9
