@@ -19,7 +19,7 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/rs/xid v1.4.0 // indirect
 	github.com/rs/zerolog v1.28.0
-	golang.org/x/crypto v0.3.0
+	golang.org/x/crypto v0.4.0
 	golang.org/x/net v0.4.0
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/text v0.5.0 // indirect
