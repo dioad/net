@@ -34,7 +34,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/stretchr/testify v1.8.1
 	github.com/weaveworks/common v0.0.0-20220927162600-d0a1a93a15be
-	golang.org/x/oauth2 v0.3.0
+	golang.org/x/oauth2 v0.4.0
 )
 
 require (
