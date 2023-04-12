@@ -31,7 +31,7 @@ require (
 	github.com/emersion/go-msgauth v0.6.6
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/sessions v1.2.1
-	github.com/markbates/goth v1.76.1
+	github.com/markbates/goth v1.77.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/stretchr/testify v1.8.2
 	github.com/weaveworks/common v0.0.0-20230315122012-918bab8e5f88
