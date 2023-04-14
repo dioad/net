@@ -1,7 +1,6 @@
 package dkim
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -28,7 +27,7 @@ func (r *Record) String() string {
 	parts = append(parts, fmt.Sprintf("v=%s", r.Version))
 
 	if r.KeyType == "" {
-		parts = append(parts, fmt.Sprintf("k=rsa"))
+		parts = append(parts, fmt.Sprintf("k=%s", KeyTypeRSA))
 	} else {
 		parts = append(parts, fmt.Sprintf("k=%s", r.KeyType))
 	}
@@ -77,7 +76,7 @@ func parseParams(validParams map[string]bool, s string) (map[string]string, erro
 		if p, ok := validParams[strippedK]; ok && p {
 			params[strings.TrimSpace(k)] = strings.TrimSpace(v)
 		} else {
-			return nil, errors.New(fmt.Sprintf("invalid parameter %v not in %v", strippedK, strings.Join(maps.Keys(validParams), ",")))
+			return nil, fmt.Errorf("invalid parameter %v not in %v", strippedK, strings.Join(maps.Keys(validParams), ","))
 		}
 	}
 	return params, nil
