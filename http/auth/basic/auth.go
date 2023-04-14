@@ -2,6 +2,7 @@ package basic
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -77,11 +79,25 @@ func LoadBasicAuthFromFile(filePath string) (BasicAuthMap, error) {
 		return nil, err
 	}
 	filePathClean := path.Clean(expFilePath)
-	f, err := os.OpenFile(filePathClean, os.O_RDONLY, 0600)
+	f, err := os.Open(filePathClean)
 	if err != nil {
 		return nil, err
 	}
-	return LoadBasicAuthFromReader(f), nil
+	stat, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if stat.Mode() != 0600 {
+		return nil, errors.New(fmt.Sprintf("file mode is not 0600, it is %v %s", stat.Mode(), filePathClean))
+	}
+	authMap := LoadBasicAuthFromReader(f)
+
+	err = f.Close()
+	if err != nil {
+		return nil, nil
+	}
+
+	return authMap, nil
 }
 
 func LoadBasicAuthFromReader(reader io.Reader) BasicAuthMap {

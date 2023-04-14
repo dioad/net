@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/cli/oauth/api"
@@ -23,18 +24,27 @@ func loadAccessTokenFromYamlFile(filePath string) (*api.AccessToken, error) {
 		return nil, err
 	}
 
-	authFile, err := os.Open(filePath)
+	cleanPath := filepath.Clean(filePath)
+	authFile, err := os.Open(cleanPath)
 	if err != nil {
-		log.Error().Str("filePath", filePath).Err(err).Msg("yamlAccessTokenFileError")
+		log.Error().Str("filePath", cleanPath).Err(err).Msg("yamlAccessTokenFileError")
 		fmt.Printf("error: %v\n", err)
 		return nil, err
 	}
-	defer authFile.Close()
 
 	var accessToken api.AccessToken
 
 	encoder := yaml.NewDecoder(authFile)
-	encoder.Decode(&accessToken)
+	err = encoder.Decode(&accessToken)
+	if err != nil {
+		_ = authFile.Close()
+		return nil, err
+	}
+
+	err = authFile.Close()
+	if err != nil {
+		return nil, nil
+	}
 
 	return &accessToken, nil
 }

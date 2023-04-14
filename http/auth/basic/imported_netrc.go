@@ -104,7 +104,8 @@ func readNetrc() {
 		return
 	}
 
-	data, err := os.ReadFile(path)
+	cleanPath := filepath.Clean(path)
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			netrcErr = err
