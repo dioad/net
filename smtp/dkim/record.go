@@ -16,15 +16,19 @@ const (
 )
 
 type Record struct {
-	Version   string
-	KeyType   string
-	PublicKey string
+	Version   string `mapstructure:"version"`
+	KeyType   string `mapstructure:"key-type"`
+	PublicKey string `mapstructure:"public-key"`
 }
 
 func (r *Record) String() string {
 	parts := make([]string, 0)
 
-	parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+	if r.Version == "" {
+		parts = append(parts, "v=DKIM1")
+	} else {
+		parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+	}
 
 	if r.KeyType == "" {
 		parts = append(parts, fmt.Sprintf("k=%s", KeyTypeRSA))

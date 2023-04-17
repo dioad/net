@@ -6,8 +6,8 @@ import (
 )
 
 type Record struct {
-	Version            string
-	ReportURIAggregate []string
+	Version            string   `mapstructure:"version"`
+	ReportURIAggregate []string `mapstructure:"report-uri-aggregate"`
 }
 
 func formatRUA(label string, locations []string) string {
@@ -30,11 +30,15 @@ func formatRUA(label string, locations []string) string {
 
 func (r *Record) String() string {
 	parts := make([]string, 0)
-	parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+	if r.Version == "" {
+		parts = append(parts, "v=TLSRPTv1")
+	} else {
+		parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+	}
 
 	parts = append(parts, formatRUA("rua", r.ReportURIAggregate))
 
-	result := strings.Join(parts, " ")
+	result := strings.Join(parts, ";")
 	if len(result) > 255 {
 		panic(fmt.Sprintf("too many chars for Record record: %s", result))
 	}

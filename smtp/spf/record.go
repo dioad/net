@@ -1,8 +1,10 @@
 package spf
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
+	"text/template"
 )
 
 const (
@@ -16,9 +18,9 @@ const (
 type Qualifier string
 
 type Mechanism struct {
-	Qualifier Qualifier
-	Name      string
-	Values    []string
+	Qualifier Qualifier `mapstructure:"qualifier"`
+	Name      string    `mapstructure:"name"`
+	Values    []string  `mapstructure:"values"`
 }
 
 func IP4Mechanism(values ...string) Mechanism {
@@ -42,20 +44,40 @@ func IncludeMechanism(values ...string) Mechanism {
 }
 
 type Record struct {
-	Version    string
-	Mechanisms []Mechanism
+	Version    string      `mapstructure:"version"`
+	Mechanisms []Mechanism `mapstructure:"mechanisms"`
 
-	All          bool
-	AllQualifier Qualifier
+	All          bool      `mapstructure:"all"`
+	AllQualifier Qualifier `mapstructure:"all-qualifier"`
 }
 
 func (r *Record) Add(m Mechanism) {
 	r.Mechanisms = append(r.Mechanisms, m)
 }
 
+func (r *Record) Render(data interface{}) error {
+	for i := range r.Mechanisms {
+		for j := range r.Mechanisms[i].Values {
+			tmpl, err := template.New("spf").Parse(r.Mechanisms[i].Values[j])
+			if err != nil {
+				return err
+			}
+			buf := &bytes.Buffer{}
+			tmpl.Execute(buf, data)
+			r.Mechanisms[i].Values[j] = buf.String()
+		}
+	}
+	return nil
+}
+
 func (r *Record) String() string {
 	parts := make([]string, 0)
-	parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+
+	if r.Version == "" {
+		parts = append(parts, "v=spf1")
+	} else {
+		parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+	}
 
 	for _, m := range r.Mechanisms {
 		parts = append(parts, FormatMechanism(m))

@@ -1,9 +1,11 @@
 package dmarc
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strings"
+	"text/template"
 )
 
 /*
@@ -27,14 +29,14 @@ type Policy string
 type AlignmentPolicy string
 
 type Record struct {
-	Version             string
-	Policy              Policy
-	percent             *uint8
-	ReportURIAggregate  []string
-	ReportURIFailure    []string
-	SubdomainPolicy     Policy
-	AlignmentPolicyDKIM AlignmentPolicy
-	AlignmentPolicySPF  AlignmentPolicy
+	Version             string          `mapstructure:"version"`
+	Policy              Policy          `mapstructure:"policy"`
+	Percent             *uint8          `mapstructure:"percent"`
+	ReportURIAggregate  []string        `mapstructure:"report-uri-aggregate"`
+	ReportURIFailure    []string        `mapstructure:"report-uri-failure"`
+	SubdomainPolicy     Policy          `mapstructure:"subdomain-policy"`
+	AlignmentPolicyDKIM AlignmentPolicy `mapstructure:"alignment-policy-dkim"`
+	AlignmentPolicySPF  AlignmentPolicy `mapstructure:"alignment-policy-spf"`
 }
 
 func formatDMARCEmails(label string, emails []string) string {
@@ -51,26 +53,66 @@ func formatDMARCEmails(label string, emails []string) string {
 }
 
 func (r *Record) UnsetPercent() {
-	r.percent = nil
+	r.Percent = nil
 }
 
 func (r *Record) SetPercent(pct uint8) error {
 	if pct > 100 {
 		return errors.New("pct must be between 0 and 100")
 	}
-	r.percent = &pct
+	r.Percent = &pct
+	return nil
+}
+
+func renderList(values []string, data interface{}) ([]string, error) {
+	if values == nil {
+		return nil, nil
+	}
+
+	ret := make([]string, len(values), len(values))
+
+	for i := range values {
+		tmpl, err := template.New("dmarc").Parse(values[i])
+		if err != nil {
+			return nil, err
+		}
+		buf := &bytes.Buffer{}
+		tmpl.Execute(buf, data)
+		ret[i] = buf.String()
+	}
+
+	return ret, nil
+}
+
+func (r *Record) Render(data interface{}) error {
+	var err error
+
+	r.ReportURIAggregate, err = renderList(r.ReportURIAggregate, data)
+	if err != nil {
+		return err
+	}
+
+	r.ReportURIFailure, err = renderList(r.ReportURIFailure, data)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (r *Record) String() string {
 	parts := make([]string, 0)
 
-	parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+	if r.Version == "" {
+		parts = append(parts, "v=DMARC1")
+	} else {
+		parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+	}
 
 	parts = append(parts, fmt.Sprintf("p=%s", r.Policy))
 
-	if r.percent != nil {
-		parts = append(parts, fmt.Sprintf("pct=%d", *r.percent))
+	if r.Percent != nil {
+		parts = append(parts, fmt.Sprintf("pct=%d", *r.Percent))
 	}
 
 	if r.SubdomainPolicy != "" {
