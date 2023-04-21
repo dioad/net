@@ -1,7 +1,9 @@
 package net
 
 import (
+	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"strconv"
 )
@@ -32,4 +34,57 @@ func TCPPortFromURL(url *url.URL) (string, error) {
 		return strconv.Itoa(protoPort), nil
 	}
 	return defaultPort, nil
+}
+
+func ConvertAddrToIP(addr netip.Addr) net.IP {
+	return addr.AsSlice()
+}
+
+func FindInterfaceForAddr(a netip.Addr) (string, error) {
+	ip := ConvertAddrToIP(a)
+
+	return FindInterfaceForIP(ip)
+}
+
+func FindInterfaceForIP(ip net.IP) (string, error) {
+	interfaces, err := net.Interfaces()
+
+	if err != nil {
+		return "", err
+	}
+
+	for _, i := range interfaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			return "", err
+		}
+
+		for _, addr := range addrs {
+			switch v := addr.(type) {
+			case *net.IPNet:
+				if v.Contains(ip) {
+					return i.Name, nil
+				}
+			case *net.IPAddr:
+				if v.IP.Equal(ip) {
+					return i.Name, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("could not find interface for %v", ip)
+}
+
+func AddrPortDetailsFromString(addrPort string) (netip.AddrPort, string, error) {
+	listenAddr, err := netip.ParseAddrPort(addrPort)
+	if err != nil {
+		return netip.AddrPort{}, "", err
+	}
+	listenInterface, err := FindInterfaceForAddr(listenAddr.Addr())
+	if err != nil {
+		return netip.AddrPort{}, "", err
+	}
+
+	return listenAddr, listenInterface, nil
 }
