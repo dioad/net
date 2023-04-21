@@ -1,15 +1,12 @@
 package tls
 
 import (
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/rsa"
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
+	"time"
 
 	"golang.org/x/crypto/acme"
 	//"crypto/x509/pkix"
@@ -49,6 +46,9 @@ type ServerConfig struct {
 	Certificate   string `mapstructure:"cert" json:",omitempty"`
 	Key           string `mapstructure:"key" json:",omitempty"`
 
+	FileWaitInterval int `mapstructure:"file-wait-interval" json:",omitempty"`
+	FileWaitMax      int `mapstructure:"file-wait-max" json:",omitempty"`
+
 	ClientAuthType string `mapstructure:"client-auth-type" json:",omitempty"`
 	ClientCAFile   string `mapstructure:"client-ca-file" json:",omitempty"`
 
@@ -85,6 +85,32 @@ func convertClientAuthType(authType string) tls.ClientAuthType {
 	}
 }
 
+// WaitForFile waits for a file to exist, it will check every interval seconds up until max seconds.
+func waitForFiles(interval, max int, files ...string) error {
+	if interval <= 0 {
+		interval = 0
+	}
+	if max <= 0 {
+		max = 1
+	}
+	for i := 0; i < max; i++ {
+		if filesExist(files...) {
+			return nil
+		}
+		time.Sleep(time.Duration(interval) * time.Second)
+	}
+	return fmt.Errorf("one or more of %s not found", strings.Join(files, ", "))
+}
+
+func filesExist(files ...string) bool {
+	for _, file := range files {
+		if _, err := os.Stat(file); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
 func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 	if c.IsEmpty() {
 		return nil, nil
@@ -105,12 +131,20 @@ func ConvertServerConfig(c ServerConfig) (*tls.Config, error) {
 	}
 
 	if c.SinglePEMFile != "" {
-		cert, err := LoadCertficateAndKeyFromFile(c.SinglePEMFile)
+		err := waitForFiles(c.FileWaitInterval, c.FileWaitMax, c.SinglePEMFile)
+		if err != nil {
+			return nil, err
+		}
+		cert, err := LoadKeyPairAndCertsFromFile(c.SinglePEMFile)
 		if err != nil {
 			return nil, err
 		}
 		tlsConfig.Certificates = []tls.Certificate{*cert}
 	} else if c.Certificate != "" {
+		err := waitForFiles(c.FileWaitInterval, c.FileWaitMax, c.Certificate, c.Key)
+		if err != nil {
+			return nil, err
+		}
 		serverCertificate, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
 
 		if err != nil {
@@ -218,56 +252,4 @@ func ConvertClientConfig(c ClientConfig) (*tls.Config, error) {
 	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
 
 	return tlsConfig, nil
-}
-
-// From: https://gist.github.com/ukautz/cd118e298bbd8f0a88fc
-// LoadCertficateAndKeyFromFile reads file, divides into key and certificates
-func LoadCertficateAndKeyFromFile(path string) (*tls.Certificate, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var cert tls.Certificate
-	for {
-		block, rest := pem.Decode(raw)
-		if block == nil {
-			break
-		}
-		if block.Type == "CERTIFICATE" {
-			cert.Certificate = append(cert.Certificate, block.Bytes)
-		} else {
-			cert.PrivateKey, err = parsePrivateKey(block.Bytes)
-			if err != nil {
-				return nil, fmt.Errorf("Failure reading private key from \"%s\": %s", path, err)
-			}
-		}
-		raw = rest
-	}
-
-	if len(cert.Certificate) == 0 {
-		return nil, fmt.Errorf("No certificate found in \"%s\"", path)
-	} else if cert.PrivateKey == nil {
-		return nil, fmt.Errorf("No private key found in \"%s\"", path)
-	}
-
-	return &cert, nil
-}
-
-func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
-	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
-		return key, nil
-	}
-	if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
-		switch key := key.(type) {
-		case *rsa.PrivateKey, *ecdsa.PrivateKey:
-			return key, nil
-		default:
-			return nil, fmt.Errorf("Found unknown private key type in PKCS#8 wrapping")
-		}
-	}
-	if key, err := x509.ParseECPrivateKey(der); err == nil {
-		return key, nil
-	}
-	return nil, fmt.Errorf("Failed to parse private key")
 }
