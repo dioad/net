@@ -44,20 +44,34 @@ func LoadCertPoolFromFile(certPoolPath string) (*x509.CertPool, error) {
 	return certPool, nil
 }
 
+func savePEMFile(filename string, perm int, blockType string, data []byte) error {
+	filenameClean := filepath.Clean(filename)
+
+	f, err := os.OpenFile(filenameClean, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(perm))
+	if err != nil {
+		return err
+	}
+
+	err = pem.Encode(f, &pem.Block{Type: blockType, Bytes: data})
+	if err != nil {
+		return err
+	}
+
+	return f.Close()
+}
+
 func SaveTLSCertificateToFiles(cert *tls.Certificate, certPath, keyPath string) error {
-	certPathClean := filepath.Clean(certPath)
-	err := os.WriteFile(certPathClean, cert.Certificate[0], 0644)
+	err := savePEMFile(certPath, 0644, "CERTIFICATE", cert.Certificate[0])
 	if err != nil {
 		return err
 	}
 
-	keyPathClean := filepath.Clean(keyPath)
-	err = os.WriteFile(keyPathClean, cert.PrivateKey.(*rsa.PrivateKey).D.Bytes(), 0600)
+	privBytes, err := x509.MarshalPKCS8PrivateKey(cert.PrivateKey)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	return savePEMFile(keyPath, 0600, "PRIVATE KEY", privBytes)
 }
 
 // From: https://gist.github.com/ukautz/cd118e298bbd8f0a88fc
