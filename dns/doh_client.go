@@ -16,7 +16,7 @@ type DOHClient struct {
 
 func (c *DOHClient) Exchange(msg *dns.Msg) (*dns.Msg, error) {
 	fmt.Printf("c.URL: %v\n", c.URL)
-	req, err := doh.NewRequest(http.MethodGet, c.URL.String(), msg)
+	req, err := doh.NewRequest(http.MethodGet, c.URL.Hostname(), msg)
 	if err != nil {
 		return nil, err
 	}
