@@ -9,10 +9,10 @@ import (
 
 const (
 	QualifierNone     Qualifier = ""
-	QualifierPass               = "+"
-	QualifierSoftFail           = "~"
-	QualifierFail               = "-"
-	QualifierNeutral            = "?"
+	QualifierPass     Qualifier = "+"
+	QualifierSoftFail Qualifier = "~"
+	QualifierFail     Qualifier = "-"
+	QualifierNeutral  Qualifier = "?"
 )
 
 type Qualifier string

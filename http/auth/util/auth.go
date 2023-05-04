@@ -2,7 +2,7 @@ package util
 
 func IsUserAuthorised(user string, allowList []string, denyList []string) bool {
 	userAuthorised := true
-	if allowList != nil && len(allowList) > 0 {
+	if len(allowList) > 0 {
 		userAuthorised = false
 		for _, p := range allowList {
 			if p == user {

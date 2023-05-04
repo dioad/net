@@ -9,8 +9,8 @@ type Mode string
 
 const (
 	ModeNone    Mode = "none"
-	ModeTesting      = "testing"
-	ModeEnforce      = "enforce"
+	ModeTesting Mode = "testing"
+	ModeEnforce Mode = "enforce"
 )
 
 type Policy struct {

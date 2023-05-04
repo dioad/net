@@ -15,13 +15,13 @@ and rather than repeating it here simply make a way to encode it into a string.
 
 const (
 	PolicyNone       Policy = "none"
-	PolicyQuarantine        = "quarantine"
-	PolicyReject            = "reject"
+	PolicyQuarantine Policy = "quarantine"
+	PolicyReject     Policy = "reject"
 )
 
 const (
 	AlignmentPolicyStrict  AlignmentPolicy = "s"
-	AlignmentPolicyRelaxed                 = "r"
+	AlignmentPolicyRelaxed AlignmentPolicy = "r"
 )
 
 type Policy string
@@ -69,7 +69,7 @@ func renderList(values []string, data interface{}) ([]string, error) {
 		return nil, nil
 	}
 
-	ret := make([]string, len(values), len(values))
+	ret := make([]string, len(values))
 
 	for i := range values {
 		tmpl, err := template.New("dmarc").Parse(values[i])
