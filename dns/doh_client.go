@@ -1,7 +1,6 @@
 package dns
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -15,7 +14,9 @@ type DOHClient struct {
 }
 
 func (c *DOHClient) Exchange(msg *dns.Msg) (*dns.Msg, error) {
-	fmt.Printf("c.URL: %v\n", c.URL)
+	// pass Hostname() rather than String() to NewRequest as
+	// there's something in there that is acting weird.
+	// when passing URL.String() it works on darwin/arm64 but fails on github.com actions
 	req, err := doh.NewRequest(http.MethodGet, c.URL.Hostname(), msg)
 	if err != nil {
 		return nil, err

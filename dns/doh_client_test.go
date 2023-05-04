@@ -15,7 +15,7 @@ func TestDOHClient(t *testing.T) {
 func dohTestHelper(t *testing.T, queryType uint16, queryHost string, values ...string) {
 	t.Helper()
 
-	u, err := url.Parse("https://dns.google")
+	u, err := url.Parse("https://dns.google/")
 	if err != nil {
 		t.Fatalf("error parsing url: %s", err)
 	}
