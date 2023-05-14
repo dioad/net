@@ -20,7 +20,7 @@ require (
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/rs/zerolog v1.29.1
 	golang.org/x/crypto v0.8.0
-	golang.org/x/net v0.9.0
+	golang.org/x/net v0.10.0
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
@@ -38,7 +38,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/weaveworks/common v0.0.0-20230411130459-4897cec5feed
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
-	golang.org/x/oauth2 v0.7.0
+	golang.org/x/oauth2 v0.8.0
 )
 
 require (
