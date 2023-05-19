@@ -35,7 +35,7 @@ require (
 	github.com/markbates/goth v1.77.0
 	github.com/miekg/dns v1.1.54
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	github.com/weaveworks/common v0.0.0-20230411130459-4897cec5feed
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 	golang.org/x/oauth2 v0.8.0
