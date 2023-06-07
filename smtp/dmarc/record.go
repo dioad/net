@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"text/template"
 )
@@ -50,6 +51,10 @@ func formatDMARCEmails(label string, emails []string) string {
 	}
 
 	return fmt.Sprintf("%s=%s", label, strings.Join(addrs, ","))
+}
+
+func (r *Record) Empty() bool {
+	return reflect.DeepEqual(*r, Record{})
 }
 
 func (r *Record) UnsetPercent() {

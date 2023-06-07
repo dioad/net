@@ -3,6 +3,7 @@ package dkim
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 
 	"golang.org/x/exp/maps"
@@ -19,6 +20,10 @@ type Record struct {
 	Version   string `mapstructure:"version"`
 	KeyType   string `mapstructure:"key-type"`
 	PublicKey string `mapstructure:"public-key"`
+}
+
+func (r *Record) Empty() bool {
+	return reflect.DeepEqual(*r, Record{})
 }
 
 func (r *Record) String() string {

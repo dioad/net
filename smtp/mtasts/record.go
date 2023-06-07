@@ -2,12 +2,17 @@ package mtasts
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
 type Record struct {
 	Version string `mapstructure:"version"`
 	ID      string `mapstructure:"id"`
+}
+
+func (r *Record) Empty() bool {
+	return reflect.DeepEqual(*r, Record{})
 }
 
 func (r *Record) String() string {

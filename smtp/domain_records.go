@@ -30,4 +30,5 @@ func (r *DomainRecords) Render(data interface{}) error {
 
 type TemplatedRecord interface {
 	Render(data interface{}) error
+	Empty() bool
 }

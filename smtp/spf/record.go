@@ -3,6 +3,7 @@ package spf
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 	"text/template"
 )
@@ -49,6 +50,10 @@ type Record struct {
 
 	All          bool      `mapstructure:"all"`
 	AllQualifier Qualifier `mapstructure:"all-qualifier"`
+}
+
+func (r *Record) Empty() bool {
+	return reflect.DeepEqual(*r, Record{})
 }
 
 func (r *Record) Add(m Mechanism) {
