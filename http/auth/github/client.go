@@ -15,7 +15,7 @@ type GitHubClientAuth struct {
 func (a GitHubClientAuth) AddAuth(req *http.Request) error {
 	if a.accessToken == "" {
 		var err error
-		a.accessToken, err = resolveAccessToken(a.Config)
+		a.accessToken, err = ResolveAccessToken(a.Config)
 		if err != nil {
 			return err
 		}
