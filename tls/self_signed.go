@@ -20,6 +20,7 @@ type SelfSignedConfig struct {
 	IPAddresses []net.IP
 	NotBefore   time.Time
 	NotAfter    time.Time
+	IsCA        bool
 }
 
 func CreateAndSaveSelfSignedKeyPair(config SelfSignedConfig, certPath, keyPath string) (*tls.Certificate, *x509.CertPool, error) {
@@ -47,7 +48,7 @@ func CreateSelfSignedKeyPair(config SelfSignedConfig) (*tls.Certificate, *x509.C
 		Subject:               config.Subject,
 		NotBefore:             config.NotBefore,
 		NotAfter:              config.NotAfter,
-		IsCA:                  true,
+		IsCA:                  config.IsCA,
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
@@ -61,8 +62,14 @@ func CreateSelfSignedKeyPair(config SelfSignedConfig) (*tls.Certificate, *x509.C
 	}
 
 	var cert, key bytes.Buffer
-	pem.Encode(&cert, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	pem.Encode(&key, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(pkey)})
+	err = pem.Encode(&cert, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	if err != nil {
+		return nil, nil, err
+	}
+	err = pem.Encode(&key, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(pkey)})
+	if err != nil {
+		return nil, nil, err
+	}
 
 	tlscert, err := tls.X509KeyPair(cert.Bytes(), key.Bytes())
 	if err != nil {
