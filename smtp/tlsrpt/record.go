@@ -33,6 +33,18 @@ func formatRUA(label string, locations []string) string {
 	return fmt.Sprintf("%s=%s", label, strings.Join(addrs, ","))
 }
 
+func (r *Record) RecordPrefix() string {
+	return "_smtp._tls."
+}
+
+func (r *Record) RecordType() string {
+	return "TXT"
+}
+
+func (r *Record) RecordValue() string {
+	return fmt.Sprintf("\\\"%v\\\"", r.String())
+}
+
 func (r *Record) String() string {
 	parts := make([]string, 0)
 	if r.Version == "" {

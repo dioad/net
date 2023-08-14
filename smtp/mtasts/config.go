@@ -3,7 +3,7 @@ package mtasts
 type Config struct {
 	Mode   Mode     `mapstructure:"mode"`
 	MX     []string `mapstructure:"mx"`
-	MaxAge uint32   `mapstructure:"max_age"`
+	MaxAge uint32   `mapstructure:"max-age"`
 }
 
 func PolicyFromConfig(cfg Config) *Policy {

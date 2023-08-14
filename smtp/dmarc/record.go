@@ -105,6 +105,18 @@ func (r *Record) Render(data interface{}) error {
 	return nil
 }
 
+func (r *Record) RecordType() string {
+	return "TXT"
+}
+
+func (r *Record) RecordPrefix() string {
+	return "_dmarc."
+}
+
+func (r *Record) RecordValue() string {
+	return fmt.Sprintf("\\\"%v\\\"", r.String())
+}
+
 func (r *Record) String() string {
 	parts := make([]string, 0)
 

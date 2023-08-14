@@ -26,6 +26,18 @@ func (r *Record) Empty() bool {
 	return reflect.DeepEqual(*r, Record{})
 }
 
+func (r *Record) RecordPrefix() string {
+	return "default._domainkey."
+}
+
+func (r *Record) RecordType() string {
+	return "TXT"
+}
+
+func (r *Record) RecordValue() string {
+	return fmt.Sprintf("\\\"%v\\\"", r.String())
+}
+
 func (r *Record) String() string {
 	parts := make([]string, 0)
 
