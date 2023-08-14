@@ -21,6 +21,7 @@ type Policy struct {
 }
 
 // FormatPolicy https://www.mailhardener.com/kb/mta-sts
+// TODO: use text/template for this stuff?
 func FormatPolicy(p *Policy) (string, error) {
 	var sb strings.Builder
 
