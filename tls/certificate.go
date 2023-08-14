@@ -12,6 +12,23 @@ import (
 	"path/filepath"
 )
 
+func LoadX509CertFromFile(certPath string) (*x509.Certificate, error) {
+	certPathClean := filepath.Clean(certPath)
+	certPEM, err := os.ReadFile(certPathClean)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(certPEM)
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return cert, nil
+}
+
 func LoadKeyPairFromFiles(certPath, keyPath string) (*tls.Certificate, error) {
 	certPathClean := filepath.Clean(certPath)
 	certPEM, err := os.ReadFile(certPathClean)
@@ -74,7 +91,7 @@ func SaveTLSCertificateToFiles(cert *tls.Certificate, certPath, keyPath string) 
 	return savePEMFile(keyPath, 0600, "PRIVATE KEY", privBytes)
 }
 
-// From: https://gist.github.com/ukautz/cd118e298bbd8f0a88fc
+// LoadKeyPairAndCertsFromFile From: https://gist.github.com/ukautz/cd118e298bbd8f0a88fc
 // LoadKeyPairAndCertsFromFile reads file, divides into key and certificates
 func LoadKeyPairAndCertsFromFile(path string) (*tls.Certificate, error) {
 	raw, err := os.ReadFile(path)
@@ -93,16 +110,16 @@ func LoadKeyPairAndCertsFromFile(path string) (*tls.Certificate, error) {
 		} else {
 			cert.PrivateKey, err = parsePrivateKey(block.Bytes)
 			if err != nil {
-				return nil, fmt.Errorf("Failure reading private key from \"%s\": %s", path, err)
+				return nil, fmt.Errorf("failure reading private key from \"%s\": %s", path, err)
 			}
 		}
 		raw = rest
 	}
 
 	if len(cert.Certificate) == 0 {
-		return nil, fmt.Errorf("No certificate found in \"%s\"", path)
+		return nil, fmt.Errorf("no certificate found in \"%s\"", path)
 	} else if cert.PrivateKey == nil {
-		return nil, fmt.Errorf("No private key found in \"%s\"", path)
+		return nil, fmt.Errorf("no private key found in \"%s\"", path)
 	}
 
 	return &cert, nil
@@ -117,11 +134,11 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 		case *rsa.PrivateKey, *ecdsa.PrivateKey:
 			return key, nil
 		default:
-			return nil, fmt.Errorf("Found unknown private key type in PKCS#8 wrapping")
+			return nil, fmt.Errorf("found unknown private key type in PKCS#8 wrapping")
 		}
 	}
 	if key, err := x509.ParseECPrivateKey(der); err == nil {
 		return key, nil
 	}
-	return nil, fmt.Errorf("Failed to parse private key")
+	return nil, fmt.Errorf("failed to parse private key")
 }
