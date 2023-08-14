@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/cli/oauth/api"
-	"github.com/dioad/connect/sdk/util" // TODO: this is bad, dioad/connect relies on dioad/net, it shouldn't be the other way around
+	"github.com/dioad/util"
 	"gopkg.in/yaml.v3"
 )
 
