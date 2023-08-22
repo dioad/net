@@ -30,7 +30,7 @@ require (
 	github.com/coredns/coredns v1.11.0
 	github.com/dioad/util v0.0.0-20230814200950-756f77abd71a
 	github.com/emersion/go-msgauth v0.6.6
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/gorilla/sessions v1.2.1
 	github.com/markbates/goth v1.77.0
 	github.com/miekg/dns v1.1.55
