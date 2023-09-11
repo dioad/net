@@ -32,7 +32,7 @@ require (
 	github.com/emersion/go-msgauth v0.6.6
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/sessions v1.2.1
-	github.com/markbates/goth v1.77.0
+	github.com/markbates/goth v1.78.0
 	github.com/miekg/dns v1.1.55
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/stretchr/testify v1.8.4
