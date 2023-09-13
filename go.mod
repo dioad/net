@@ -33,7 +33,7 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/sessions v1.2.1
 	github.com/markbates/goth v1.78.0
-	github.com/miekg/dns v1.1.55
+	github.com/miekg/dns v1.1.56
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/stretchr/testify v1.8.4
 	github.com/weaveworks/common v0.0.0-20230728070032-dd9e68f319d5
@@ -66,7 +66,7 @@ require (
 	github.com/weaveworks/promrus v1.2.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/tools v0.12.0 // indirect
+	golang.org/x/tools v0.13.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230807174057-1744710a1577 // indirect
 	google.golang.org/grpc v1.57.0 // indirect
