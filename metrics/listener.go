@@ -2,6 +2,8 @@ package metrics
 
 import (
 	"net"
+
+	"github.com/rs/zerolog"
 )
 
 type ListenerMetrics interface {
@@ -12,6 +14,8 @@ type ListenerMetrics interface {
 type Listener struct {
 	ln            net.Listener
 	acceptedCount int
+	logger        zerolog.Logger
+	useLogger     bool
 }
 
 func (l *Listener) ResetMetrics() {
@@ -30,7 +34,12 @@ func (l *Listener) Accept() (net.Conn, error) {
 	}
 
 	l.acceptedCount += 1
-	connWithMetrics := NewConn(conn)
+	var connWithMetrics net.Conn
+	if l.useLogger {
+		connWithMetrics = NewConnWithLogger(conn, l.logger)
+	} else {
+		connWithMetrics = NewConn(conn)
+	}
 
 	return connWithMetrics, err
 }
@@ -46,5 +55,13 @@ func (l *Listener) Addr() net.Addr {
 func NewListener(l net.Listener) *Listener {
 	return &Listener{
 		ln: l,
+	}
+}
+
+func NewListenerWithLogger(l net.Listener, logger zerolog.Logger) *Listener {
+	return &Listener{
+		ln:        l,
+		logger:    logger,
+		useLogger: true,
 	}
 }
