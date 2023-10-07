@@ -13,6 +13,12 @@ import (
 )
 
 func ResolveAccessToken(c GitHubAuthClientConfig) (string, error) {
+	envAccessToken := os.Getenv("GITHUB_TOKEN")
+
+	if envAccessToken != "" {
+		return envAccessToken, nil
+	}
+
 	if c.AccessToken == "" {
 		// load from c.AccessTokenFile
 		token, err := LoadAccessTokenFromFile(c.AccessTokenFile)
