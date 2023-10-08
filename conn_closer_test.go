@@ -2,7 +2,7 @@ package net
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net"
 	"testing"
 )
@@ -41,7 +41,7 @@ func TestConnCloserPassThroughWrite(t *testing.T) {
 		c.Write([]byte("hello"))
 		c.Close()
 	}()
-	bytesWritten, _ := ioutil.ReadAll(server)
+	bytesWritten, _ := io.ReadAll(server)
 
 	if !bytes.Equal(bytesWritten, bytesToWrite) {
 		t.Fatalf("failed to pass-through write")
@@ -58,7 +58,7 @@ func TestConnCloserPassThroughRead(t *testing.T) {
 		server.Write([]byte("hello"))
 		server.Close()
 	}()
-	bytesWritten, _ := ioutil.ReadAll(c)
+	bytesWritten, _ := io.ReadAll(c)
 
 	if !bytes.Equal(bytesWritten, bytesToWrite) {
 		t.Fatalf("failed to pass-through read")

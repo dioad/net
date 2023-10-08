@@ -1,12 +1,13 @@
 package dns
 
 import (
+	"errors"
 	"net"
 	"strconv"
 )
 
 func uitoa(i uint64) string {
-	return strconv.FormatUint(uint64(i), 10)
+	return strconv.FormatUint(i, 10)
 }
 
 func ReverseIP(addr string) (string, error) {
@@ -28,7 +29,8 @@ func BlocklistLookupAddr(addr string) (bool, error) {
 	spamName := revAddr + ".zen.spamhaus.org"
 	responseCodes, err := net.LookupHost(spamName)
 	if err != nil {
-		if _, ok := err.(*net.DNSError); ok {
+		var DNSError *net.DNSError
+		if errors.As(err, &DNSError) {
 			return false, nil
 		}
 		return false, err

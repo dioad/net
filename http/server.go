@@ -59,7 +59,7 @@ func newDefaultServer(config Config) *Server {
 		Config:        config,
 		ListenAddress: config.ListenAddress,
 		Router:        rtr,
-		ResourceMap:   make(map[string]Resource, 0),
+		ResourceMap:   make(map[string]Resource),
 		metricSet:     m}
 }
 
@@ -153,7 +153,7 @@ func (s *Server) addDefaultHandlers() {
 
 func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		statusMap := make(map[string]interface{}, 0)
+		statusMap := make(map[string]interface{})
 		httpStatus := http.StatusOK
 
 		for path, resource := range s.ResourceMap {

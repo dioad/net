@@ -2,8 +2,7 @@ package metrics
 
 import (
 	"bytes"
-	//	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"sync"
 	"testing"
@@ -81,7 +80,7 @@ func TestConnBytesWritten(t *testing.T) {
 		c.Write([]byte("hello"))
 		c.Close()
 	}()
-	bytesWritten, _ := ioutil.ReadAll(server)
+	bytesWritten, _ := io.ReadAll(server)
 
 	if !bytes.Equal(bytesWritten, bytesToWrite) {
 		t.Fatalf("failed to pass-through write")
@@ -102,7 +101,7 @@ func TestConnBytesRead(t *testing.T) {
 		server.Write([]byte("hello"))
 		server.Close()
 	}()
-	bytesWritten, _ := ioutil.ReadAll(c)
+	bytesWritten, _ := io.ReadAll(c)
 
 	if !bytes.Equal(bytesWritten, bytesToWrite) {
 		t.Fatalf("failed to pass-through read")
