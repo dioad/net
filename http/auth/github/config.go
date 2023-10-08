@@ -22,9 +22,10 @@ type GitHubAuthCommonConfig struct {
 }
 
 type GitHubAuthClientConfig struct {
-	GitHubAuthCommonConfig `mapstructure:",squash"`
-	AccessToken            string `mapstructure:"access-token"`
-	AccessTokenFile        string `mapstructure:"access-token-file"`
+	GitHubAuthCommonConfig           `mapstructure:",squash"`
+	AccessToken                      string `mapstructure:"access-token"`
+	AccessTokenFile                  string `mapstructure:"access-token-file"`
+	EnableAccessTokenFromEnvironment bool   `mapstructure:"enable-access-token-from-environment"`
 }
 
 func (c GitHubAuthClientConfig) IsEmpty() bool {

@@ -13,10 +13,13 @@ import (
 )
 
 func ResolveAccessToken(c GitHubAuthClientConfig) (string, error) {
-	envAccessToken := os.Getenv("GITHUB_TOKEN")
 
-	if envAccessToken != "" {
-		return envAccessToken, nil
+	if c.EnableAccessTokenFromEnvironment {
+		envAccessToken := os.Getenv("GITHUB_TOKEN")
+
+		if envAccessToken != "" {
+			return envAccessToken, nil
+		}
 	}
 
 	if c.AccessToken == "" {
