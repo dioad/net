@@ -22,6 +22,14 @@ type Mechanism struct {
 	Qualifier Qualifier `mapstructure:"qualifier"`
 	Name      string    `mapstructure:"name"`
 	Values    []string  `mapstructure:"values"`
+	ValueList string    `mapstructure:"value-list"`
+}
+
+func resolveValues(values []string, valueList string) []string {
+	if len(values) > 0 {
+		return values
+	}
+	return strings.Split(valueList, ",")
 }
 
 func IP4Mechanism(values ...string) Mechanism {
@@ -62,15 +70,17 @@ func (r *Record) Add(m Mechanism) {
 
 func (r *Record) Render(data interface{}) error {
 	for i := range r.Mechanisms {
-		for j := range r.Mechanisms[i].Values {
-			tmpl, err := template.New("spf").Parse(r.Mechanisms[i].Values[j])
+		values := resolveValues(r.Mechanisms[i].Values, r.Mechanisms[i].ValueList)
+		for j := range values {
+			tmpl, err := template.New("spf").Parse(values[j])
 			if err != nil {
 				return err
 			}
 			buf := &bytes.Buffer{}
 			tmpl.Execute(buf, data)
-			r.Mechanisms[i].Values[j] = buf.String()
+			values[j] = buf.String()
 		}
+		r.Mechanisms[i].Values = values
 	}
 	return nil
 }

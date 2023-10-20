@@ -78,9 +78,25 @@ func TestSPFRecord(t *testing.T) {
 			},
 			"v=spf1 ip4:1.4.1.4 a:mx.example.com -all",
 		},
+		{
+			Record{
+				Version: "spf1",
+				All:     true,
+				Mechanisms: []Mechanism{
+					{
+						Name:      "ip4",
+						ValueList: "1.4.1.4,1.2.1.2",
+					},
+					AMechanism("mx.example.com"),
+				},
+				AllQualifier: QualifierFail,
+			},
+			"v=spf1 ip4:1.4.1.4 ip4:1.2.1.2 a:mx.example.com -all",
+		},
 	}
 
 	for _, run := range tests {
+		run.s.Render(nil)
 		result := run.s.String()
 		if result != run.r {
 			t.Errorf("got: %s, expected: %s", result, run.r)
