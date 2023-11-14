@@ -1,11 +1,11 @@
 package spf
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 	"strings"
-	"text/template"
+
+	"github.com/dioad/net"
 )
 
 const (
@@ -19,17 +19,27 @@ const (
 type Qualifier string
 
 type Mechanism struct {
-	Qualifier Qualifier `mapstructure:"qualifier"`
-	Name      string    `mapstructure:"name"`
-	Values    []string  `mapstructure:"values"`
-	ValueList string    `mapstructure:"value-list"`
+	Qualifier  Qualifier           `mapstructure:"qualifier"`
+	Name       string              `mapstructure:"name"`
+	Values     []string            `mapstructure:"values"`
+	ValueList  string              `mapstructure:"value-list"`
+	ValuesFunc MechanismValuesFunc `mapstructure:"-" json:"-"`
 }
 
-func resolveValues(values []string, valueList string) []string {
-	if len(values) > 0 {
-		return values
+func resolveValues(mech Mechanism) []string {
+	values := make([]string, 0)
+	if len(mech.Values) > 0 {
+		values = append(values, mech.Values...)
 	}
-	return strings.Split(valueList, ",")
+
+	if mech.ValueList != "" {
+		values = append(values, strings.Split(mech.ValueList, ",")...)
+	}
+
+	if mech.ValuesFunc != nil {
+		values = append(values, mech.ValuesFunc()...)
+	}
+	return values
 }
 
 func IP4Mechanism(values ...string) Mechanism {
@@ -52,6 +62,8 @@ func IncludeMechanism(values ...string) Mechanism {
 	return Mechanism{Name: "include", Values: values}
 }
 
+type MechanismValuesFunc func() []string
+
 type Record struct {
 	Version    string      `mapstructure:"version"`
 	Mechanisms []Mechanism `mapstructure:"mechanisms"`
@@ -70,15 +82,20 @@ func (r *Record) Add(m Mechanism) {
 
 func (r *Record) Render(data interface{}) error {
 	for i := range r.Mechanisms {
-		values := resolveValues(r.Mechanisms[i].Values, r.Mechanisms[i].ValueList)
+		// There's gotta be a cleaner way to do this
+		renderedValueList, err := net.ExpandStringTemplate(r.Mechanisms[i].ValueList, data)
+		if err != nil {
+			return err
+		}
+		r.Mechanisms[i].ValueList = renderedValueList
+
+		values := resolveValues(r.Mechanisms[i])
 		for j := range values {
-			tmpl, err := template.New("spf").Parse(values[j])
+			renderedValue, err := net.ExpandStringTemplate(values[j], data)
 			if err != nil {
 				return err
 			}
-			buf := &bytes.Buffer{}
-			tmpl.Execute(buf, data)
-			values[j] = buf.String()
+			values[j] = renderedValue
 		}
 		r.Mechanisms[i].Values = values
 	}

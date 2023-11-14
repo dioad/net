@@ -103,3 +103,138 @@ func TestSPFRecord(t *testing.T) {
 		}
 	}
 }
+
+func TestSPFRecordValueListWithInterpolation(t *testing.T) {
+	tests := []struct {
+		s Record
+		r string
+	}{
+		{
+			Record{
+				Version: "spf1",
+				All:     true,
+				Mechanisms: []Mechanism{
+					{
+						Name:      "ip4",
+						ValueList: "{{ .IPs }}",
+					},
+					AMechanism("mx.example.com"),
+				},
+				AllQualifier: QualifierFail,
+			},
+			"v=spf1 ip4:1.4.1.4 ip4:1.2.1.2 a:mx.example.com -all",
+		},
+	}
+
+	data := struct {
+		IPs string
+	}{
+		IPs: "1.4.1.4,1.2.1.2",
+	}
+
+	for _, run := range tests {
+		err := run.s.Render(data)
+		if err != nil {
+			t.Errorf("got: %v, expected: %v", err, nil)
+		}
+		result := run.s.String()
+		if result != run.r {
+			t.Errorf("got: %s, expected: %s", result, run.r)
+		}
+	}
+}
+
+func TestSPFRecordValueFuncWithInterpolation(t *testing.T) {
+	valueFunc := func() []string {
+		return []string{
+			"1.4.1.4",
+			"1.2.1.2",
+		}
+	}
+
+	tests := []struct {
+		s Record
+		r string
+	}{
+		{
+			Record{
+				Version: "spf1",
+				All:     true,
+				Mechanisms: []Mechanism{
+					{
+						Name:       "ip4",
+						ValuesFunc: valueFunc,
+					},
+					AMechanism("mx.example.com"),
+				},
+				AllQualifier: QualifierFail,
+			},
+			"v=spf1 ip4:1.4.1.4 ip4:1.2.1.2 a:mx.example.com -all",
+		},
+	}
+
+	//data := struct {
+	//	IPs string
+	//}{
+	//	IPs: "1.4.1.4,1.2.1.2",
+	//}
+
+	for _, run := range tests {
+		err := run.s.Render(nil)
+		if err != nil {
+			t.Errorf("got: %v, expected: %v", err, nil)
+		}
+		result := run.s.String()
+		if result != run.r {
+			t.Errorf("got: %s, expected: %s", result, run.r)
+		}
+	}
+}
+
+func TestSPFRecordWithMultipleValuesWithInterpolation(t *testing.T) {
+	valueFunc := func() []string {
+		return []string{
+			"1.2.1.2",
+			"1.3.1.3",
+		}
+	}
+
+	tests := []struct {
+		s Record
+		r string
+	}{
+		{
+			Record{
+				Version: "spf1",
+				All:     true,
+				Mechanisms: []Mechanism{
+					{
+						Name:       "ip4",
+						ValuesFunc: valueFunc,
+						ValueList:  "{{ .IPs }}",
+					},
+					AMechanism("mx.example.com"),
+				},
+				AllQualifier: QualifierFail,
+			},
+			"v=spf1 ip4:1.4.1.4 ip4:1.5.1.5 ip4:1.2.1.2 ip4:1.3.1.3 a:mx.example.com -all",
+		},
+	}
+
+	data := struct {
+		IPs string
+	}{
+		IPs: "1.4.1.4,1.5.1.5",
+	}
+
+	for _, run := range tests {
+		err := run.s.Render(data)
+		if err != nil {
+			t.Errorf("got: %v, expected: %v", err, nil)
+		}
+		result := run.s.String()
+		if result != run.r {
+			t.Errorf("got: %s, expected: %s", result, run.r)
+		}
+	}
+}

@@ -1,11 +1,13 @@
 package net
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"net/netip"
 	"net/url"
 	"strconv"
+	"text/template"
 )
 
 func TCPAddrFromURL(url *url.URL) (string, error) {
@@ -87,4 +89,17 @@ func AddrPortDetailsFromString(addrPort string) (netip.AddrPort, string, error) 
 	}
 
 	return listenAddr, listenInterface, nil
+}
+
+func ExpandStringTemplate(templateString string, data any) (string, error) {
+	tmpl, err := template.New("tmpl").Parse(templateString)
+	if err != nil {
+		return "", err
+	}
+	buf := &bytes.Buffer{}
+	err = tmpl.Execute(buf, data)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
