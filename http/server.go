@@ -35,18 +35,19 @@ type Config struct {
 
 // Server ...
 type Server struct {
-	Config         Config
-	ListenAddress  string
-	Router         *mux.Router
-	logWriter      io.Writer
-	logger         zerolog.Logger
-	ResourceMap    map[string]Resource
-	server         *http.Server
-	serverInitOnce sync.Once
-	metricSet      *MetricSet
-	instrument     *middleware.Instrument
-	rootResource   RootResource
-	ListenAddr     net.Addr
+	Config            Config
+	ListenAddress     string
+	Router            *mux.Router
+	logWriter         io.Writer
+	logger            zerolog.Logger
+	ResourceMap       map[string]Resource
+	server            *http.Server
+	serverInitOnce    sync.Once
+	metricSet         *MetricSet
+	instrument        *middleware.Instrument
+	rootResource      RootResource
+	ListenAddr        net.Addr
+	metadataStatusMap map[string]any
 }
 
 func newDefaultServer(config Config) *Server {
@@ -56,11 +57,13 @@ func newDefaultServer(config Config) *Server {
 	// rtr.Use()
 
 	return &Server{
-		Config:        config,
-		ListenAddress: config.ListenAddress,
-		Router:        rtr,
-		ResourceMap:   make(map[string]Resource),
-		metricSet:     m}
+		Config:            config,
+		ListenAddress:     config.ListenAddress,
+		Router:            rtr,
+		ResourceMap:       make(map[string]Resource),
+		metricSet:         m,
+		metadataStatusMap: make(map[string]any),
+	}
 }
 
 // NewServer ...
@@ -151,11 +154,16 @@ func (s *Server) addDefaultHandlers() {
 	}
 }
 
+func (s *Server) AddStatusStaticMetadataItem(key string, value any) {
+	s.metadataStatusMap[key] = value
+}
+
 func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		statusMap := make(map[string]interface{})
+		statusMap := make(map[string]any)
 		httpStatus := http.StatusOK
 
+		routeStatusMap := make(map[string]any)
 		for path, resource := range s.ResourceMap {
 			if sr, ok := resource.(StatusResource); ok {
 
@@ -163,9 +171,11 @@ func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 				if err != nil {
 					httpStatus = http.StatusInternalServerError
 				}
-				statusMap[path] = status
+				routeStatusMap[path] = status
 			}
 		}
+		statusMap["Routes"] = routeStatusMap
+		statusMap["Metadata"] = s.metadataStatusMap
 
 		w.Header().Set("Content-Type", "text/json; charset=utf-8") // normal header
 
