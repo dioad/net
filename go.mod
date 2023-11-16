@@ -33,7 +33,7 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/sessions v1.2.2
 	github.com/markbates/goth v1.78.0
-	github.com/miekg/dns v1.1.56
+	github.com/miekg/dns v1.1.57
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/stretchr/testify v1.8.4
 	github.com/weaveworks/common v0.0.0-20230728070032-dd9e68f319d5
