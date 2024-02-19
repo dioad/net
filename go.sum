@@ -444,8 +444,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/decred/dcrd/crypto/blake256 v1.0.0/go.mod h1:sQl2p6Y26YV+ZOcSTP6thNdn47hh8kt6rqSlvmrXFAc=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d/go.mod h1:tmAIfUFEirG/Y8jhZ9M+h36obRZAk/1fcSpXwAVlfqE=
-github.com/dioad/util v0.0.0-20240103205850-a71d9255fde6 h1:VQQh0UFz9fkeEzBiSlVIEsfNKBr8ozk+wFmaIS9uTnA=
-github.com/dioad/util v0.0.0-20240103205850-a71d9255fde6/go.mod h1:d32E7RWlOb7yglohfo5Mi1B+1bLemJacHoLzzaKwOEE=
+github.com/dioad/util v0.1.0 h1:0EjvBkS+S5iT79TpP1RO13Pq1LY9zoM+BZTSImmkkoo=
+github.com/dioad/util v0.1.0/go.mod h1:d32E7RWlOb7yglohfo5Mi1B+1bLemJacHoLzzaKwOEE=
 github.com/emersion/go-message v0.11.2/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
 github.com/emersion/go-message v0.15.0/go.mod h1:wQUEfE+38+7EW8p8aZ96ptg6bAb1iwdgej19uXASlE4=
 github.com/emersion/go-milter v0.3.3/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=
