@@ -28,7 +28,7 @@ require (
 
 require (
 	github.com/coredns/coredns v1.11.1
-	github.com/dioad/util v0.0.0-20240103205850-a71d9255fde6
+	github.com/dioad/util v0.1.0
 	github.com/emersion/go-msgauth v0.6.6
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.2.2
@@ -67,6 +67,6 @@ require (
 	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240213162025-012b6fc9bca9 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240221002015-b0ce06bbee7c // indirect
 	google.golang.org/grpc v1.61.1 // indirect
 )
