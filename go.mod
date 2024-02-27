@@ -27,7 +27,7 @@ require (
 )
 
 require (
-	github.com/coredns/coredns v1.11.1
+	github.com/coredns/coredns v1.11.2
 	github.com/dioad/util v0.1.0
 	github.com/emersion/go-msgauth v0.6.6
 	github.com/google/uuid v1.6.0
@@ -45,7 +45,7 @@ require (
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
@@ -56,10 +56,11 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/opentracing-contrib/go-stdlib v1.0.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/stretchr/objx v0.5.1 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/weaveworks/promrus v1.2.0 // indirect
