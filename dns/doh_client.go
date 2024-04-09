@@ -43,7 +43,9 @@ func (c *DOHClient) Exchange(msg *dns.Msg) (*dns.Msg, error) {
 
 func NewDOHClient(url *url.URL) *DOHClient {
 	return &DOHClient{
-		Client: &http.Client{},
-		URL:    url,
+		Client: &http.Client{
+			Transport: http.DefaultTransport,
+		},
+		URL: url,
 	}
 }
