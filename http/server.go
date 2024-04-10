@@ -47,6 +47,7 @@ type Server struct {
 	instrument        *middleware.Instrument
 	rootResource      RootResource
 	ListenAddr        net.Addr
+	LogHandler        HandlerWrapper
 	metadataStatusMap map[string]any
 }
 
@@ -112,13 +113,18 @@ func (s *Server) AddRootResource(r RootResource) {
 func (s *Server) handler() http.Handler {
 	s.addDefaultHandlers()
 
-	logHandler := ZerologStructuredLogHandler(s.logger)
-	if s.logWriter != nil {
-		logHandler = DefaultCombinedLogHandler(s.logWriter)
-	}
-
 	if s.rootResource != nil {
 		s.AddHandler("/{path:.*}", s.rootResource.Index())
+	}
+
+	logHandler := s.LogHandler
+
+	if logHandler == nil {
+		logHandler = ZerologStructuredLogHandler(s.logger)
+	}
+
+	if s.logWriter != nil {
+		logHandler = DefaultCombinedLogHandler(s.logWriter)
 	}
 
 	// uncomment if ensure that 404's get picked up by metrics
