@@ -31,7 +31,7 @@ require (
 require (
 	github.com/coredns/coredns v1.11.2
 	github.com/dioad/util v0.1.0
-	github.com/emersion/go-msgauth v0.6.6
+	github.com/emersion/go-msgauth v0.6.8
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.2.2
 	github.com/markbates/goth v1.79.0
