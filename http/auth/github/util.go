@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func ResolveAccessToken(c GitHubAuthClientConfig) (string, error) {
+func ResolveAccessToken(c ClientConfig) (string, error) {
 
 	if c.EnableAccessTokenFromEnvironment {
 		envAccessToken := os.Getenv("GITHUB_TOKEN")

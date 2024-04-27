@@ -3,11 +3,11 @@ package basic
 import "reflect"
 
 var (
-	EmptyBasicAuthClientConfig = BasicAuthClientConfig{}
-	EmptyBasicAuthServerConfig = BasicAuthServerConfig{}
+	EmptyClientConfig = ClientConfig{}
+	EmptyServerConfig = ServerConfig{}
 )
 
-type BasicAuthClientConfig struct {
+type ClientConfig struct {
 	// https://everything.curl.dev/usingcurl/netrc
 	//
 	// machine connect.lab.dioad.net
@@ -18,16 +18,17 @@ type BasicAuthClientConfig struct {
 	Password  string `mapstructure:"password"`
 }
 
-func (c BasicAuthClientConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyBasicAuthClientConfig)
+func (c ClientConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyClientConfig)
 }
 
-type BasicAuthServerConfig struct {
+type ServerConfig struct {
 	AllowInsecureHTTP bool     `mapstructure:"allow-insecure-http"`
 	HTPasswdFile      string   `mapstructure:"htpasswd-file"`
 	Users             []string `mapstructure:"users"`
+	Realm             string   `mapstructure:"realm"`
 }
 
-func (c BasicAuthServerConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyBasicAuthServerConfig)
+func (c ServerConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyServerConfig)
 }

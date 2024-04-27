@@ -5,44 +5,34 @@ import (
 	"net"
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/dioad/generics"
 )
 
 type NetworkACL struct {
-	Config NetworkACLConfig
+	AllowByDefault bool
 
 	allowNetworks []*net.IPNet
 	denyNetworks  []*net.IPNet
 }
 
 func NewNetworkACL(cfg NetworkACLConfig) (*NetworkACL, error) {
-	a := &NetworkACL{
-		Config:        cfg,
-		allowNetworks: make([]*net.IPNet, 0),
-		denyNetworks:  make([]*net.IPNet, 0),
+	allowNetworks, err := generics.Map(parseTCPNet, cfg.AllowedNets)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse allowed networks: %w", err)
 	}
 
-	// not sure this is the right place
-	err := a.parseConfig()
+	denyNetworks, err := generics.Map(parseTCPNet, cfg.DeniedNets)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse denied networks: %w", err)
+	}
+
+	a := &NetworkACL{
+		AllowByDefault: cfg.AllowByDefault,
+		allowNetworks:  allowNetworks,
+		denyNetworks:   denyNetworks,
+	}
 
 	return a, err
-}
-
-func (a *NetworkACL) parseConfig() error {
-	for _, allowStr := range a.Config.AllowedNets {
-		err := a.AllowFromString(allowStr)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("failed to parse %v", allowStr))
-		}
-	}
-
-	for _, denyStr := range a.Config.DeniedNets {
-		err := a.DenyFromString(denyStr)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("failed to parse %v", denyStr))
-		}
-	}
-	return nil
 }
 
 func (a *NetworkACL) AllowFromString(n string) error {
@@ -96,7 +86,8 @@ func (a *NetworkACL) Authorise(addr *net.TCPAddr) bool {
 		return true
 	}
 
-	if inAllow && inDeny {
+	// if in both allow and deny, deny
+	if inAllow {
 		return false
 	}
 
@@ -104,7 +95,7 @@ func (a *NetworkACL) Authorise(addr *net.TCPAddr) bool {
 		return false
 	}
 
-	return a.Config.AllowByDefault
+	return a.AllowByDefault
 }
 
 // TODO: investigate if there is a more optimal way

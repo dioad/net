@@ -5,12 +5,15 @@ import (
 	"net/http"
 )
 
-type HMACClientAuth struct {
-	Config HMACAuthClientConfig
+type ClientAuth struct {
+	Config ClientConfig
 }
 
-func (a HMACClientAuth) AddAuth(req *http.Request) error {
-	token, err := HMACKey(a.Config.SharedKey, a.Config.Data)
+// AddAuth adds the HMAC token to the request as a bearer token
+//
+// TODO:  This should be refactored to use the request Body to calculate the digest /token
+func (a ClientAuth) AddAuth(req *http.Request) error {
+	token, err := HMACKey([]byte(a.Config.SharedKey), []byte(a.Config.Data))
 	if err != nil {
 		return err
 	}

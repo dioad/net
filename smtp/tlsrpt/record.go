@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/dioad/generics"
 )
 
 type Record struct {
@@ -20,15 +22,13 @@ func formatRUA(label string, locations []string) string {
 		return ""
 	}
 
-	addrs := make([]string, 0, len(locations))
-	for _, a := range locations {
+	addrs := generics.SafeMap(func(a string) string {
 		if strings.HasPrefix(a, "https://") {
 			// Need to encode a https://www.rfc-editor.org/rfc/rfc8460#section-3
-			addrs = append(addrs, a)
-		} else {
-			addrs = append(addrs, fmt.Sprintf("mailto:%s", a))
+			return a
 		}
-	}
+		return fmt.Sprintf("mailto:%s", a)
+	}, locations)
 
 	return fmt.Sprintf("%s=%s", label, strings.Join(addrs, ","))
 }

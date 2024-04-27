@@ -4,12 +4,11 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"fmt"
-	"io"
 )
 
-func HMACKeyBytes(sharedKey, data string) ([]byte, error) {
-	h := hmac.New(sha256.New, []byte(sharedKey))
-	_, err := io.WriteString(h, data)
+func HMACKeyBytes(sharedKey, data []byte) ([]byte, error) {
+	h := hmac.New(sha256.New, sharedKey)
+	_, err := h.Write(data)
 	if err != nil {
 		return nil, err
 	}
@@ -17,7 +16,7 @@ func HMACKeyBytes(sharedKey, data string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-func HMACKey(sharedKey, data string) (string, error) {
+func HMACKey(sharedKey, data []byte) (string, error) {
 	keyBytes, err := HMACKeyBytes(sharedKey, data)
 	if err != nil {
 		return "", err

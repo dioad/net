@@ -5,7 +5,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/dioad/net"
+	"github.com/dioad/generics"
+	"github.com/dioad/util"
 )
 
 const (
@@ -24,22 +25,6 @@ type Mechanism struct {
 	Values     []string            `mapstructure:"values"`
 	ValueList  string              `mapstructure:"value-list"`
 	ValuesFunc MechanismValuesFunc `mapstructure:"-" json:"-"`
-}
-
-func resolveValues(mech Mechanism) []string {
-	values := make([]string, 0)
-	if len(mech.Values) > 0 {
-		values = append(values, mech.Values...)
-	}
-
-	if mech.ValueList != "" {
-		values = append(values, strings.Split(mech.ValueList, ",")...)
-	}
-
-	if mech.ValuesFunc != nil {
-		values = append(values, mech.ValuesFunc()...)
-	}
-	return values
 }
 
 func IP4Mechanism(values ...string) Mechanism {
@@ -80,24 +65,30 @@ func (r *Record) Add(m Mechanism) {
 	r.Mechanisms = append(r.Mechanisms, m)
 }
 
+func resolveValues(mech Mechanism, data any) []string {
+	values := make([]string, 0)
+	if len(mech.Values) > 0 {
+		expandedValues := generics.SafeMap(func(s string) string {
+			expanded, _ := util.ExpandStringTemplate(s, data)
+			return expanded
+		}, mech.Values)
+		values = append(values, expandedValues...)
+	}
+
+	if mech.ValueList != "" {
+		expandedValueList, _ := util.ExpandStringTemplate(mech.ValueList, data)
+		values = append(values, strings.Split(expandedValueList, ",")...)
+	}
+
+	if mech.ValuesFunc != nil {
+		values = append(values, mech.ValuesFunc()...)
+	}
+	return values
+}
+
 func (r *Record) Render(data interface{}) error {
 	for i := range r.Mechanisms {
-		// There's gotta be a cleaner way to do this
-		renderedValueList, err := net.ExpandStringTemplate(r.Mechanisms[i].ValueList, data)
-		if err != nil {
-			return err
-		}
-		r.Mechanisms[i].ValueList = renderedValueList
-
-		values := resolveValues(r.Mechanisms[i])
-		for j := range values {
-			renderedValue, err := net.ExpandStringTemplate(values[j], data)
-			if err != nil {
-				return err
-			}
-			values[j] = renderedValue
-		}
-		r.Mechanisms[i].Values = values
+		r.Mechanisms[i].Values = resolveValues(r.Mechanisms[i], data)
 	}
 	return nil
 }

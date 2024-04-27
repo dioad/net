@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/dioad/net/http/auth"
+	"github.com/dioad/net/http/auth/basic"
 )
 
 type Client struct {
@@ -17,7 +18,7 @@ type ClientConfig struct {
 	BaseURL    *url.URL
 	Client     *http.Client
 	UserAgent  string
-	AuthConfig auth.AuthenticationClientConfig
+	AuthConfig auth.ClientConfig
 }
 
 func (c *Client) checkConfig() error {
@@ -42,13 +43,27 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
+	libraryUserAgent := "DioadClient/VERSION"
+
 	if c.Config.UserAgent != "" {
-		req.Header.Set("User-Agent", fmt.Sprintf("%s DioadClient/VERSION", c.Config.UserAgent))
+		req.Header.Set("User-Agent", fmt.Sprintf("%s %s", c.Config.UserAgent, libraryUserAgent))
 	} else {
-		req.Header.Set("User-Agent", fmt.Sprintf("DioadClient/VERSION"))
+		req.Header.Set("User-Agent", libraryUserAgent)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+
+	if !c.Config.AuthConfig.IsEmpty() {
+		ac := auth.AuthClient(c.Config.AuthConfig)
+
+		err := ac.AddAuth(req)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Add basic / netrc credentials to the request if they exist
+	basic.AddCredentials(req)
 
 	return c.Config.Client.Do(req)
 }

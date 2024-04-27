@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dioad/net/http/auth"
-	"github.com/dioad/net/http/pprof"
 	"github.com/gorilla/mux"
 	"github.com/pires/go-proxyproto"
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,6 +18,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/weaveworks/common/middleware"
+
+	"github.com/dioad/net/http/auth"
+	"github.com/dioad/net/http/pprof"
 )
 
 // Config ...
@@ -30,7 +31,7 @@ type Config struct {
 	EnableStatus            bool
 	EnableProxyProtocol     bool
 	TLSConfig               *tls.Config
-	AuthConfig              auth.AuthenticationServerConfig
+	AuthConfig              auth.ServerConfig
 }
 
 // Server ...
@@ -49,6 +50,7 @@ type Server struct {
 	ListenAddr        net.Addr
 	LogHandler        HandlerWrapper
 	metadataStatusMap map[string]any
+	Authenticator     *auth.Handler
 }
 
 func newDefaultServer(config Config) *Server {
@@ -57,7 +59,7 @@ func newDefaultServer(config Config) *Server {
 	rtr := mux.NewRouter()
 	// rtr.Use()
 
-	return &Server{
+	server := &Server{
 		Config:            config,
 		ListenAddress:     config.ListenAddress,
 		Router:            rtr,
@@ -65,6 +67,12 @@ func newDefaultServer(config Config) *Server {
 		metricSet:         m,
 		metadataStatusMap: make(map[string]any),
 	}
+
+	if !config.AuthConfig.IsEmpty() {
+		server.Authenticator = auth.NewHandler(&config.AuthConfig)
+	}
+
+	return server
 }
 
 // NewServer ...
@@ -94,9 +102,7 @@ func (s *Server) ConfigurePrometheusRegistry(r prometheus.Registerer) {
 // AddResource ...
 func (s *Server) AddResource(pathPrefix string, r Resource) {
 	subrouter := s.Router.PathPrefix(pathPrefix).Subrouter()
-	if s.instrument != nil {
-		subrouter.Use(s.instrument.Wrap)
-	}
+
 	if rp, ok := r.(PathResource); ok {
 		rp.RegisterRoutesWithPrefix(subrouter, pathPrefix)
 	} else if rp, ok := r.(DefaultResource); ok {
@@ -138,11 +144,7 @@ func (s *Server) AddHandler(path string, handler http.Handler) {
 
 func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
 	h := handler
-	//if s.Config.EnablePrometheusMetrics {
-	if s.instrument != nil {
-		h = s.instrument.Wrap(h).ServeHTTP
-	}
-	//}
+
 	s.Router.HandleFunc(path, h)
 }
 
@@ -158,6 +160,19 @@ func (s *Server) addDefaultHandlers() {
 	if s.Config.EnableStatus {
 		s.AddHandler("/status", s.aggregateStatusHandler())
 	}
+}
+
+func (s *Server) addDefaultMiddleware() {
+	if s.instrument != nil {
+		s.Router.Use(s.instrument.Wrap)
+	}
+	if s.Authenticator != nil {
+		s.Router.Use(s.Authenticator.Wrap)
+	}
+	// TODO: Implement this thing
+	// if s.Authoriser != nil {
+	// 	s.Router.Use(s.Authoriser.Wrap)
+	// }
 }
 
 func (s *Server) AddStatusStaticMetadataItem(key string, value any) {

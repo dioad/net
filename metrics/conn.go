@@ -241,7 +241,12 @@ func NewConnWithCloser(c net.Conn, closer func(net.Conn)) net.Conn {
 // logs connection stats when the connection is closed.
 func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net.Conn {
 	return NewConnWithCloser(c, func(c net.Conn) {
-		c.Close()
+		err := c.Close()
+		if err != nil {
+			logger.Error().
+				Err(err).
+				Msg("connectionCloseError")
+		}
 		if metricsConn, ok := c.(*Conn); ok {
 			logger.Info().
 				Str("localAddr", c.LocalAddr().String()).

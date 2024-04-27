@@ -30,7 +30,7 @@ func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
 }
 
 type BasicClientAuth struct {
-	Config   BasicAuthClientConfig
+	Config   ClientConfig
 	user     string
 	password string
 }
@@ -73,7 +73,7 @@ func NewBasicAuthPairWithPlainPassword(user, password string) (BasicAuthPair, er
 	return BasicAuthPair{User: user, HashedPassword: hashedPassword}, nil
 }
 
-func LoadBasicAuthFromFile(filePath string) (BasicAuthMap, error) {
+func LoadBasicAuthFromFile(filePath string) (AuthMap, error) {
 	expFilePath, err := homedir.Expand(filePath)
 	if err != nil {
 		return nil, err
@@ -100,14 +100,14 @@ func LoadBasicAuthFromFile(filePath string) (BasicAuthMap, error) {
 	return authMap, nil
 }
 
-func LoadBasicAuthFromReader(reader io.Reader) BasicAuthMap {
+func LoadBasicAuthFromReader(reader io.Reader) AuthMap {
 	scanner := bufio.NewScanner(reader)
 
 	return LoadBasicAuthFromScanner(scanner)
 }
 
-func LoadBasicAuthFromScanner(scanner *bufio.Scanner) BasicAuthMap {
-	userMap := make(BasicAuthMap)
+func LoadBasicAuthFromScanner(scanner *bufio.Scanner) AuthMap {
+	userMap := make(AuthMap)
 	for scanner.Scan() {
 		parts := strings.Split(scanner.Text(), ":")
 		userMap.AddUserWithHashedPassword(parts[0], parts[1])

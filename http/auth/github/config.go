@@ -3,16 +3,18 @@ package github
 import (
 	"reflect"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/dioad/net/authz"
 )
 
 var (
-	EmptyGitHubAuthClientConfig = GitHubAuthClientConfig{}
-	EmptyGitHubAuthServerConfig = GitHubAuthServerConfig{}
+	EmptyClientConfig = ClientConfig{}
+	EmptyServerConfig = ServerConfig{}
 )
 
 // only need ClientID for device flow
-type GitHubAuthCommonConfig struct {
+type CommonConfig struct {
 	AllowInsecureHTTP bool   `mapstructure:"allow-insecure-http"`
 	ClientID          string `mapstructure:"client-id"`
 	ClientSecret      string `mapstructure:"client-secret"`
@@ -21,23 +23,29 @@ type GitHubAuthCommonConfig struct {
 	ConfigFile string `mapstructure:"config-file"`
 }
 
-type GitHubAuthClientConfig struct {
-	GitHubAuthCommonConfig           `mapstructure:",squash"`
+type ClientConfig struct {
+	CommonConfig                     `mapstructure:",squash"`
 	AccessToken                      string `mapstructure:"access-token"`
 	AccessTokenFile                  string `mapstructure:"access-token-file"`
 	EnableAccessTokenFromEnvironment bool   `mapstructure:"enable-access-token-from-environment"`
 }
 
-func (c GitHubAuthClientConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyGitHubAuthClientConfig)
+func (c ClientConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyClientConfig)
 }
 
-type GitHubAuthServerConfig struct {
-	GitHubAuthCommonConfig `mapstructure:",squash"`
+type ServerConfig struct {
+	CommonConfig `mapstructure:",squash"`
 
 	PrincipalACLConfig authz.PrincipalACLConfig `mapstructure:"principals"`
 }
 
-func (c GitHubAuthServerConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyGitHubAuthServerConfig)
+func (c ServerConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyServerConfig)
+}
+
+func FromMap(m map[string]interface{}) ServerConfig {
+	var c ServerConfig
+	_ = mapstructure.Decode(m, &c)
+	return c
 }

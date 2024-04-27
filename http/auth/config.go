@@ -9,27 +9,34 @@ import (
 )
 
 var (
-	EmptyAuthenticationClientConfig = AuthenticationClientConfig{}
-	EmptyAuthenticationServerConfig = AuthenticationServerConfig{}
+	EmptyClientConfig = ClientConfig{}
+	EmptyServerConfig = ServerConfig{}
 )
 
 // need something to deserialize and append details to http.Request
-type AuthenticationClientConfig struct {
-	BasicAuthConfig  basic.BasicAuthClientConfig   `mapstructure:"basic"`
-	GitHubAuthConfig github.GitHubAuthClientConfig `mapstructure:"github"`
-	HMACAuthConfig   hmac.HMACAuthClientConfig     `mapstructure:"hmac"`
+type ClientConfig struct {
+	BasicAuthConfig  basic.ClientConfig  `mapstructure:"basic"`
+	GitHubAuthConfig github.ClientConfig `mapstructure:"github"`
+	HMACAuthConfig   hmac.ClientConfig   `mapstructure:"hmac"`
 }
 
-func (c AuthenticationClientConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyAuthenticationClientConfig)
+func (c ClientConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyClientConfig)
 }
 
-type AuthenticationServerConfig struct {
-	BasicAuthConfig  basic.BasicAuthServerConfig   `mapstructure:"basic"`
-	GitHubAuthConfig github.GitHubAuthServerConfig `mapstructure:"github"`
-	HMACAuthConfig   hmac.HMACAuthServerConfig     `mapstructure:"hmac"`
+type GenericAuthConfig struct {
+	Name   string                 `mapstructure:"name"`
+	Config map[string]interface{} `mapstructure:"config"`
 }
 
-func (c AuthenticationServerConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyAuthenticationServerConfig)
+type ServerConfig struct {
+	BasicAuthConfig  basic.ServerConfig  `mapstructure:"basic"`
+	GitHubAuthConfig github.ServerConfig `mapstructure:"github"`
+	HMACAuthConfig   hmac.ServerConfig   `mapstructure:"hmac"`
+
+	Providers []string `mapstructure:"providers"`
+}
+
+func (c ServerConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyServerConfig)
 }

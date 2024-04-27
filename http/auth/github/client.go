@@ -8,7 +8,7 @@ import (
 )
 
 type GitHubClientAuth struct {
-	Config      GitHubAuthClientConfig
+	Config      ClientConfig
 	accessToken string
 }
 

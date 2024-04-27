@@ -5,6 +5,8 @@ import (
 
 	"github.com/google/go-github/v33/github"
 	"golang.org/x/oauth2"
+
+	"github.com/dioad/generics"
 )
 
 type UserInfo struct {
@@ -36,11 +38,16 @@ func FetchUserInfo(accessToken string) (*UserInfo, error) {
 	t := &TokenSource{AccessToken: accessToken}
 	oauthClient := oauth2.NewClient(context.Background(), t)
 	client := github.NewClient(oauthClient)
+
 	u, _, err := client.Users.Get(context.Background(), "")
 	if err != nil {
 		return nil, err
 	}
+
 	emails, _, err := client.Users.ListEmails(context.Background(), &github.ListOptions{PerPage: 10})
+	if err != nil {
+		return nil, err
+	}
 
 	userInfo := &UserInfo{
 		Login:    u.GetLogin(),
@@ -51,12 +58,15 @@ func FetchUserInfo(accessToken string) (*UserInfo, error) {
 		PlanName: u.GetPlan().GetName(),
 	}
 
-	for _, e := range emails {
-		if e.GetPrimary() {
-			userInfo.PrimaryEmail = e.GetEmail()
-			userInfo.PrimaryEmailVerified = e.GetVerified()
-		}
+	primaryEmail, err := generics.SelectOne(emails, func(e *github.UserEmail) bool {
+		return e.GetPrimary()
+	})
+	if err != nil {
+		return nil, err
 	}
+
+	userInfo.PrimaryEmail = primaryEmail.GetEmail()
+	userInfo.PrimaryEmailVerified = primaryEmail.GetVerified()
 
 	return userInfo, nil
 }
