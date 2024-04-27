@@ -12,16 +12,9 @@ import (
 	"math/big"
 	"net"
 	"time"
-)
 
-type SelfSignedConfig struct {
-	Subject     pkix.Name
-	DNSNames    []string
-	IPAddresses []net.IP
-	NotBefore   time.Time
-	NotAfter    time.Time
-	IsCA        bool
-}
+	"github.com/dioad/generics"
+)
 
 func CreateAndSaveSelfSignedKeyPair(config SelfSignedConfig, certPath, keyPath string) (*tls.Certificate, *x509.CertPool, error) {
 	cert, certPool, err := CreateSelfSignedKeyPair(config)
@@ -37,24 +30,59 @@ func CreateAndSaveSelfSignedKeyPair(config SelfSignedConfig, certPath, keyPath s
 	return cert, certPool, err
 }
 
+func convertConfigToX509CertificateTemplate(config SelfSignedConfig) (*x509.Certificate, error) {
+
+	notBefore := time.Now().UTC()
+
+	duration, err := time.ParseDuration(config.Duration)
+	if err != nil {
+		return nil, err
+	}
+
+	notAfter := notBefore.Add(duration)
+
+	ipAddresses, err := generics.Map(func(ip string) (net.IP, error) {
+		parsedIP := net.ParseIP(ip)
+		if parsedIP == nil {
+			return nil, fmt.Errorf("error parsing ip address: %s", ip)
+		}
+		return parsedIP, nil
+	}, config.SANConfig.IPAddresses)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing ip addresses: %w", err)
+	}
+
+	return &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Country:            config.Subject.Country,
+			Organization:       config.Subject.Organization,
+			OrganizationalUnit: config.Subject.OrganizationalUnit,
+			Locality:           config.Subject.Locality,
+			Province:           config.Subject.Province,
+			StreetAddress:      config.Subject.StreetAddress,
+			PostalCode:         config.Subject.PostalCode,
+			SerialNumber:       config.Subject.SerialNumber,
+			CommonName:         config.Subject.CommonName,
+		},
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
+		IsCA:                  config.IsCA,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		DNSNames:              config.SANConfig.DNSNames,
+		IPAddresses:           ipAddresses,
+	}, nil
+}
+
 // pulled from inet.af/tcpproxy
 func CreateSelfSignedKeyPair(config SelfSignedConfig) (*tls.Certificate, *x509.CertPool, error) {
 	pkey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		return nil, nil, err
 	}
-	template := &x509.Certificate{
-		SerialNumber:          big.NewInt(1),
-		Subject:               config.Subject,
-		NotBefore:             config.NotBefore,
-		NotAfter:              config.NotAfter,
-		IsCA:                  config.IsCA,
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-		DNSNames:              config.DNSNames[:],
-		IPAddresses:           config.IPAddresses[:],
-	}
+	template, err := convertConfigToX509CertificateTemplate(config)
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, template, template, pkey.Public(), pkey)
 	if err != nil {
@@ -71,15 +99,15 @@ func CreateSelfSignedKeyPair(config SelfSignedConfig) (*tls.Certificate, *x509.C
 		return nil, nil, err
 	}
 
-	tlscert, err := tls.X509KeyPair(cert.Bytes(), key.Bytes())
+	tlsCert, err := tls.X509KeyPair(cert.Bytes(), key.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}
 
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(cert.Bytes()) {
-		return nil, nil, fmt.Errorf("failed to add cert %q to pool", config.DNSNames)
+		return nil, nil, fmt.Errorf("failed to add cert %q to pool", config.SANConfig.DNSNames)
 	}
 
-	return &tlscert, pool, nil
+	return &tlsCert, pool, nil
 }

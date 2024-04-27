@@ -84,16 +84,6 @@ func (m *MetricSet) Register(r prometheus.Registerer) {
 	//}
 }
 
-func (m *MetricSet) instrumentHandlerWithPrefix(prefix string) func(handlerName string, handler http.HandlerFunc) http.HandlerFunc {
-	return func(handlerName string, handler http.HandlerFunc) http.HandlerFunc {
-		return m.instrumentHandlerFunc(prefix+handlerName, handler)
-	}
-}
-
-type instrumentHandler struct {
-	m *MetricSet
-}
-
 // Middleware - to make it a middleware for mux probably a better way.
 // TODO: need to extract this from this struct to remove the coupling with mux
 func (m *MetricSet) Middleware(next http.Handler) http.Handler {
@@ -115,24 +105,4 @@ func (m *MetricSet) Middleware(next http.Handler) http.Handler {
 				),
 			)).ServeHTTP(w, r)
 	})
-
-}
-
-//func (m *MetricSet) InstrumentHandler() http.Handler {
-//	return &instrumentHandler{m: m}
-//}
-
-func (m *MetricSet) instrumentHandlerFunc(handlerName string, handler http.HandlerFunc) http.HandlerFunc {
-	return promhttp.InstrumentHandlerCounter(
-		m.RequestCounter.MustCurryWith(prometheus.Labels{"handler": handlerName}),
-		promhttp.InstrumentHandlerDuration(
-			m.RequestDuration.MustCurryWith(prometheus.Labels{"handler": handlerName}),
-			promhttp.InstrumentHandlerResponseSize(
-				m.ResponseSize.MustCurryWith(prometheus.Labels{"handler": handlerName}),
-				promhttp.InstrumentHandlerRequestSize(
-					m.RequestSize.MustCurryWith(prometheus.Labels{"handler": handlerName}),
-					handler),
-			),
-		),
-	)
 }

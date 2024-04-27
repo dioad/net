@@ -10,12 +10,12 @@ func TestGitHubAuthenticator_AuthenticateToken(t *testing.T) {
 		userNil bool
 		login   string
 	}{
-		///		"valid token":   {token: "64b9d04d389defed0c7d80abcc164a6f3c8912cd4", userNil: false, login: "patdowney"},
+		// /		"valid token":   {token: "64b9d04d389defed0c7d80abcc164a6f3c8912cd4", userNil: false, login: "patdowney"},
 		"invalid token": {token: "somethinegelse", userNil: true},
 	}
 
-	authenticator := NewGitHubAuthenticator(GitHubAuthServerConfig{
-		GitHubAuthCommonConfig: GitHubAuthCommonConfig{
+	authenticator := NewGitHubAuthenticator(ServerConfig{
+		CommonConfig: CommonConfig{
 			ClientID:     "bbf369ec17928529a7e8",
 			ClientSecret: "491c7ea4efeff78bb7944fb70381cb9c33aca7a3",
 		},

@@ -3,11 +3,11 @@ package hmac
 import "reflect"
 
 var (
-	EmptyHMACAuthClientConfig = HMACAuthClientConfig{}
-	EmptyHMACAuthServerConfig = HMACAuthServerConfig{}
+	EmptyClientConfig = ClientConfig{}
+	EmptyServerConfig = ServerConfig{}
 )
 
-type HMACAuthCommonConfig struct {
+type CommonConfig struct {
 	AllowInsecureHTTP bool `mapstructure:"allow-insecure-http"`
 	// Inline shared key used to HMAC with value from HTTPHeader
 	SharedKey string `mapstructure:"shared-key"`
@@ -16,20 +16,20 @@ type HMACAuthCommonConfig struct {
 	Data          string `mapstructure:"data"`
 }
 
-type HMACAuthClientConfig struct {
-	HMACAuthCommonConfig `mapstructure:",squash"`
+type ClientConfig struct {
+	CommonConfig `mapstructure:",squash"`
 }
 
-func (c HMACAuthClientConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyHMACAuthClientConfig)
+func (c ClientConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyClientConfig)
 }
 
-type HMACAuthServerConfig struct {
-	HMACAuthCommonConfig `mapstructure:",squash"`
+type ServerConfig struct {
+	CommonConfig `mapstructure:",squash"`
 	// HTTP Header to use as data input
-	HTTPHeader string `mapstructure:"http-header"`
+	PrincipalHeader string `mapstructure:"principal-header"`
 }
 
-func (c HMACAuthServerConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyHMACAuthServerConfig)
+func (c ServerConfig) IsEmpty() bool {
+	return reflect.DeepEqual(c, EmptyServerConfig)
 }

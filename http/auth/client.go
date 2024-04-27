@@ -7,7 +7,7 @@ import (
 )
 
 // TODO: Choose a better name
-func AuthClient(authConfig AuthenticationClientConfig) ClientAuth {
+func AuthClient(authConfig ClientConfig) ClientAuth {
 	if !authConfig.GitHubAuthConfig.IsEmpty() {
 		return github.GitHubClientAuth{Config: authConfig.GitHubAuthConfig}
 	}
@@ -15,7 +15,7 @@ func AuthClient(authConfig AuthenticationClientConfig) ClientAuth {
 		return basic.BasicClientAuth{Config: authConfig.BasicAuthConfig}
 	}
 	if !authConfig.HMACAuthConfig.IsEmpty() {
-		return hmac.HMACClientAuth{Config: authConfig.HMACAuthConfig}
+		return hmac.ClientAuth{Config: authConfig.HMACAuthConfig}
 	}
 	return nil
 }

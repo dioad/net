@@ -1,8 +1,6 @@
 module github.com/dioad/net
 
-go 1.21
-
-toolchain go1.21.7
+go 1.22.1
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -30,6 +28,7 @@ require (
 
 require (
 	github.com/coredns/coredns v1.11.2
+	github.com/dioad/generics v0.0.2
 	github.com/dioad/util v0.1.0
 	github.com/emersion/go-msgauth v0.6.8
 	github.com/google/uuid v1.6.0
@@ -69,7 +68,6 @@ require (
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/tools v0.20.0 // indirect
-	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240401170217-c3f982113cda // indirect
 	google.golang.org/grpc v1.63.2 // indirect
 )

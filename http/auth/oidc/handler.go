@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	stdctx "context"
 	"encoding/gob"
 	"net/http"
 
@@ -34,29 +35,60 @@ func init() {
 	gob.Register(goth.User{})
 }
 
+func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
+	session, err := h.CookieStore.Get(r, SessionCookieName)
+	if err != nil {
+		return r.Context(), err
+	}
+
+	data := session.Values["data"].(SessionData)
+
+	ctx := context.NewContextWithAuthenticatedPrincipal(r.Context(), data.Principal)
+	ctx = NewContextWithOIDCUserInfo(ctx, &data.User)
+
+	return ctx, nil
+}
+
+func (h *Handler) handleAuth(w http.ResponseWriter, req *http.Request) (*SessionData, error) {
+	session, err := h.CookieStore.Get(req, SessionCookieName)
+	if err != nil {
+		return nil, err
+	}
+
+	if session.IsNew {
+		r, _ := h.CookieStore.New(req, PreAuthRefererCookieName)
+		r.Values["referer"] = req.URL.String()
+		err = h.CookieStore.Save(req, w, r)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	}
+
+	data := session.Values["data"].(SessionData)
+	return &data, nil
+}
+
 func (h *Handler) AuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		session, err := h.CookieStore.Get(req, SessionCookieName)
+		sessionData, err := h.handleAuth(w, req)
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if session.IsNew {
-			r, _ := h.CookieStore.New(req, PreAuthRefererCookieName)
-			r.Values["referer"] = req.URL.String()
-			h.CookieStore.Save(req, w, r)
+		if sessionData == nil {
 			w.Header().Set("Location", h.LoginPath)
 			w.WriteHeader(http.StatusTemporaryRedirect)
 			return
 		}
 
-		data := session.Values["data"].(SessionData)
+		ctx := context.NewContextWithAuthenticatedPrincipal(req.Context(), sessionData.Principal)
+		ctx = NewContextWithOIDCUserInfo(ctx, &sessionData.User)
 
-		ctx := context.NewContextWithAuthenticatedPrincipal(req.Context(), data.Principal)
-		ctx = NewContextWithOIDCUserInfo(ctx, &data.User)
-
-		next(w, req.WithContext(ctx))
+		next.ServeHTTP(w, req.WithContext(ctx))
 	}
 }
 
@@ -66,38 +98,54 @@ func (h *Handler) AuthStart() http.HandlerFunc {
 	}
 }
 
+func (h *Handler) handleCallback(w http.ResponseWriter, req *http.Request) (string, error) {
+	user, err := gothic.CompleteUserAuth(w, req)
+	if err != nil {
+		return "", err
+	}
+
+	session, err := h.CookieStore.New(req, SessionCookieName)
+	if err != nil {
+		return "", err
+	}
+	params := mux.Vars(req)
+	provider := params["provider"]
+
+	user.RawData = nil
+
+	session.Values["data"] = SessionData{
+		ID:        uuid.New(),
+		User:      user,
+		Principal: user.NickName,
+		Provider:  provider,
+	}
+
+	err = h.CookieStore.Save(req, w, session)
+	if err != nil {
+		return "", err
+	}
+
+	redirect := h.HomePath
+	r, _ := h.CookieStore.Get(req, PreAuthRefererCookieName)
+	if r.Values["referer"] != nil {
+		redirect = r.Values["referer"].(string)
+		r.Options.MaxAge = -1
+		err = h.CookieStore.Save(req, w, r)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return redirect, nil
+}
+
 func (h *Handler) Callback() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		user, err := gothic.CompleteUserAuth(w, req)
+		redirect, err := h.handleCallback(w, req)
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
-
-		session, err := h.CookieStore.New(req, SessionCookieName)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		params := mux.Vars(req)
-		provider := params["provider"]
-
-		user.RawData = nil
-
-		session.Values["data"] = SessionData{
-			ID:        uuid.New(),
-			User:      user,
-			Principal: user.NickName,
-			Provider:  provider,
-		}
-
-		h.CookieStore.Save(req, w, session)
-		redirect := h.HomePath
-		r, _ := h.CookieStore.Get(req, PreAuthRefererCookieName)
-		if r.Values["referer"] != nil {
-			redirect = r.Values["referer"].(string)
-			r.Options.MaxAge = -1
-			h.CookieStore.Save(req, w, r)
 		}
 
 		w.Header().Set("Location", redirect)
@@ -105,26 +153,38 @@ func (h *Handler) Callback() http.HandlerFunc {
 	}
 }
 
+func (*Handler) handleLogout(w http.ResponseWriter, req *http.Request) error {
+	session, err := gothic.Store.Get(req, SessionCookieName)
+	if err != nil {
+		return err
+	}
+	data := session.Values["data"].(SessionData)
+
+	session.Options.MaxAge = -1
+	err = gothic.Store.Save(req, w, session)
+	if err != nil {
+		return err
+	}
+
+	// Github Auth has no logout
+	if data.Provider != "github" {
+		err = gothic.Logout(w, req)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (h *Handler) LogoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		session, err := h.CookieStore.Get(req, SessionCookieName)
+
+		err := h.handleLogout(w, req)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		data := session.Values["data"].(SessionData)
 
-		session.Options.MaxAge = -1
-		h.CookieStore.Save(req, w, session)
-
-		// Github Auth has no logout
-		if data.Provider != "github" {
-			err = gothic.Logout(w, req)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-			return
-		}
 		w.Header().Set("Location", h.LoginPath)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}

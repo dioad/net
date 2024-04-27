@@ -11,7 +11,7 @@ import (
 )
 
 type Authenticator struct {
-	Config GitHubAuthServerConfig
+	Config ServerConfig
 	Client *github.Client
 }
 
@@ -45,7 +45,7 @@ func (a *Authenticator) AuthenticateToken(accessToken string) (*UserInfo, error)
 	return u, nil
 }
 
-func NewGitHubAuthenticator(cfg GitHubAuthServerConfig) *Authenticator {
+func NewGitHubAuthenticator(cfg ServerConfig) *Authenticator {
 	basicAuthTransport := github.BasicAuthTransport{
 		Username: cfg.ClientID,
 		Password: cfg.ClientSecret,
