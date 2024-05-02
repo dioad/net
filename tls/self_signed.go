@@ -83,6 +83,9 @@ func CreateSelfSignedKeyPair(config SelfSignedConfig) (*tls.Certificate, *x509.C
 		return nil, nil, err
 	}
 	template, err := convertConfigToX509CertificateTemplate(config)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, template, template, pkey.Public(), pkey)
 	if err != nil {
