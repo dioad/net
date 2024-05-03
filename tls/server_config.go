@@ -3,6 +3,7 @@ package tls
 import (
 	"crypto/tls"
 	"fmt"
+	"path/filepath"
 	"reflect"
 
 	"github.com/dioad/util"
@@ -34,7 +35,8 @@ type SelfSignedConfig struct {
 	SANConfig      SANConfig          `mapstructure:"san-config" json:"san_config,omitempty"`
 	Duration       string             `mapstructure:"duration" json:"duration,omitempty"`
 	IsCA           bool               `mapstructure:"ca" json:"is_ca,omitempty"`
-	CacheDirectory string             `mapstructure:"cache-directory" json:",omitempty" json:"cache_directory,omitempty"`
+	CacheDirectory string             `mapstructure:"cache-directory" json:"cache_directory,omitempty"`
+	Alias          string             `mapstructure:"alias" json:"alias,omitempty"`
 }
 
 func (c SelfSignedConfig) IsEmpty() bool {
@@ -180,7 +182,19 @@ func NewSelfSignedTLSConfigFunc(c SelfSignedConfig) ConfigFunc {
 }
 
 func NewSelfSignedTLSConfig(config SelfSignedConfig) (*tls.Config, error) {
-	cert, _, err := CreateAndSaveSelfSignedKeyPair(config, "cert.pem", "key.pem")
+	alias := config.Alias
+	if alias == "" {
+		alias = "self-signed"
+	}
+	cacheDirectory, err := util.CreateDirPath(config.CacheDirectory, ".")
+	if err != nil {
+		return nil, fmt.Errorf("error creating cache directory: %w", err)
+	}
+
+	certPath := filepath.Join(cacheDirectory, fmt.Sprintf("%s.pem", alias))
+	keyPath := filepath.Join(cacheDirectory, fmt.Sprintf("%s.key", alias))
+
+	cert, _, err := CreateAndSaveSelfSignedKeyPair(config, certPath, keyPath)
 
 	if err != nil {
 		return nil, fmt.Errorf("error generating self signed certificate: %w", err)
