@@ -8,8 +8,9 @@ import (
 	"strings"
 
 	"github.com/cli/oauth/api"
-	"github.com/dioad/util"
 	"gopkg.in/yaml.v3"
+
+	"github.com/dioad/util"
 )
 
 func ResolveAccessToken(c ClientConfig) (string, error) {

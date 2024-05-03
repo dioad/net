@@ -39,7 +39,7 @@ func (r *Record) String() string {
 
 	result := sb.String()
 	if len(result) > 255 {
-		panic(fmt.Sprintf("too many chars for Record record: %s", result))
+		result = result[:255]
 	}
 	return result
 }
