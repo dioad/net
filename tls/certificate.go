@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -61,7 +62,7 @@ func LoadCertPoolFromFile(certPoolPath string) (*x509.CertPool, error) {
 	return certPool, nil
 }
 
-func savePEMFile(filename string, perm int, blockType string, data []byte) error {
+func saveBlockToPEMFile(filename string, perm int, blockType string, data []byte) error {
 	filenameClean := filepath.Clean(filename)
 
 	f, err := os.OpenFile(filenameClean, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(perm))
@@ -69,7 +70,52 @@ func savePEMFile(filename string, perm int, blockType string, data []byte) error
 		return err
 	}
 
-	err = pem.Encode(f, &pem.Block{Type: blockType, Bytes: data})
+	err = encodeBlock(f, blockType, data)
+
+	return f.Close()
+}
+
+func encodeBlock(w io.Writer, blockType string, data []byte) error {
+	err := pem.Encode(w, &pem.Block{Type: blockType, Bytes: data})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func encodeCertificateBlock(w io.Writer, data []byte) error {
+	return encodeBlock(w, "CERTIFICATE", data)
+}
+
+func encodePrivateKeyBlock(w io.Writer, data crypto.PrivateKey) error {
+	privateBytes, err := x509.MarshalPKCS8PrivateKey(data)
+	if err != nil {
+		return err
+	}
+
+	err = encodeBlock(w, "PRIVATE KEY", privateBytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SaveTLSCertificateToFile saves a tls.Certificate to a file
+func SaveTLSCertificateToFile(cert *tls.Certificate, filename string, perm int) error {
+	filenameClean := filepath.Clean(filename)
+
+	f, err := os.OpenFile(filenameClean, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(perm))
+	if err != nil {
+		return err
+	}
+
+	err = encodeCertificateBlock(f, cert.Certificate[0])
+	if err != nil {
+		return err
+	}
+
+	err = encodePrivateKeyBlock(f, cert.PrivateKey)
 	if err != nil {
 		return err
 	}
@@ -77,18 +123,19 @@ func savePEMFile(filename string, perm int, blockType string, data []byte) error
 	return f.Close()
 }
 
+// SaveTLSCertificateToFiles saves a tls.Certificate to a certificate and key file
 func SaveTLSCertificateToFiles(cert *tls.Certificate, certPath, keyPath string) error {
-	err := savePEMFile(certPath, 0644, "CERTIFICATE", cert.Certificate[0])
+	err := saveBlockToPEMFile(certPath, 0644, "CERTIFICATE", cert.Certificate[0])
 	if err != nil {
 		return err
 	}
 
-	privBytes, err := x509.MarshalPKCS8PrivateKey(cert.PrivateKey)
+	privateBytes, err := x509.MarshalPKCS8PrivateKey(cert.PrivateKey)
 	if err != nil {
 		return err
 	}
 
-	return savePEMFile(keyPath, 0600, "PRIVATE KEY", privBytes)
+	return saveBlockToPEMFile(keyPath, 0600, "PRIVATE KEY", privateBytes)
 }
 
 // LoadKeyPairAndCertsFromFile From: https://gist.github.com/ukautz/cd118e298bbd8f0a88fc

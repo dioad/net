@@ -31,6 +31,7 @@ type SelfSignedConfig struct {
 	SANConfig      SANConfig          `mapstructure:"san-config" json:"san_config,omitempty"`
 	Duration       string             `mapstructure:"duration" json:"duration,omitempty"`
 	IsCA           bool               `mapstructure:"ca" json:"is_ca,omitempty"`
+	Bits           int                `mapstructure:"bits" json:"bits,omitempty"`
 	CacheDirectory string             `mapstructure:"cache-directory" json:"cache_directory,omitempty"`
 	Alias          string             `mapstructure:"alias" json:"alias,omitempty"`
 }

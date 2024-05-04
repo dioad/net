@@ -2,11 +2,23 @@ package tls
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"path/filepath"
 	"slices"
 	"testing"
 )
 
 func TestNewClientTLSConfig(t *testing.T) {
+	baseCertFileName := "cert.pem"
+	baseKeyFileName := "private.key"
+	certFilePath := filepath.Join(t.TempDir(), baseCertFileName)
+	keyFilePath := filepath.Join(t.TempDir(), baseKeyFileName)
+
+	err := helperCreateCertificateWithSeparatePEMFiles(t, certFilePath, keyFilePath)
+	if err != nil {
+		t.Fatalf("helperCreateCertificateWithSinglePEMFiles() error = %v", err)
+	}
+
 	tests := []struct {
 		name string
 		c    ClientConfig
@@ -19,7 +31,7 @@ func TestNewClientTLSConfig(t *testing.T) {
 		},
 		{
 			name: "with certificate and key",
-			c:    ClientConfig{Certificate: "certificate", Key: "key"},
+			c:    ClientConfig{Certificate: certFilePath, Key: keyFilePath},
 			want: &tls.Config{
 				MinVersion: tls.VersionTLS12,
 				Certificates: []tls.Certificate{
@@ -33,7 +45,7 @@ func TestNewClientTLSConfig(t *testing.T) {
 		},
 		{
 			name: "with root CA file",
-			c:    ClientConfig{RootCAFile: "root-ca-file"},
+			c:    ClientConfig{RootCAFile: certFilePath},
 			want: &tls.Config{
 				MinVersion:         tls.VersionTLS12,
 				RootCAs:            nil,
@@ -65,7 +77,55 @@ func TestNewClientTLSConfig(t *testing.T) {
 	}
 }
 
+func helperCreateSelfSignedKeyPair(t *testing.T, tempDir string) (*tls.Certificate, *x509.CertPool) {
+	t.Helper()
+
+	config := SelfSignedConfig{
+		CacheDirectory: tempDir,
+		Subject:        CertificateSubject{CommonName: t.Name()},
+		SANConfig: SANConfig{
+			DNSNames:    []string{"localhost"},
+			IPAddresses: []string{"127.0.0.1"},
+		},
+		Duration: "5m",
+		Bits:     1024,
+	}
+
+	cert, certPool, err := CreateSelfSignedKeyPair(config)
+	if err != nil {
+		t.Fatalf("CreateSelfSignedKeyPair() error = %v", err)
+	}
+	return cert, certPool
+}
+
+func helperCreateCertificateWithSeparatePEMFiles(t *testing.T, certPath, keyPath string) error {
+	t.Helper()
+
+	dirName := filepath.Dir(certPath)
+
+	cert, _ := helperCreateSelfSignedKeyPair(t, dirName)
+
+	return SaveTLSCertificateToFiles(cert, certPath, keyPath)
+}
+
+func helperCreateCertificateWithSinglePEMFiles(t *testing.T, filePath string) error {
+	t.Helper()
+
+	dirName := filepath.Dir(filePath)
+
+	cert, _ := helperCreateSelfSignedKeyPair(t, dirName)
+
+	return SaveTLSCertificateToFile(cert, filePath, 0644)
+}
+
 func TestNewLocalTLSConfig(t *testing.T) {
+	testBaseFileName := "single-pem-file.pem"
+	singleFilePath := filepath.Join(t.TempDir(), testBaseFileName)
+	err := helperCreateCertificateWithSinglePEMFiles(t, singleFilePath)
+	if err != nil {
+		t.Fatalf("helperCreateCertificateWithSinglePEMFiles() error = %v", err)
+	}
+
 	tests := []struct {
 		name string
 		c    LocalConfig
@@ -73,7 +133,7 @@ func TestNewLocalTLSConfig(t *testing.T) {
 	}{
 		{
 			name: "single pem file",
-			c:    LocalConfig{SinglePEMFile: "single-pem-file"},
+			c:    LocalConfig{SinglePEMFile: singleFilePath},
 			want: &tls.Config{Certificates: nil},
 		},
 		{
@@ -153,8 +213,10 @@ func TestNewSelfSignedTLSConfig(t *testing.T) {
 		{
 			name: "non-empty",
 			c: SelfSignedConfig{
-				Alias:    "host",
-				Duration: "1h",
+				Alias:          "host",
+				Duration:       "1h",
+				CacheDirectory: t.TempDir(),
+				Bits:           1024,
 			},
 		},
 	}

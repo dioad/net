@@ -79,7 +79,7 @@ func convertConfigToX509CertificateTemplate(config SelfSignedConfig) (*x509.Cert
 
 // pulled from inet.af/tcpproxy
 func CreateSelfSignedKeyPair(config SelfSignedConfig) (*tls.Certificate, *x509.CertPool, error) {
-	pkey, err := rsa.GenerateKey(rand.Reader, 4096)
+	pkey, err := rsa.GenerateKey(rand.Reader, config.Bits)
 	if err != nil {
 		return nil, nil, err
 	}

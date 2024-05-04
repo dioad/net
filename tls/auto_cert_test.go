@@ -21,7 +21,7 @@ func TestNewAutocertTLSConfig(t *testing.T) {
 			name: "all",
 			c: AutoCertConfig{
 				AllowedHosts:   []string{"example.com"},
-				CacheDirectory: "cache",
+				CacheDirectory: t.TempDir(),
 				Email:          "asdf@asdf.uk",
 				DirectoryURL:   "https://example.com",
 			},
