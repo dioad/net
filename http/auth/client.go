@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"github.com/dioad/generics"
+
 	"github.com/dioad/net/http/auth/basic"
 	"github.com/dioad/net/http/auth/github"
 	"github.com/dioad/net/http/auth/hmac"
@@ -8,13 +10,13 @@ import (
 
 // TODO: Choose a better name
 func AuthClient(authConfig ClientConfig) ClientAuth {
-	if !authConfig.GitHubAuthConfig.IsEmpty() {
+	if !generics.IsZeroValue(authConfig.GitHubAuthConfig) {
 		return github.GitHubClientAuth{Config: authConfig.GitHubAuthConfig}
 	}
-	if !authConfig.BasicAuthConfig.IsEmpty() {
+	if !generics.IsZeroValue(authConfig.BasicAuthConfig) {
 		return basic.BasicClientAuth{Config: authConfig.BasicAuthConfig}
 	}
-	if !authConfig.HMACAuthConfig.IsEmpty() {
+	if !generics.IsZeroValue(authConfig.HMACAuthConfig) {
 		return hmac.ClientAuth{Config: authConfig.HMACAuthConfig}
 	}
 	return nil

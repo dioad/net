@@ -2,7 +2,6 @@ package tlsrpt
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/dioad/generics"
@@ -11,10 +10,6 @@ import (
 type Record struct {
 	Version            string   `mapstructure:"version"`
 	ReportURIAggregate []string `mapstructure:"report-uri-aggregate"`
-}
-
-func (r *Record) Empty() bool {
-	return reflect.DeepEqual(*r, Record{})
 }
 
 func formatRUA(label string, locations []string) string {

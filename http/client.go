@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/dioad/generics"
+
 	"github.com/dioad/net/http/auth"
 	"github.com/dioad/net/http/auth/basic"
 )
@@ -53,7 +55,7 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	if !c.Config.AuthConfig.IsEmpty() {
+	if !generics.IsZeroValue(c.Config.AuthConfig) {
 		ac := auth.AuthClient(c.Config.AuthConfig)
 
 		err := ac.AddAuth(req)

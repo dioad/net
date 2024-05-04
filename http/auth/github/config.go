@@ -1,16 +1,9 @@
 package github
 
 import (
-	"reflect"
-
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/dioad/net/authz"
-)
-
-var (
-	EmptyClientConfig = ClientConfig{}
-	EmptyServerConfig = ServerConfig{}
 )
 
 // only need ClientID for device flow
@@ -30,18 +23,10 @@ type ClientConfig struct {
 	EnableAccessTokenFromEnvironment bool   `mapstructure:"enable-access-token-from-environment"`
 }
 
-func (c ClientConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyClientConfig)
-}
-
 type ServerConfig struct {
 	CommonConfig `mapstructure:",squash"`
 
 	PrincipalACLConfig authz.PrincipalACLConfig `mapstructure:"principals"`
-}
-
-func (c ServerConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyServerConfig)
 }
 
 func FromMap(m map[string]interface{}) ServerConfig {

@@ -2,7 +2,6 @@ package spf
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/dioad/generics"
@@ -55,10 +54,6 @@ type Record struct {
 
 	All          bool      `mapstructure:"all"`
 	AllQualifier Qualifier `mapstructure:"all-qualifier"`
-}
-
-func (r *Record) Empty() bool {
-	return reflect.DeepEqual(*r, Record{})
 }
 
 func (r *Record) Add(m Mechanism) {

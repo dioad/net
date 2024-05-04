@@ -3,13 +3,10 @@ package tls
 import (
 	"crypto/tls"
 	"fmt"
-	"reflect"
 	// "time"
 	// "golang.org/x/crypto/acme/autocert"
-)
 
-var (
-	EmptyClientConfig = ClientConfig{}
+	"github.com/dioad/generics"
 )
 
 type ClientConfig struct {
@@ -19,27 +16,8 @@ type ClientConfig struct {
 	InsecureSkipVerify bool   `mapstructure:"insecure-skip-verify"`
 }
 
-func (c ClientConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyClientConfig)
-}
-
-func convertClientAuthType(authType string) tls.ClientAuthType {
-	switch authType {
-	case "RequestClientCert":
-		return tls.RequestClientCert
-	case "RequireAnyClientCert":
-		return tls.RequireAnyClientCert
-	case "VerifyClientCertIfGiven":
-		return tls.VerifyClientCertIfGiven
-	case "RequireAndVerifyClientCert":
-		return tls.RequireAndVerifyClientCert
-	default:
-		return tls.NoClientCert
-	}
-}
-
 func NewClientTLSConfig(c ClientConfig) (*tls.Config, error) {
-	if c == EmptyClientConfig {
+	if generics.IsZeroValue(c) {
 		return nil, nil
 	}
 

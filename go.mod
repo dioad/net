@@ -21,14 +21,14 @@ require (
 	github.com/rs/zerolog v1.32.0
 	golang.org/x/crypto v0.22.0
 	golang.org/x/net v0.24.0
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 	google.golang.org/protobuf v1.34.0 // indirect
 )
 
 require (
 	github.com/coredns/coredns v1.11.3
-	github.com/dioad/generics v0.0.4
+	github.com/dioad/generics v0.0.5
 	github.com/dioad/util v0.2.0
 	github.com/emersion/go-msgauth v0.6.8
 	github.com/google/uuid v1.6.0
@@ -40,7 +40,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/weaveworks/common v0.0.0-20230728070032-dd9e68f319d5
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
-	golang.org/x/oauth2 v0.19.0
+	golang.org/x/oauth2 v0.20.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

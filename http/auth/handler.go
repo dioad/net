@@ -4,6 +4,8 @@ import (
 	stdctx "context"
 	"net/http"
 
+	"github.com/dioad/generics"
+
 	"github.com/dioad/net/http/auth/basic"
 	"github.com/dioad/net/http/auth/github"
 	"github.com/dioad/net/http/auth/hmac"
@@ -21,12 +23,16 @@ func NewHandler(cfg *ServerConfig) *Handler {
 
 func (h *Handler) Wrap(handler http.Handler) http.Handler {
 	var mw Middleware
-	if !h.Config.GitHubAuthConfig.IsEmpty() {
+	if !generics.IsZeroValue(h.Config.GitHubAuthConfig) {
 		mw = github.NewHandler(h.Config.GitHubAuthConfig)
-	} else if !h.Config.BasicAuthConfig.IsEmpty() {
+	} else if !generics.IsZeroValue(h.Config.BasicAuthConfig) {
 		mw = basic.NewHandler(h.Config.BasicAuthConfig)
-	} else if !h.Config.HMACAuthConfig.IsEmpty() {
+	} else if !generics.IsZeroValue(h.Config.HMACAuthConfig) {
 		mw = hmac.NewHandler(h.Config.HMACAuthConfig)
+	}
+
+	if mw == nil {
+		return handler
 	}
 
 	return mw.Wrap(handler)

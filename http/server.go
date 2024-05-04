@@ -19,6 +19,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/weaveworks/common/middleware"
 
+	"github.com/dioad/generics"
+
 	"github.com/dioad/net/http/auth"
 	"github.com/dioad/net/http/pprof"
 )
@@ -68,7 +70,7 @@ func newDefaultServer(config Config) *Server {
 		metadataStatusMap: make(map[string]any),
 	}
 
-	if !config.AuthConfig.IsEmpty() {
+	if !generics.IsZeroValue(config.AuthConfig) {
 		server.Authenticator = auth.NewHandler(&config.AuthConfig)
 	}
 

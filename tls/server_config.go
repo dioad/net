@@ -4,13 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"path/filepath"
-	"reflect"
 
+	"github.com/dioad/generics"
 	"github.com/dioad/util"
-)
-
-var (
-	EmptyServerConfig = ServerConfig{}
 )
 
 type SANConfig struct {
@@ -39,19 +35,11 @@ type SelfSignedConfig struct {
 	Alias          string             `mapstructure:"alias" json:"alias,omitempty"`
 }
 
-func (c SelfSignedConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptySelfSignedConfig)
-}
-
 type LocalConfig struct {
 	SinglePEMFile  string         `mapstructure:"single-pem-file" json:",omitempty"`
 	Certificate    string         `mapstructure:"cert" json:",omitempty"`
 	Key            string         `mapstructure:"key" json:",omitempty"`
 	FileWaitConfig FileWaitConfig `mapstructure:"file-wait-config,squash" json:",omitempty,squash"`
-}
-
-func (c LocalConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyLocalConfig)
 }
 
 type FileWaitConfig struct {
@@ -77,33 +65,14 @@ type ServerConfig struct {
 	TLSMinVersion string   `mapstructure:"tls-min-version"`
 }
 
-func (s ServerConfig) IsEmpty() bool {
-	return reflect.DeepEqual(s, EmptyServerConfig)
-}
-
-func convertTLSVersion(version string) uint16 {
-	switch version {
-	case "TLS13":
-		return tls.VersionTLS13
-	case "TLS12":
-		return tls.VersionTLS12
-	case "TLS11":
-		return tls.VersionTLS11
-	case "TLS10":
-		return tls.VersionTLS10
-	default:
-		return tls.VersionTLS12
-	}
-}
-
 type ConfigFunc func() (*tls.Config, error)
 
 func configFuncFromConfig(c ServerConfig) ConfigFunc {
-	if !c.AutoCertConfig.IsEmpty() {
+	if !generics.IsZeroValue(c.AutoCertConfig) {
 		return NewAutocertTLSConfigFunc(c.AutoCertConfig)
-	} else if !c.SelfSignedConfig.IsEmpty() {
+	} else if !generics.IsZeroValue(c.SelfSignedConfig) {
 		return NewSelfSignedTLSConfigFunc(c.SelfSignedConfig)
-	} else if !c.LocalConfig.IsEmpty() {
+	} else if !generics.IsZeroValue(c.LocalConfig) {
 		return NewLocalTLSConfigFunc(c.LocalConfig)
 	}
 	return nil
@@ -130,10 +99,15 @@ func NewServerTLSConfig(c ServerConfig) (*tls.Config, error) {
 		tlsConfig.ServerName = c.ServerName
 	}
 
-	if len(c.NextProtos) == 0 {
-		tlsConfig.NextProtos = []string{"h2", "http/1.1"}
+	defaultNextProtos := []string{"h2", "http/1.1"}
+	if len(c.NextProtos) > 0 {
+		defaultNextProtos = c.NextProtos
+	}
+
+	if len(tlsConfig.NextProtos) == 0 {
+		tlsConfig.NextProtos = defaultNextProtos
 	} else {
-		tlsConfig.NextProtos = c.NextProtos
+		tlsConfig.NextProtos = append(tlsConfig.NextProtos, defaultNextProtos...)
 	}
 
 	if c.ClientCAFile != "" {
@@ -154,6 +128,9 @@ func NewLocalTLSConfigFunc(c LocalConfig) ConfigFunc {
 }
 
 func NewLocalTLSConfig(config LocalConfig) (*tls.Config, error) {
+	if generics.IsZeroValue(config) {
+		return nil, nil
+	}
 	if config.SinglePEMFile != "" {
 		certs, err := CertificatesFromSinglePEMFile(config.SinglePEMFile, config.FileWaitConfig)
 		if err != nil {
@@ -182,6 +159,10 @@ func NewSelfSignedTLSConfigFunc(c SelfSignedConfig) ConfigFunc {
 }
 
 func NewSelfSignedTLSConfig(config SelfSignedConfig) (*tls.Config, error) {
+	if generics.IsZeroValue(config) {
+		return nil, nil
+	}
+
 	alias := config.Alias
 	if alias == "" {
 		alias = "self-signed"

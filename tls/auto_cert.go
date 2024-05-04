@@ -2,14 +2,11 @@ package tls
 
 import (
 	"crypto/tls"
-	"reflect"
 
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
-)
 
-var (
-	EmptyAutoCertConfig = AutoCertConfig{}
+	"github.com/dioad/generics"
 )
 
 type AutoCertConfig struct {
@@ -17,10 +14,6 @@ type AutoCertConfig struct {
 	Email          string   `mapstructure:"email" json:",omitempty"`
 	AllowedHosts   []string `mapstructure:"allowed-hosts" json:",omitempty"`
 	DirectoryURL   string   `mapstructure:"directory-url" json:",omitempty"`
-}
-
-func (c AutoCertConfig) IsEmpty() bool {
-	return reflect.DeepEqual(c, EmptyAutoCertConfig)
 }
 
 func NewAutocertTLSConfigFunc(c AutoCertConfig) ConfigFunc {
@@ -33,6 +26,9 @@ func NewAutocertTLSConfig(c AutoCertConfig) (*tls.Config, error) {
 }
 
 func NewAutocertManagerFromConfig(c AutoCertConfig) *autocert.Manager {
+	if generics.IsZeroValue(c) {
+		return nil
+	}
 	autocertClient := &acme.Client{
 		DirectoryURL: acme.LetsEncryptURL,
 	}
