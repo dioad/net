@@ -28,7 +28,7 @@ require (
 
 require (
 	github.com/coredns/coredns v1.11.3
-	github.com/dioad/generics v0.0.5
+	github.com/dioad/generics v0.0.6
 	github.com/dioad/util v0.2.0
 	github.com/emersion/go-msgauth v0.6.8
 	github.com/google/uuid v1.6.0
