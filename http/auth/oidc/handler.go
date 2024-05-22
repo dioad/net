@@ -3,15 +3,17 @@ package oidc
 import (
 	stdctx "context"
 	"encoding/gob"
+	"fmt"
 	"net/http"
 
-	"github.com/dioad/net/http/auth/context"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/github"
+
+	"github.com/dioad/net/http/auth/context"
 )
 
 type Handler struct {
@@ -158,7 +160,11 @@ func (*Handler) handleLogout(w http.ResponseWriter, req *http.Request) error {
 	if err != nil {
 		return err
 	}
-	data := session.Values["data"].(SessionData)
+	dataValue, ok := session.Values["data"]
+	if !ok {
+		return fmt.Errorf("no session data found")
+	}
+	data := dataValue.(SessionData)
 
 	session.Options.MaxAge = -1
 	err = gothic.Store.Save(req, w, session)
