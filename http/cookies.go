@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
@@ -28,7 +27,7 @@ func NewPersistentCookieStore(config CookieConfig) (*sessions.CookieStore, error
 }
 
 func NewSessionCookieStore(config CookieConfig) (*sessions.CookieStore, error) {
-	authKey, err := decodeBase64String(config.Base64AuthenticationKey)
+	authKey, err := base64.StdEncoding.DecodeString(config.Base64AuthenticationKey)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("failed to decode %v", config.Base64AuthenticationKey))
 	}
@@ -42,15 +41,4 @@ func NewSessionCookieStore(config CookieConfig) (*sessions.CookieStore, error) {
 	store.Options.SameSite = http.SameSiteLaxMode
 
 	return store, nil
-}
-
-func decodeBase64String(raw string) ([]byte, error) {
-	b := make([]byte, 0)
-	r := strings.NewReader(raw)
-	d := base64.NewDecoder(base64.StdEncoding, r)
-	_, err := d.Read(b)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
 }
