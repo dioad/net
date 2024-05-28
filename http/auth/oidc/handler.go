@@ -72,6 +72,10 @@ func (h *Handler) handleAuth(w http.ResponseWriter, req *http.Request) (*Session
 	return &data, nil
 }
 
+func (h *Handler) Middleware(next http.Handler) http.Handler {
+	return h.AuthWrapper(next.ServeHTTP)
+}
+
 func (h *Handler) AuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		sessionData, err := h.handleAuth(w, req)
