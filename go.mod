@@ -32,7 +32,7 @@ require (
 	github.com/dioad/util v0.3.0
 	github.com/emersion/go-msgauth v0.6.8
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/sessions v1.2.2
+	github.com/gorilla/sessions v1.3.0
 	github.com/markbates/goth v1.80.0
 	github.com/miekg/dns v1.1.61
 	github.com/mitchellh/go-homedir v1.1.0
