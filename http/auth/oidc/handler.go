@@ -12,6 +12,7 @@ import (
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/github"
+	oidc "github.com/markbates/goth/providers/openidConnect"
 
 	"github.com/dioad/net/http/auth/context"
 )
@@ -203,11 +204,38 @@ func (h *Handler) LogoutHandler() http.HandlerFunc {
 func NewHandler(config Config, store sessions.Store) *Handler {
 	gothic.Store = store
 
-	provider := config.ProviderMap["github"]
+	if config.ProviderMap == nil {
+		config.ProviderMap = make(map[string]ProviderConfig)
+	}
 
-	goth.UseProviders(
-		github.New(provider.ClientID, provider.ClientSecret, provider.Callback, "read:user", "user:email"),
-	)
+	provider, ok := config.ProviderMap["github"]
+	if ok {
+		scopes := []string{"read:user", "user:email"}
+
+		if len(provider.Scopes) > 0 {
+			scopes = provider.Scopes
+		}
+		goth.UseProviders(
+			github.New(provider.ClientID, provider.ClientSecret, provider.Callback, scopes...),
+		)
+	}
+
+	provider, ok = config.ProviderMap["oidc"]
+	if ok {
+		scopes := []string{"openid", "profile", "email", "microprofile-jwt"}
+
+		if len(provider.Scopes) > 0 {
+			scopes = provider.Scopes
+		}
+
+		oidcProvider, err := oidc.New(provider.ClientID, provider.ClientSecret, provider.Callback, provider.DiscoveryURL, scopes...)
+		if err != nil {
+			return nil
+		}
+		goth.UseProviders(
+			oidcProvider,
+		)
+	}
 
 	return &Handler{
 		CookieStore: store,
