@@ -173,11 +173,11 @@ func TestSPFRecordValueFuncWithInterpolation(t *testing.T) {
 		},
 	}
 
-	//data := struct {
+	// data := struct {
 	//	IPs string
-	//}{
+	// }{
 	//	IPs: "1.4.1.4,1.2.1.2",
-	//}
+	// }
 
 	for _, run := range tests {
 		err := run.s.Render(nil)

@@ -6,8 +6,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	net2 "github.com/dioad/net"
 	"github.com/rs/zerolog"
+
+	net2 "github.com/dioad/net"
 )
 
 // ReadWriteCounter is an interface that exposes the number of bytes read and

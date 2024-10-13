@@ -20,6 +20,6 @@ type PathResource interface {
 }
 
 type RootResource interface {
-	//Resource
+	// Resource
 	Index() http.HandlerFunc
 }

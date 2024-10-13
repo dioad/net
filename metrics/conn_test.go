@@ -15,7 +15,7 @@ func TestConnDuration(t *testing.T) {
 
 	wg := sync.WaitGroup{}
 
-	//startTime := time.Now()
+	// startTime := time.Now()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -59,15 +59,15 @@ func TestConnDuration(t *testing.T) {
 
 	c.(*Conn).Close()
 
-	//roundedD1 := d1.Round(10 * time.Millisecond)
-	//if roundedD1 != 250*time.Millisecond {
+	// roundedD1 := d1.Round(10 * time.Millisecond)
+	// if roundedD1 != 250*time.Millisecond {
 
-	//}
+	// }
 
-	//roundedD2 := d2.Round(10 * time.Millisecond)
-	//if roundedD2 != 500*time.Millisecond {
+	// roundedD2 := d2.Round(10 * time.Millisecond)
+	// if roundedD2 != 500*time.Millisecond {
 
-	//}
+	// }
 }
 
 func TestConnBytesWritten(t *testing.T) {

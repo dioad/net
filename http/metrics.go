@@ -74,14 +74,14 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 }
 
 func (m *MetricSet) Register(r prometheus.Registerer) {
-	//if r != nil {
+	// if r != nil {
 	r.MustRegister(
 		m.RequestCounter,
 		m.RequestDuration,
 		m.ResponseSize,
 		m.RequestSize,
 		m.InFlightGauge)
-	//}
+	// }
 }
 
 // Middleware - to make it a middleware for mux probably a better way.
