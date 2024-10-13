@@ -57,6 +57,22 @@ func (r *Response) InternalServerErrorWithMessages(err error, responseMessage st
 	r.ErrorWithMessages(http.StatusInternalServerError, responseMessage, logMessage, err)
 }
 
+func (r *Response) ForbiddenWithMessages(responseMessage, logMessage string) {
+	r.ErrorWithMessages(http.StatusForbidden, responseMessage, logMessage, nil)
+}
+
+func (r *Response) ForbiddenWithMessage(message string) {
+	r.UnauthorizedWithMessages(message, message)
+}
+
+func (r *Response) UnauthorizedWithMessages(responseMessage, logMessage string) {
+	r.ErrorWithMessages(http.StatusUnauthorized, responseMessage, logMessage, nil)
+}
+
+func (r *Response) UnauthorizedWithMessage(message string) {
+	r.UnauthorizedWithMessages(message, message)
+}
+
 func (r *Response) ConflictWithMessage(message string) {
 	r.ConflictWithMessages(message, message)
 }
