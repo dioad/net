@@ -21,6 +21,7 @@ type ClientConfig struct {
 	AccessToken                      string `mapstructure:"access-token"`
 	AccessTokenFile                  string `mapstructure:"access-token-file"`
 	EnableAccessTokenFromEnvironment bool   `mapstructure:"enable-access-token-from-environment"`
+	EnvironmentVariableName          string `mapstructure:"environment-variable-name"`
 }
 
 type ServerConfig struct {
