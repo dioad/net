@@ -38,9 +38,9 @@ func StandardLogger(r *http.Request, status, size int, duration time.Duration) *
 
 // func CoreDNSStandardLogger
 
-//func structuredLogger(r *http.Request, status, size int, duration time.Duration) {
+// func structuredLogger(r *http.Request, status, size int, duration time.Duration) {
 //	StandardLogger(r, status, size, duration).Info().Msg("accessLog")
-//}
+// }
 
 func ZerologStructuredLogHandler(logger zerolog.Logger) HandlerWrapper {
 	return ZerologStructuredLogHandlerWithFormatter(logger, StandardLogger)

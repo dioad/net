@@ -77,7 +77,10 @@ func renderList(values []string, data interface{}) ([]string, error) {
 			return nil, err
 		}
 		buf := &bytes.Buffer{}
-		tmpl.Execute(buf, data)
+		err = tmpl.Execute(buf, data)
+		if err != nil {
+			return nil, err
+		}
 		ret[i] = buf.String()
 	}
 
