@@ -1,25 +1,30 @@
 package github
 
 import (
-	"errors"
-	"fmt"
-	"io"
 	"os"
-	"strings"
 
 	"github.com/cli/oauth/api"
-	"gopkg.in/yaml.v3"
 
 	"github.com/dioad/util"
 )
 
+func LoadAccessTokenFromFile(filePath string) (*api.AccessToken, error) {
+	return util.LoadStructFromFile[api.AccessToken](filePath)
+}
+
+func SaveAccessTokenToFile(accessToken *api.AccessToken, authFilePath string) error {
+	return util.SaveStructToFile[api.AccessToken](accessToken, authFilePath)
+}
+
 func ResolveAccessToken(c ClientConfig) (string, error) {
 
 	if c.EnableAccessTokenFromEnvironment {
-		envAccessToken := os.Getenv("GITHUB_TOKEN")
+		if c.EnvironmentVariableName != "" {
+			envAccessToken := os.Getenv(c.EnvironmentVariableName)
 
-		if envAccessToken != "" {
-			return envAccessToken, nil
+			if envAccessToken != "" {
+				return envAccessToken, nil
+			}
 		}
 	}
 
@@ -33,63 +38,4 @@ func ResolveAccessToken(c ClientConfig) (string, error) {
 	}
 
 	return c.AccessToken, nil
-}
-func loadAccessTokenFromYAMLReader(r io.Reader) (*api.AccessToken, error) {
-	var accessToken api.AccessToken
-
-	encoder := yaml.NewDecoder(r)
-	err := encoder.Decode(&accessToken)
-	if err != nil {
-		return nil, err
-	}
-
-	return &accessToken, nil
-}
-func loadAccessTokenFromYAMLFile(filePath string) (*api.AccessToken, error) {
-	authFile, err := util.CleanOpen(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	accessToken, err := loadAccessTokenFromYAMLReader(authFile)
-
-	if err != nil {
-		closeErr := authFile.Close()
-		if closeErr != nil {
-			return nil, fmt.Errorf("%w: %v", err, closeErr)
-		}
-		return nil, err
-	}
-
-	return accessToken, authFile.Close()
-}
-
-func LoadAccessTokenFromFile(filePath string) (*api.AccessToken, error) {
-	if strings.HasSuffix(filePath, ".yaml") || strings.HasSuffix(filePath, ".yml") {
-		return loadAccessTokenFromYAMLFile(filePath)
-	}
-	return nil, errors.New("unrecognised access token file type. expect yaml")
-}
-
-func SaveAccessTokenToFile(accessToken *api.AccessToken, authFilePath string) error {
-	authFile, err := util.CleanOpenFile(authFilePath, os.O_RDWR|os.O_CREATE, 0600)
-	if err != nil {
-		return err
-	}
-
-	err = saveAccessTokenToWriter(authFile, accessToken)
-	if err != nil {
-		closeErr := authFile.Close()
-		if closeErr != nil {
-			return fmt.Errorf("%w: %v", err, closeErr)
-		}
-		return err
-	}
-
-	return authFile.Close()
-}
-
-func saveAccessTokenToWriter(w io.Writer, accessToken *api.AccessToken) error {
-	encoder := yaml.NewEncoder(w)
-	return encoder.Encode(accessToken)
 }
