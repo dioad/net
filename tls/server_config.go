@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/dioad/generics"
 	"github.com/dioad/util"
@@ -44,8 +45,8 @@ type LocalConfig struct {
 }
 
 type FileWaitConfig struct {
-	WaitInterval int `mapstructure:"file-wait-interval" json:",omitempty"`
-	WaitMax      int `mapstructure:"file-wait-max" json:",omitempty"`
+	WaitInterval uint `mapstructure:"file-wait-interval" json:",omitempty"`
+	WaitMax      uint `mapstructure:"file-wait-max" json:",omitempty"`
 }
 
 type ServerConfig struct {
@@ -185,11 +186,12 @@ func NewSelfSignedTLSConfig(config SelfSignedConfig) (*tls.Config, error) {
 }
 
 func CertificatesFromSinglePEMFile(singlePEMFile string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
-	err := util.WaitForFiles(waitConfig.WaitInterval, waitConfig.WaitMax, singlePEMFile)
-	if err != nil {
-		return nil, fmt.Errorf("error waiting for file: %w", err)
-	}
-	cert, err := LoadKeyPairAndCertsFromFile(singlePEMFile)
+	interval := time.Duration(waitConfig.WaitInterval) * time.Second
+
+	cert, err := util.WaitForReturn(interval, waitConfig.WaitMax, func() (*tls.Certificate, error) {
+		return LoadKeyPairAndCertsFromFile(singlePEMFile)
+	})
+
 	if err != nil {
 		return nil, fmt.Errorf("error loading key pair and certs from file: %w", err)
 	}
@@ -197,14 +199,16 @@ func CertificatesFromSinglePEMFile(singlePEMFile string, waitConfig FileWaitConf
 }
 
 func CertificateFromKeyAndCertificateFiles(key, cert string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
-	err := util.WaitForFiles(waitConfig.WaitInterval, waitConfig.WaitMax, cert, key)
-	if err != nil {
-		return nil, fmt.Errorf("error waiting for files: %w", err)
-	}
-	serverCertificate, err := tls.LoadX509KeyPair(cert, key)
+
+	interval := time.Duration(waitConfig.WaitInterval) * time.Second
+
+	serverCertificate, err := util.WaitForReturn(interval, waitConfig.WaitMax, func() (*tls.Certificate, error) {
+		certificate, err := tls.LoadX509KeyPair(cert, key)
+		return &certificate, err
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("error reading server certificates: %w", err)
 	}
-	return []tls.Certificate{serverCertificate}, nil
+	return []tls.Certificate{*serverCertificate}, nil
 }
