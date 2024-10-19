@@ -29,13 +29,22 @@ func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
 	return true, nil
 }
 
-type BasicClientAuth struct {
+type ClientAuth struct {
 	Config   ClientConfig
 	user     string
 	password string
 }
 
-func (a BasicClientAuth) AddAuth(req *http.Request) error {
+func (a ClientAuth) HTTPClient() (*http.Client, error) {
+	return &http.Client{
+		Transport: &RoundTripper{
+			Username: a.user,
+			Password: a.password,
+		},
+	}, nil
+}
+
+func (a ClientAuth) AddAuth(req *http.Request) error {
 	if a.user == "" {
 		if a.Config.User != "" {
 			a.user = a.Config.User

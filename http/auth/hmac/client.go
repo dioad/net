@@ -22,3 +22,33 @@ func (a ClientAuth) AddAuth(req *http.Request) error {
 
 	return nil
 }
+
+func (a ClientAuth) HTTPClient() (*http.Client, error) {
+	token, err := HMACKey([]byte(a.Config.SharedKey), []byte(a.Config.Data))
+	if err != nil {
+		return nil, err
+	}
+
+	return &http.Client{
+		Transport: &BearerTokenRoundTripper{
+			BearerToken: token,
+		},
+	}, nil
+}
+
+type BearerTokenRoundTripper struct {
+	BearerToken string
+	Base        http.RoundTripper
+}
+
+func (t *BearerTokenRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.BearerToken != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", t.BearerToken))
+	}
+
+	if t.Base == nil {
+		return http.DefaultTransport.RoundTrip(req)
+	}
+
+	return t.Base.RoundTrip(req)
+}

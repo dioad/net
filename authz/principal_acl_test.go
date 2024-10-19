@@ -1,9 +1,11 @@
-package util
+package authz
 
-import "testing"
+import (
+	"testing"
+)
 
 // IsUserAuthorised
-func TestIsUserAuthorised(t *testing.T) {
+func TestIsPrincipalAuthorised(t *testing.T) {
 	tests := map[string]struct {
 		user      string
 		allowList []string
@@ -20,7 +22,7 @@ func TestIsUserAuthorised(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got := IsUserAuthorised(tc.user, tc.allowList, tc.denyList)
+			got := IsPrincipalAuthorised(tc.user, tc.allowList, tc.denyList)
 			if got != tc.expected {
 				t.Fatalf("expected %v , got %v", tc.expected, got)
 			}

@@ -7,7 +7,6 @@ import (
 
 	"github.com/dioad/net/authz"
 	"github.com/dioad/net/http/auth/context"
-	"github.com/dioad/net/http/auth/util"
 )
 
 func HandlerFunc(cfg authz.PrincipalACLConfig, next http.Handler) http.HandlerFunc {
@@ -30,7 +29,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 		return r.Context(), fmt.Errorf("no principal found in context")
 	}
 
-	userAuthorised := util.IsUserAuthorised(
+	userAuthorised := authz.IsPrincipalAuthorised(
 		principal,
 		h.Config.AllowList,
 		h.Config.DenyList)

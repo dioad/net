@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/dioad/generics"
-
 	"github.com/dioad/net/http/auth/basic"
 	"github.com/dioad/net/http/auth/github"
 	"github.com/dioad/net/http/auth/hmac"
