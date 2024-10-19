@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/endpoints"
 )
 
 /*
@@ -96,6 +97,7 @@ type OpenIDConfiguration struct {
 
 type Endpoint interface {
 	URL() *url.URL
+	DiscoveryEndpoint() (*url.URL, error)
 	DiscoveredConfiguration() (*OpenIDConfiguration, error)
 	OAuth2Endpoint() (oauth2.Endpoint, error)
 }
@@ -108,14 +110,15 @@ func (e *oidcEndpoint) URL() *url.URL {
 	return e.url
 }
 
-func (e *oidcEndpoint) DiscoveryEndpoint() *url.URL {
-	return e.url.JoinPath(".well-known", "openid-configuration")
+func (e *oidcEndpoint) DiscoveryEndpoint() (*url.URL, error) {
+	return e.url.JoinPath(".well-known", "openid-configuration"), nil
 }
 
 func (e *oidcEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
-	response, err := http.Get(e.DiscoveryEndpoint().String())
+	discoveryEndpoint, _ := e.DiscoveryEndpoint()
+	response, err := http.Get(discoveryEndpoint.String())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get discovery URL %v: %w", e.DiscoveryEndpoint(), err)
+		return nil, fmt.Errorf("failed to get discovery URL %v: %w", discoveryEndpoint, err)
 	}
 	discoveredConfiguration := OpenIDConfiguration{}
 
@@ -194,6 +197,10 @@ func (e *GitHubEndpoint) URL() *url.URL {
 	return e.url
 }
 
+func (e *GitHubEndpoint) DiscoveryEndpoint() (*url.URL, error) {
+	return nil, fmt.Errorf("GitHub does not support OpenID Connect discovery")
+}
+
 func (e *GitHubEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
 	return &OpenIDConfiguration{
 		AuthorizationEndpoint:       e.url.JoinPath("/login/oauth/authorize").String(),
@@ -203,16 +210,7 @@ func (e *GitHubEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error)
 }
 
 func (e *GitHubEndpoint) OAuth2Endpoint() (oauth2.Endpoint, error) {
-	discoveredConfiguration, err := e.DiscoveredConfiguration()
-	if err != nil {
-		return oauth2.Endpoint{}, err
-	}
-
-	return oauth2.Endpoint{
-		AuthURL:       discoveredConfiguration.AuthorizationEndpoint,
-		TokenURL:      discoveredConfiguration.TokenEndpoint,
-		DeviceAuthURL: discoveredConfiguration.DeviceAuthorizationEndpoint,
-	}, nil
+	return endpoints.GitHub, nil
 }
 
 func NewGitHubEndpoint(baseURL string) (Endpoint, error) {

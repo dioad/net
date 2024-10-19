@@ -120,7 +120,7 @@ type Client struct {
 // NewHTTPClientFromConfig
 
 func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
-	if config.Provider.Type == "flyio" {
+	if config.Type == "flyio" {
 		opt := flyio.WithAudience(config.Audience)
 		return flyio.NewHTTPClient(context.Background(), opt), nil
 	}
@@ -149,7 +149,7 @@ func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
 }
 
 func NewClientFromConfig(config *ClientConfig) (*Client, error) {
-	endpoint, err := NewEndpointFromConfig(&config.Provider)
+	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -310,6 +310,10 @@ func (c *Client) DeviceToken(ctx context.Context, scopes ...string) (*oauth2.Tok
 
 func (c *Client) HTTPClient(t *oauth2.Token) *http.Client {
 	return c.oAuth2Config().Client(context.Background(), t)
+}
+
+func (c *Client) TokenSource(t *oauth2.Token) oauth2.TokenSource {
+	return c.oAuth2Config().TokenSource(context.Background(), t)
 }
 
 func ExtractClaims[T jwtvalidator.CustomClaims](claims interface{}) (jwtvalidator.RegisteredClaims, T, error) {

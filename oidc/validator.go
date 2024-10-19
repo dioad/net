@@ -30,7 +30,7 @@ func NewMultiValidator(validators ...*jwtvalidator.Validator) *MultiValidator {
 	return &MultiValidator{validators: validators}
 }
 
-func NewMultiValidatorFromConfig(configs []VerifierConfig, opts ...jwtvalidator.Option) (*MultiValidator, error) {
+func NewMultiValidatorFromConfig(configs []ValidatorConfig, opts ...jwtvalidator.Option) (*MultiValidator, error) {
 	validators, err := NewValidatorsFromConfig(configs, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating validators from config: %w", err)
@@ -38,7 +38,7 @@ func NewMultiValidatorFromConfig(configs []VerifierConfig, opts ...jwtvalidator.
 	return NewMultiValidator(validators...), nil
 }
 
-func NewValidatorFromConfig(config *VerifierConfig, opts ...jwtvalidator.Option) (*jwtvalidator.Validator, error) {
+func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option) (*jwtvalidator.Validator, error) {
 	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error creating endpoint from config: %w", err)
@@ -84,7 +84,7 @@ func NewValidatorFromConfig(config *VerifierConfig, opts ...jwtvalidator.Option)
 	return jwtValidator, nil
 }
 
-func NewValidatorsFromConfig(configs []VerifierConfig, opts ...jwtvalidator.Option) ([]*jwtvalidator.Validator, error) {
+func NewValidatorsFromConfig(configs []ValidatorConfig, opts ...jwtvalidator.Option) ([]*jwtvalidator.Validator, error) {
 	validators := make([]*jwtvalidator.Validator, 0)
 	for _, config := range configs {
 		validator, err := NewValidatorFromConfig(&config, opts...)
