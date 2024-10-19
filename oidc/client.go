@@ -9,6 +9,7 @@ import (
 
 	"github.com/auth0/go-jwt-middleware/v2/jwks"
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
+	"github.com/markbates/goth"
 	"golang.org/x/oauth2"
 
 	"github.com/dioad/net/oidc/flyio"
@@ -173,6 +174,16 @@ func NewClient(endpoint Endpoint, opts ...ClientOpt) *Client {
 
 func (c *Client) Endpoint() Endpoint {
 	return c.endpoint
+}
+
+func (c *Client) GothProvider(callbackURL *url.URL, scopes ...string) (goth.Provider, error) {
+	ge, ok := c.endpoint.(GothEndpoint)
+	if !ok {
+		return nil, fmt.Errorf("endpoint does not support goth provider")
+	}
+
+	return ge.GothProvider(c.clientID, c.clientSecret, callbackURL, scopes...)
+	// return NewGothProvider(c, callbackURL, scopes...)
 }
 
 // oAuth2Config returns an OAuth2 configuration for the OIDC client

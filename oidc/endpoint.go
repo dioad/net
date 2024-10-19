@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/providers/github"
+	"github.com/markbates/goth/providers/openidConnect"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 )
@@ -102,6 +105,10 @@ type Endpoint interface {
 	OAuth2Endpoint() (oauth2.Endpoint, error)
 }
 
+type GothEndpoint interface {
+	GothProvider(clientID, clientSecret string, callbackURL *url.URL, scopes ...string) (goth.Provider, error)
+}
+
 type oidcEndpoint struct {
 	url *url.URL
 }
@@ -138,6 +145,20 @@ func (e *oidcEndpoint) OAuth2Endpoint() (oauth2.Endpoint, error) {
 		TokenURL:      discoveredConfiguration.TokenEndpoint,
 		DeviceAuthURL: discoveredConfiguration.DeviceAuthorizationEndpoint,
 	}, nil
+}
+
+func (e *oidcEndpoint) GothProvider(clientID, clientSecret string, callbackURL *url.URL, scopes ...string) (goth.Provider, error) {
+	discoveryEndpoint, err := e.DiscoveryEndpoint()
+	if err != nil {
+		return nil, err
+	}
+
+	return openidConnect.New(
+		clientID,
+		clientSecret,
+		callbackURL.String(),
+		discoveryEndpoint.String(),
+		scopes...)
 }
 
 func NewEndpoint(baseURL string) (Endpoint, error) {
@@ -211,6 +232,10 @@ func (e *GitHubEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error)
 
 func (e *GitHubEndpoint) OAuth2Endpoint() (oauth2.Endpoint, error) {
 	return endpoints.GitHub, nil
+}
+
+func (e *GitHubEndpoint) GothProvider(clientID, clientSecret string, callbackURL *url.URL, scopes ...string) (goth.Provider, error) {
+	return github.New(clientID, clientSecret, callbackURL.String(), scopes...), nil
 }
 
 func NewGitHubEndpoint(baseURL string) (Endpoint, error) {
