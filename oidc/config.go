@@ -21,7 +21,7 @@ type ClientConfig struct {
 }
 
 type ValidatorConfig struct {
-	EndpointConfig
+	EndpointConfig     `mapstructure:",squash"`
 	Audiences          []string `json:"audiences" mapstructure:"audiences"`
 	Issuer             string   `json:"issuer" mapstructure:"issuer"`
 	CacheTTL           int      `json:"cache_ttl_seconds" mapsstructure:"cache_ttl_seconds"`
@@ -30,5 +30,5 @@ type ValidatorConfig struct {
 }
 
 type TrustConfig struct {
-	Verifiers []ValidatorConfig `json:"verifiers" mapstructure:"verifiers"`
+	Verifiers []ValidatorConfig `json:"validators" mapstructure:"validators"`
 }
