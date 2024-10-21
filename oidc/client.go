@@ -146,7 +146,7 @@ func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
 			return nil, err
 		}
 	}
-	return client.HTTPClient(token), nil
+	return client.HTTPClient(token)
 }
 
 func NewClientFromConfig(config *ClientConfig) (*Client, error) {
@@ -187,10 +187,10 @@ func (c *Client) GothProvider(callbackURL *url.URL, scopes ...string) (goth.Prov
 }
 
 // oAuth2Config returns an OAuth2 configuration for the OIDC client
-func (c *Client) oAuth2Config(opts ...oAuth2ConfigOpt) *oauth2.Config {
+func (c *Client) oAuth2Config(opts ...oAuth2ConfigOpt) (*oauth2.Config, error) {
 	oauth2Endpoint, err := c.endpoint.OAuth2Endpoint()
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to get OAuth2 endpoint: %w", err)
 	}
 
 	config := &oauth2.Config{
@@ -203,7 +203,7 @@ func (c *Client) oAuth2Config(opts ...oAuth2ConfigOpt) *oauth2.Config {
 		opt(config)
 	}
 
-	return config
+	return config, nil
 }
 
 // ValidateToken VerifyToke verifies the token and returns the claims
@@ -294,7 +294,10 @@ func (c *Client) IntrospectToken(ctx context.Context, token string) (*Introspect
 }
 
 func (c *Client) DeviceToken(ctx context.Context, scopes ...string) (*oauth2.Token, error) {
-	config := c.oAuth2Config(withScopes(scopes...))
+	config, err := c.oAuth2Config(withScopes(scopes...))
+	if err != nil {
+		return nil, fmt.Errorf("error getting OAuth2 config: %w", err)
+	}
 
 	deviceCode, err := config.DeviceAuth(ctx)
 	if err != nil {
@@ -319,12 +322,20 @@ func (c *Client) DeviceToken(ctx context.Context, scopes ...string) (*oauth2.Tok
 	return token, err
 }
 
-func (c *Client) HTTPClient(t *oauth2.Token) *http.Client {
-	return c.oAuth2Config().Client(context.Background(), t)
+func (c *Client) HTTPClient(t *oauth2.Token) (*http.Client, error) {
+	oauth2Config, err := c.oAuth2Config()
+	if err != nil {
+		return nil, fmt.Errorf("error getting OAuth2 config: %w", err)
+	}
+	return oauth2Config.Client(context.Background(), t), nil
 }
 
-func (c *Client) TokenSource(t *oauth2.Token) oauth2.TokenSource {
-	return c.oAuth2Config().TokenSource(context.Background(), t)
+func (c *Client) TokenSource(t *oauth2.Token) (oauth2.TokenSource, error) {
+	oauth2Config, err := c.oAuth2Config()
+	if err != nil {
+		return nil, fmt.Errorf("error getting OAuth2 config: %w", err)
+	}
+	return oauth2Config.TokenSource(context.Background(), t), nil
 }
 
 func ExtractClaims[T jwtvalidator.CustomClaims](claims interface{}) (jwtvalidator.RegisteredClaims, T, error) {
