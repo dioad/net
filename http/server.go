@@ -19,8 +19,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/weaveworks/common/middleware"
 
-	"github.com/dioad/generics"
-
 	"github.com/dioad/net/http/auth"
 	"github.com/dioad/net/http/pprof"
 )
@@ -52,7 +50,7 @@ type Server struct {
 	ListenAddr        net.Addr
 	LogHandler        HandlerWrapper
 	metadataStatusMap map[string]any
-	Authenticator     *auth.Handler
+	Authenticator     mux.MiddlewareFunc
 }
 
 func newDefaultServer(config Config) *Server {
@@ -68,10 +66,6 @@ func newDefaultServer(config Config) *Server {
 		ResourceMap:       make(map[string]Resource),
 		metricSet:         m,
 		metadataStatusMap: make(map[string]any),
-	}
-
-	if !generics.IsZeroValue(config.AuthConfig) {
-		server.Authenticator = auth.NewHandler(&config.AuthConfig)
 	}
 
 	return server
@@ -169,7 +163,7 @@ func (s *Server) addDefaultMiddleware() {
 		s.Router.Use(s.instrument.Wrap)
 	}
 	if s.Authenticator != nil {
-		s.Router.Use(s.Authenticator.Wrap)
+		s.Router.Use(s.Authenticator)
 	}
 	// TODO: Implement this thing
 	// if s.Authoriser != nil {

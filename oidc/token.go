@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -10,6 +11,8 @@ import (
 type clientConfigTokenSource struct {
 	clientConfig ClientConfig
 	tokenSource  oauth2.TokenSource
+
+	m sync.Mutex
 }
 
 func (c *clientConfigTokenSource) resolveTokenSource() (oauth2.TokenSource, error) {
@@ -34,6 +37,8 @@ func (c *clientConfigTokenSource) resolveTokenSource() (oauth2.TokenSource, erro
 }
 
 func (c *clientConfigTokenSource) Token() (*oauth2.Token, error) {
+	c.m.Lock()
+	defer c.m.Unlock()
 	if c.tokenSource != nil {
 		return c.tokenSource.Token()
 	}
@@ -61,6 +66,11 @@ type waitingTokenSource struct {
 }
 
 func waitForToken(tokenSource oauth2.TokenSource, interval time.Duration, maxTime time.Duration) (oauth2.TokenSource, error) {
+	token, err := tokenSource.Token()
+	if err == nil && token.Valid() {
+		return tokenSource, nil
+	}
+
 	t := time.NewTicker(interval)
 	defer t.Stop()
 
