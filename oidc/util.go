@@ -16,9 +16,9 @@ func SaveTokenToFile(accessToken *oauth2.Token, authFilePath string) error {
 	return util.SaveStructToFile[oauth2.Token](accessToken, authFilePath)
 }
 
-func ResolveToken(c ClientConfig) (*oauth2.Token, error) {
-	if c.TokenFile != "" {
-		token, err := LoadTokenFromFile(c.TokenFile)
+func ResolveTokenFromFile(tokenFile string) (*oauth2.Token, error) {
+	if tokenFile != "" {
+		token, err := LoadTokenFromFile(tokenFile)
 		if err != nil {
 			return nil, err
 		}

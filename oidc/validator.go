@@ -87,6 +87,7 @@ func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option
 func NewValidatorsFromConfig(configs []ValidatorConfig, opts ...jwtvalidator.Option) ([]*jwtvalidator.Validator, error) {
 	validators := make([]*jwtvalidator.Validator, 0)
 	for _, config := range configs {
+		config := config
 		validator, err := NewValidatorFromConfig(&config, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("error creating validator from config: %w", err)

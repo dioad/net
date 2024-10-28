@@ -49,6 +49,8 @@ type IntrospectionResponse struct {
 	Username          string   `json:"username"`
 	TokenType         string   `json:"token_type"`
 	Active            bool     `json:"active"`
+	Website           string   `json:"website"`
+	Organisation      string   `json:"org"`
 }
 
 func (c *IntrospectionResponse) Validate(ctx context.Context) error {

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
+
+	"github.com/dioad/net/oidc/flyio"
 )
 
 type clientConfigTokenSource struct {
@@ -16,23 +18,31 @@ type clientConfigTokenSource struct {
 }
 
 func (c *clientConfigTokenSource) resolveTokenSource() (oauth2.TokenSource, error) {
+
+	if c.clientConfig.Type == "flyio" {
+		return flyio.NewTokenSource(flyio.WithAudience(c.clientConfig.Audience)), nil
+	}
+
 	var tokenSource oauth2.TokenSource
-	token, err := ResolveToken(c.clientConfig)
+
+	token, err := ResolveTokenFromFile(c.clientConfig.TokenFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load OIDC token: %w", err)
-	} else {
-		if token.RefreshToken == "" {
-			tokenSource = oauth2.StaticTokenSource(token)
-		}
-		oidcClient, err := NewClientFromConfig(&c.clientConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create OIDC client: %w", err)
-		}
-		tokenSource, err = oidcClient.TokenSource(token)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create OIDC token source: %w", err)
-		}
 	}
+
+	if token.AccessToken != "" && token.RefreshToken == "" {
+		return oauth2.StaticTokenSource(token), nil
+	}
+
+	oidcClient, err := NewClientFromConfig(&c.clientConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OIDC client: %w", err)
+	}
+	tokenSource, err = oidcClient.TokenSource(token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OIDC token source: %w", err)
+	}
+
 	return tokenSource, nil
 }
 

@@ -139,7 +139,10 @@ func NewLocalTLSConfig(config LocalConfig) (*tls.Config, error) {
 			return nil, fmt.Errorf("error loading certificates from single pem file: %w", err)
 		}
 
-		return &tls.Config{Certificates: certs}, nil
+		return &tls.Config{
+			MinVersion:   tls.VersionTLS12,
+			Certificates: certs,
+		}, nil
 	}
 
 	if config.Certificate == "" || config.Key == "" {
@@ -153,7 +156,10 @@ func NewLocalTLSConfig(config LocalConfig) (*tls.Config, error) {
 		return nil, fmt.Errorf("error loading key pair and certs from files: %w", err)
 	}
 
-	return &tls.Config{Certificates: cert}, nil
+	return &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: cert,
+	}, nil
 }
 
 func NewSelfSignedTLSConfigFunc(c SelfSignedConfig) ConfigFunc {
@@ -182,7 +188,10 @@ func NewSelfSignedTLSConfig(config SelfSignedConfig) (*tls.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error generating self signed certificate: %w", err)
 	}
-	return &tls.Config{Certificates: []tls.Certificate{*cert}}, nil
+	return &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{*cert},
+	}, nil
 }
 
 func CertificatesFromSinglePEMFile(singlePEMFile string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
