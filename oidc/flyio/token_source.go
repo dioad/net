@@ -3,6 +3,7 @@ package flyio
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -89,19 +90,19 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 
 	resp, err := ts.client.Do(tokenReq)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get token: %w", err)
 	}
 	defer resp.Body.Close()
 
-	token := &oauth2.Token{}
 	responseBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
+	token := &oauth2.Token{}
 	err = json.Unmarshal(responseBytes, token)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal response body: %w - %s", err, string(responseBytes))
 	}
 
 	return token, nil
