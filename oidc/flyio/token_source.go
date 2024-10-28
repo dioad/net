@@ -67,7 +67,7 @@ func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	tokenURL := &url.URL{
 		Scheme: "http",
-		Host:   "unix",
+		Host:   "localhost",
 		Path:   "/v1/tokens/oidc",
 	}
 
