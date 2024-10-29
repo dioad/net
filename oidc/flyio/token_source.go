@@ -78,12 +78,12 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 
 	payloadData, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
 	tokenReq, err := http.NewRequest("POST", tokenURL.String(), bytes.NewReader(payloadData))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create token request: %w", err)
 	}
 
 	tokenReq.Header.Set("Content-Type", "application/json")
@@ -99,10 +99,8 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	token := &oauth2.Token{}
-	err = json.Unmarshal(responseBytes, token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response body: %w - %s", err, string(responseBytes))
+	token := &oauth2.Token{
+		AccessToken: string(responseBytes),
 	}
 
 	return token, nil
