@@ -50,7 +50,7 @@ func WithAudience(aud string) Opt {
 }
 
 type tokenPayload struct {
-	Audience string `json:"aud"`
+	Audience string `json:"aud,omitempty"`
 }
 
 // NewTokenSource: https://fly.io/docs/security/openid-connect/
