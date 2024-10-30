@@ -20,7 +20,8 @@ type Handler struct {
 
 func (h *Handler) Wrap(next http.Handler) http.Handler {
 	errorHandler := func(w http.ResponseWriter, r *http.Request, err error) {
-		json.NewResponse(w).UnauthorizedWithMessage("failed to validate JWT.")
+		jsr := json.NewResponse(w)
+		jsr.UnauthorizedWithMessages("failed to validate JWT.", err.Error())
 	}
 
 	handlerOpts := append(
