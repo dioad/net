@@ -2,6 +2,7 @@ package flyio
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,6 +32,10 @@ type Claims struct {
 	OrgName        string `json:"org_name"`
 	Region         string `json:"region"`
 	Sub            string `json:"sub"`
+}
+
+func (c *Claims) Validate(ctx context.Context) error {
+	return nil
 }
 
 type tokenSource struct {
