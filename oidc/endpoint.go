@@ -170,23 +170,17 @@ func NewEndpoint(baseURL string) (Endpoint, error) {
 }
 
 func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
-	if config.Type == "github" {
-		githubURL := config.URL
-		if githubURL == "" {
-			githubURL = "https://github.com"
-		}
-		return NewGitHubEndpoint(githubURL)
-	}
-
-	if config.Type == "keycloak" {
+	switch config.Type {
+	case "github":
+		return NewGitHubEndpoint(config.URL)
+	case "keycloak":
 		return NewKeycloakRealmEndpoint(config.URL, config.KeycloakRealm)
+	default:
+		if config.URL != "" {
+			return NewEndpoint(config.URL)
+		}
+		return nil, fmt.Errorf("config type %s not supported", config.Type)
 	}
-
-	if config.Type == "oidc" {
-		return NewEndpoint(config.URL)
-	}
-
-	return nil, fmt.Errorf("config type %s not supported", config.Type)
 }
 
 type KeycloakEndpoint struct {
@@ -243,6 +237,10 @@ func (e *GitHubEndpoint) GothProvider(clientID, clientSecret string, callbackURL
 }
 
 func NewGitHubEndpoint(baseURL string) (Endpoint, error) {
+	if baseURL == "" {
+		baseURL = "https://github.com"
+	}
+
 	u, _ := url.Parse(baseURL)
 
 	return &GitHubEndpoint{url: u}, nil
