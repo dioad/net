@@ -12,9 +12,11 @@ func CustomClaimsFromContext[T jwtvalidator.CustomClaims](ctx context.Context) T
 	if val != nil {
 		claims := val.(*jwtvalidator.ValidatedClaims)
 
-		customClaims := claims.CustomClaims.(T)
+		customClaims, ok := claims.CustomClaims.(T)
 
-		return customClaims
+		if ok {
+			return customClaims
+		}
 	}
 	var emptyClaims T
 	return emptyClaims
