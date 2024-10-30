@@ -11,8 +11,6 @@ import (
 	"github.com/markbates/goth/providers/openidConnect"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
-
-	"github.com/dioad/net/oidc/flyio"
 )
 
 /*
@@ -98,7 +96,6 @@ type OpenIDConfiguration struct {
 		BackchannelAuthenticationEndpoint  string `json:"backchannel_authentication_endpoint"`
 	} `json:"mtls_endpoint_aliases"`
 	AuthorizationResponseIssParameterSupported bool `json:"authorization_response_iss_parameter_supported"`
-	flyio.Claims                               `json:",squash"`
 }
 
 type Endpoint interface {

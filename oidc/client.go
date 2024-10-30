@@ -51,6 +51,7 @@ type IntrospectionResponse struct {
 	Active            bool     `json:"active"`
 	Website           string   `json:"website"`
 	Organisation      string   `json:"org"`
+	flyio.Claims      `json:",squash"`
 }
 
 func (c *IntrospectionResponse) Validate(ctx context.Context) error {
