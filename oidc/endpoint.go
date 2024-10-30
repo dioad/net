@@ -182,7 +182,11 @@ func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
 		return NewKeycloakRealmEndpoint(config.URL, config.KeycloakRealm)
 	}
 
-	return NewEndpoint(config.URL)
+	if config.Type == "oidc" {
+		return NewEndpoint(config.URL)
+	}
+
+	return nil, fmt.Errorf("config type %s not supported", config.Type)
 }
 
 type KeycloakEndpoint struct {

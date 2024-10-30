@@ -154,7 +154,7 @@ func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
 func NewClientFromConfig(config *ClientConfig) (*Client, error) {
 	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create new oidc endpoint: %w", err)
 	}
 	return NewClient(endpoint, WithClientIDAndSecret(config.ClientID, config.ClientSecret.MaskedString())), nil
 }
