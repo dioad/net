@@ -22,11 +22,30 @@ type TokenValidator interface {
 	ValidateToken(ctx context.Context, tokenString string) (interface{}, error)
 }
 
-func NewValidatorDebugger(validator TokenValidator, logger zerolog.Logger) *ValidatorDebugger {
-	return &ValidatorDebugger{
-		logger:    logger,
+func WithLogger(logger zerolog.Logger) func(*ValidatorDebugger) {
+	return func(v *ValidatorDebugger) {
+		v.logger = logger
+	}
+}
+
+func WithLabel(key, value string) func(*ValidatorDebugger) {
+	return func(v *ValidatorDebugger) {
+		v.logger = v.logger.With().Str(key, value).Logger()
+	}
+}
+
+type ValidatorDebugOpts func(*ValidatorDebugger)
+
+func NewValidatorDebugger(validator TokenValidator, opts ...ValidatorDebugOpts) *ValidatorDebugger {
+	v := &ValidatorDebugger{
 		validator: validator,
 	}
+
+	for _, o := range opts {
+		o(v)
+	}
+
+	return v
 }
 
 func decodeTokenData(accessToken string) (interface{}, error) {
@@ -83,23 +102,26 @@ func (v *ValidatorDebugger) ValidateToken(ctx context.Context, tokenString strin
 }
 
 type MultiValidator struct {
-	validators []*jwtvalidator.Validator
+	validators []TokenValidator
 }
 
 func (v *MultiValidator) ValidateToken(ctx context.Context, tokenString string) (interface{}, error) {
 	var err error
 	var claims interface{}
+	var errs []string
 	for _, vtor := range v.validators {
 		claims, err = vtor.ValidateToken(ctx, tokenString)
 		if err == nil {
 			return claims, nil
 		}
+
+		errs = append(errs, err.Error())
 	}
 
 	return nil, fmt.Errorf("token validation failed: %w", err)
 }
 
-func NewMultiValidator(validators ...*jwtvalidator.Validator) *MultiValidator {
+func NewMultiValidator(validators ...TokenValidator) *MultiValidator {
 	return &MultiValidator{validators: validators}
 }
 
@@ -111,7 +133,7 @@ func NewMultiValidatorFromConfig(configs []ValidatorConfig, opts ...jwtvalidator
 	return NewMultiValidator(validators...), nil
 }
 
-func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option) (*jwtvalidator.Validator, error) {
+func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option) (TokenValidator, error) {
 	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error creating endpoint from config: %w", err)
@@ -154,11 +176,13 @@ func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option
 		return nil, fmt.Errorf("failed to configure validator for %v: %w", config.URL, err)
 	}
 
-	return jwtValidator, nil
+	debugValidator := NewValidatorDebugger(jwtValidator, WithLabel("url", config.URL))
+
+	return debugValidator, nil
 }
 
-func NewValidatorsFromConfig(configs []ValidatorConfig, opts ...jwtvalidator.Option) ([]*jwtvalidator.Validator, error) {
-	validators := make([]*jwtvalidator.Validator, 0)
+func NewValidatorsFromConfig(configs []ValidatorConfig, opts ...jwtvalidator.Option) ([]TokenValidator, error) {
+	validators := make([]TokenValidator, 0)
 	for _, config := range configs {
 		config := config
 		validator, err := NewValidatorFromConfig(&config, opts...)
