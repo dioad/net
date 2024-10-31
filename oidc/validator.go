@@ -46,6 +46,24 @@ func decodeTokenData(accessToken string) (interface{}, error) {
 		return nil, fmt.Errorf("failed to unmarshal token payload: %w", err)
 	}
 
+	var tokenDataExpiry time.Time
+	if expiry, ok := tokenData["exp"].(float64); ok {
+		tokenDataExpiry = time.Unix(int64(expiry), 0)
+		tokenData["exp_datetime"] = tokenDataExpiry
+	}
+
+	var tokenDataIssuedAt time.Time
+	if issuedAt, ok := tokenData["iat"].(float64); ok {
+		tokenDataIssuedAt = time.Unix(int64(issuedAt), 0)
+		tokenData["iat_datetime"] = tokenDataIssuedAt
+	}
+
+	var tokenDataNotBefore time.Time
+	if notBefore, ok := tokenData["nbf"].(float64); ok {
+		tokenDataNotBefore = time.Unix(int64(notBefore), 0)
+		tokenData["nbf_datetime"] = tokenDataNotBefore
+	}
+
 	return tokenData, nil
 }
 
