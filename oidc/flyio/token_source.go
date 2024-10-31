@@ -3,11 +3,14 @@ package flyio
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
+	"time"
 
 	"golang.org/x/oauth2"
 
@@ -99,14 +102,38 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	}
 	defer resp.Body.Close()
 
-	responseBytes, err := io.ReadAll(resp.Body)
+	accessTokenBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	token := &oauth2.Token{
-		AccessToken: string(responseBytes),
+	return decodeToken(string(accessTokenBytes))
+}
+
+func decodeToken(accessToken string) (*oauth2.Token, error) {
+	// Decode Access Token and extract expiry and any other details necessary from the token
+	tokenParts := strings.Split(accessToken, ".")
+	if len(tokenParts) != 3 {
+		return nil, fmt.Errorf("invalid token format")
 	}
 
-	return token, nil
+	payload, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode token payload: %w", err)
+	}
+
+	var tokenData map[string]interface{}
+	if err := json.Unmarshal(payload, &tokenData); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal token payload: %w", err)
+	}
+
+	expiry, ok := tokenData["exp"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("failed to extract expiry from token")
+	}
+
+	return &oauth2.Token{
+		AccessToken: accessToken,
+		Expiry:      time.Unix(int64(expiry), 0),
+	}, nil
 }
