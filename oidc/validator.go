@@ -2,12 +2,67 @@ package oidc
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/auth0/go-jwt-middleware/v2/jwks"
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
+	"github.com/rs/zerolog"
 )
+
+type ValidatorDebugger struct {
+	logger    zerolog.Logger
+	validator TokenValidator
+}
+
+type TokenValidator interface {
+	ValidateToken(ctx context.Context, tokenString string) (interface{}, error)
+}
+
+func NewValidatorDebugger(validator TokenValidator, logger zerolog.Logger) *ValidatorDebugger {
+	return &ValidatorDebugger{
+		logger:    logger,
+		validator: validator,
+	}
+}
+
+func decodeTokenData(accessToken string) (interface{}, error) {
+	// Decode Access Token and extract expiry and any other details necessary from the token
+	tokenParts := strings.Split(accessToken, ".")
+	if len(tokenParts) != 3 {
+		return nil, fmt.Errorf("invalid token format")
+	}
+
+	payload, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode token payload: %w", err)
+	}
+
+	var tokenData map[string]interface{}
+	if err := json.Unmarshal(payload, &tokenData); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal token payload: %w", err)
+	}
+
+	return tokenData, nil
+}
+
+func (v *ValidatorDebugger) ValidateToken(ctx context.Context, tokenString string) (interface{}, error) {
+	tokenDetails, err := decodeTokenData(tokenString)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding token data: %w", err)
+	}
+
+	v.logger.Debug().Interface("DecodedToken", tokenDetails).Msg("decoded token")
+
+	claims, err := v.validator.ValidateToken(ctx, tokenString)
+	if err != nil {
+		v.logger.Error().Err(err).Msg("error validating token")
+	}
+	return claims, err
+}
 
 type MultiValidator struct {
 	validators []*jwtvalidator.Validator
