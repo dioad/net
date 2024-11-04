@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dioad/filter"
 	"github.com/gorilla/mux"
 	"github.com/pires/go-proxyproto"
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,7 +21,9 @@ import (
 	"github.com/weaveworks/common/middleware"
 
 	"github.com/dioad/net/http/auth"
+	"github.com/dioad/net/http/authz/jwt"
 	"github.com/dioad/net/http/pprof"
+	"github.com/dioad/net/oidc"
 )
 
 // Config ...
@@ -39,8 +42,7 @@ type Server struct {
 	Config            Config
 	ListenAddress     string
 	Router            *mux.Router
-	logWriter         io.Writer
-	logger            zerolog.Logger
+	Logger            zerolog.Logger
 	ResourceMap       map[string]Resource
 	server            *http.Server
 	serverInitOnce    sync.Once
@@ -57,7 +59,6 @@ func newDefaultServer(config Config) *Server {
 	r := prometheus.NewRegistry()
 	m := NewMetricSet(r)
 	rtr := mux.NewRouter()
-	// rtr.Use()
 
 	server := &Server{
 		Config:            config,
@@ -71,19 +72,52 @@ func newDefaultServer(config Config) *Server {
 	return server
 }
 
+type ServerOption func(*Server)
+
+func WithLogWriter(w io.Writer) ServerOption {
+	return func(s *Server) {
+		if w != nil {
+			s.LogHandler = DefaultCombinedLogHandler(w)
+		}
+	}
+}
+
+func WithLogger(l zerolog.Logger) ServerOption {
+	return func(s *Server) {
+		s.Logger = l
+		s.LogHandler = ZerologStructuredLogHandler(l)
+	}
+}
+
+func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
+	return func(s *Server) {
+		validator, err := oidc.NewMultiValidatorFromConfig(v)
+		if err == nil {
+			s.Use(jwt.NewHandler(validator).Wrap)
+		}
+	}
+}
+
+func WithAuthenticator(a mux.MiddlewareFunc) ServerOption {
+	return func(s *Server) {
+		s.Authenticator = a
+	}
+}
+
 // NewServer ...
-func NewServer(config Config, logWriter io.Writer) *Server {
+func NewServer(config Config, opts ...ServerOption) *Server {
 	server := newDefaultServer(config)
-	server.logWriter = logWriter
+
+	for _, opt := range opts {
+		opt(server)
+	}
 
 	return server
 }
 
+// Deprecated: Use NewServer with WithLogger instead
 func NewServerWithLogger(config Config, logger zerolog.Logger) *Server {
-	server := newDefaultServer(config)
-	server.logger = logger
-
-	return server
+	return NewServer(config, WithLogger(logger))
 }
 
 func (s *Server) ConfigureTelemetryInstrument(i middleware.Instrument) {
@@ -119,19 +153,16 @@ func (s *Server) handler() http.Handler {
 		s.AddHandler("/{path:.*}", s.rootResource.Index())
 	}
 
-	logHandler := s.LogHandler
+	var router http.Handler
+	router = s.Router
 
-	if logHandler == nil {
-		logHandler = ZerologStructuredLogHandler(s.logger)
-	}
-
-	if s.logWriter != nil {
-		logHandler = DefaultCombinedLogHandler(s.logWriter)
+	if s.LogHandler != nil {
+		router = s.LogHandler(router)
 	}
 
 	// uncomment if ensure that 404's get picked up by metrics
 	// s.Router.NotFoundHandler = s.Router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
-	return logHandler(s.Router)
+	return router
 }
 
 func (s *Server) AddHandler(path string, handler http.Handler) {
@@ -158,6 +189,13 @@ func (s *Server) addDefaultHandlers() {
 	}
 }
 
+func (s *Server) Use(middlewares ...mux.MiddlewareFunc) {
+	nonNilMiddlewares := filter.FilterSlice(middlewares, func(m mux.MiddlewareFunc) bool {
+		return m != nil
+	})
+	s.Router.Use(nonNilMiddlewares...)
+}
+
 func (s *Server) addDefaultMiddleware() {
 	if s.instrument != nil {
 		s.Router.Use(s.instrument.Wrap)
@@ -165,10 +203,6 @@ func (s *Server) addDefaultMiddleware() {
 	if s.Authenticator != nil {
 		s.Router.Use(s.Authenticator)
 	}
-	// TODO: Implement this thing
-	// if s.Authoriser != nil {
-	// 	s.Router.Use(s.Authoriser.Wrap)
-	// }
 }
 
 func (s *Server) AddStatusStaticMetadataItem(key string, value any) {
@@ -201,7 +235,7 @@ func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 		encoder := json.NewEncoder(w)
 		err := encoder.Encode(statusMap)
 		if err != nil {
-			s.logger.Error().Err(err).Msg("error calling json.Encode")
+			s.Logger.Error().Err(err).Msg("error calling json.Encode")
 		}
 	}
 }
@@ -209,7 +243,7 @@ func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 func (s *Server) initialiseServer() {
 
 	s.serverInitOnce.Do(func() {
-		l := stdlog.New(s.logger.With().Str("level", "error").Logger(), "", stdlog.Lshortfile)
+		l := stdlog.New(s.Logger.With().Str("level", "error").Logger(), "", stdlog.Lshortfile)
 
 		s.server = &http.Server{
 			ReadTimeout:  time.Minute,
