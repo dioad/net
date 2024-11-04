@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
-
-	http2 "github.com/dioad/net/http"
 )
 
 type Claims struct {
@@ -64,7 +62,7 @@ type tokenPayload struct {
 // NewTokenSource: https://fly.io/docs/security/openid-connect/
 func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 	source := &tokenSource{
-		client: http2.NewUnixSocketClient("/.fly/api"),
+		client: NewUnixSocketClient("/.fly/api"),
 	}
 	for _, opt := range opts {
 		opt(source)
