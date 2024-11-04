@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/providers/github"
 	"github.com/markbates/goth/providers/openidConnect"
@@ -110,7 +111,8 @@ type GothEndpoint interface {
 }
 
 type oidcEndpoint struct {
-	url *url.URL
+	url              *url.URL
+	CustomClaimsFunc func() jwtvalidator.CustomClaims
 }
 
 func (e *oidcEndpoint) URL() *url.URL {
@@ -120,6 +122,10 @@ func (e *oidcEndpoint) URL() *url.URL {
 func (e *oidcEndpoint) DiscoveryEndpoint() (*url.URL, error) {
 	return e.url.JoinPath(".well-known", "openid-configuration"), nil
 }
+
+// func (e *oidcEndpoint) CustomClaimsFunc() func() jwtvalidator.CustomClaims {
+// 	return func() jwtvalidator.CustomClaims { return &IntrospectionResponse{} }
+// }
 
 func (e *oidcEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
 	discoveryEndpoint, _ := e.DiscoveryEndpoint()
@@ -161,12 +167,28 @@ func (e *oidcEndpoint) GothProvider(clientID, clientSecret string, callbackURL *
 		scopes...)
 }
 
-func NewEndpoint(baseURL string) (Endpoint, error) {
+func NewEndpoint(baseURL string, opts ...EndpointOption) (Endpoint, error) {
 	u, _ := url.Parse(baseURL)
 
-	return &oidcEndpoint{
+	e := &oidcEndpoint{
 		url: u,
-	}, nil
+	}
+
+	for _, opt := range opts {
+		opt(e)
+	}
+
+	return e, nil
+}
+
+type EndpointOption func(e Endpoint)
+
+func WithCustomClaims[T jwtvalidator.CustomClaims](t T) func(e Endpoint) {
+	return func(e Endpoint) {
+		if e, ok := e.(*oidcEndpoint); ok {
+			e.CustomClaimsFunc = func() jwtvalidator.CustomClaims { return t }
+		}
+	}
 }
 
 func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
@@ -174,10 +196,13 @@ func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
 	case "github":
 		return NewGitHubEndpoint(config.URL)
 	case "keycloak":
-		return NewKeycloakRealmEndpoint(config.URL, config.KeycloakRealm)
+		return NewKeycloakRealmEndpoint(config.URL, config.KeycloakRealm, WithCustomClaims(&IntrospectionResponse{}))
+	// TODO: make this work
+	// case "flyio":
+	// 	return NewEndpoint(config.URL, WithCustomClaims(&flyio.Claims{}))
 	default:
 		if config.URL != "" {
-			return NewEndpoint(config.URL)
+			return NewEndpoint(config.URL, WithCustomClaims(&IntrospectionResponse{}))
 		}
 		return nil, fmt.Errorf("config type %s not supported", config.Type)
 	}
@@ -187,8 +212,10 @@ type KeycloakEndpoint struct {
 	url *url.URL
 }
 
-func (e *KeycloakEndpoint) RealmEndpoint(realm string) Endpoint {
-	return &oidcEndpoint{url: e.url.JoinPath("realms", realm)}
+func (e *KeycloakEndpoint) RealmEndpoint(realm string, opts ...EndpointOption) (Endpoint, error) {
+	return NewEndpoint(e.url.JoinPath("realms", realm).String(), opts...)
+
+	// return &oidcEndpoint{url: e.url.JoinPath("realms", realm)}
 }
 
 func NewKeycloakEndpoint(baseURLStr string) (*KeycloakEndpoint, error) {
@@ -199,13 +226,13 @@ func NewKeycloakEndpoint(baseURLStr string) (*KeycloakEndpoint, error) {
 	return &KeycloakEndpoint{url: baseURL}, nil
 }
 
-func NewKeycloakRealmEndpoint(baseURLStr, realm string) (Endpoint, error) {
+func NewKeycloakRealmEndpoint(baseURLStr, realm string, opts ...EndpointOption) (Endpoint, error) {
 	keycloakEndpoint, err := NewKeycloakEndpoint(baseURLStr)
 	if err != nil {
 		return nil, fmt.Errorf("error creating keycloak endpoint: %w", err)
 	}
 
-	return keycloakEndpoint.RealmEndpoint(realm), nil
+	return keycloakEndpoint.RealmEndpoint(realm, opts...)
 }
 
 type GitHubEndpoint struct {

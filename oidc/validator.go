@@ -134,6 +134,7 @@ func NewMultiValidatorFromConfig(configs []ValidatorConfig, opts ...jwtvalidator
 }
 
 func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option) (TokenValidator, error) {
+	var validator TokenValidator
 	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error creating endpoint from config: %w", err)
@@ -165,7 +166,7 @@ func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option
 
 	provider := jwks.NewCachingProvider(endpoint.URL(), cacheTTL)
 
-	jwtValidator, err := jwtvalidator.New(
+	validator, err = jwtvalidator.New(
 		provider.KeyFunc,
 		signatureAlgorithm,
 		issuerURL,
@@ -176,9 +177,18 @@ func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option
 		return nil, fmt.Errorf("failed to configure validator for %v: %w", config.URL, err)
 	}
 
-	debugValidator := NewValidatorDebugger(jwtValidator, WithLabel("url", config.URL))
+	if config.Debug {
+		validator = NewValidatorDebugger(validator,
+			WithLabel("issuer", issuerURL),
+			WithLabel("type", config.Type),
+			WithLabel("audiences", strings.Join(config.Audiences, ",")),
+			WithLabel("signatureAlgorithm", config.SignatureAlgorithm),
+			WithLabel("allowedClockSkew", allowedClockSkew.String()),
+			WithLabel("cacheTTL", cacheTTL.String()),
+		)
+	}
 
-	return debugValidator, nil
+	return validator, nil
 }
 
 func NewValidatorsFromConfig(configs []ValidatorConfig, opts ...jwtvalidator.Option) ([]TokenValidator, error) {

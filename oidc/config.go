@@ -27,6 +27,7 @@ type ValidatorConfig struct {
 	CacheTTL           int      `json:"cache_ttl_seconds" mapsstructure:"cache_ttl_seconds"`
 	SignatureAlgorithm string   `json:"signature_algorithm" mapstructure:"signature_algorithm"`
 	AllowedClockSkew   int      `json:"allowed_clock_skew_seconds" mapstructure:"allowed_clock_skew_seconds"`
+	Debug              bool     `json:"debug" mapstructure:"debug"`
 }
 
 type TrustConfig struct {
