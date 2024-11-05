@@ -136,7 +136,9 @@ func (r *Response) NoContent() {
 	r.Writer.WriteHeader(http.StatusNoContent)
 }
 
-func ReadBody[T any](req *http.Request, data *T) error {
+func ReadBody[T any](req *http.Request) (T, error) {
+	var t T
 	decoder := json.NewDecoder(req.Body)
-	return decoder.Decode(data)
+	err := decoder.Decode(&t)
+	return t, err
 }

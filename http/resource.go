@@ -12,9 +12,14 @@ type StatusResource interface {
 	Status() (interface{}, error)
 }
 
+type UseResource interface {
+	Use(...mux.MiddlewareFunc) UseResource
+}
+
 type DefaultResource interface {
 	RegisterRoutes(*mux.Router)
 }
+
 type PathResource interface {
 	RegisterRoutesWithPrefix(*mux.Router, string)
 }
