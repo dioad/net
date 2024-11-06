@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -23,27 +24,31 @@ func (c *clientConfigTokenSource) resolveTokenSource() (oauth2.TokenSource, erro
 		return flyio.NewTokenSource(flyio.WithAudience(c.clientConfig.Audience)), nil
 	}
 
-	var tokenSource oauth2.TokenSource
-
-	token, err := ResolveTokenFromFile(c.clientConfig.TokenFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load OIDC token: %w", err)
-	}
-
-	if token.AccessToken != "" && token.RefreshToken == "" {
-		return oauth2.StaticTokenSource(token), nil
-	}
-
 	oidcClient, err := NewClientFromConfig(&c.clientConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OIDC client: %w", err)
 	}
-	tokenSource, err = oidcClient.TokenSource(token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create OIDC token source: %w", err)
+	if c.clientConfig.TokenFile != "" {
+		token, err := ResolveTokenFromFile(c.clientConfig.TokenFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load OIDC token: %w", err)
+		}
+
+		if token.AccessToken != "" && token.RefreshToken == "" {
+			return oauth2.StaticTokenSource(token), nil
+		}
+		return oidcClient.TokenSource(token)
 	}
 
-	return tokenSource, nil
+	if c.clientConfig.ClientID != "" && c.clientConfig.ClientSecret.MaskedString() != "" {
+		token, err := oidcClient.ClientCredentialsToken(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get client credentials token: %w", err)
+		}
+		return oauth2.StaticTokenSource(token), nil
+	}
+
+	return nil, fmt.Errorf("no token source found")
 }
 
 func (c *clientConfigTokenSource) Token() (*oauth2.Token, error) {
