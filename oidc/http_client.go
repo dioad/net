@@ -2,7 +2,6 @@ package oidc
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 
 	"golang.org/x/oauth2"
@@ -28,10 +27,6 @@ func Oauth2ClientWithTLS(client *http.Client, tlsConfig tls.ClientConfig) (*http
 func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
 	tokenSource := NewTokenSourceFromConfig(*config)
 
-	token, _ := tokenSource.Token()
-	// DEBUG
-	slog.Debug("NewHTTPClientFromConfig", "token", token.AccessToken)
-
 	ctx := context.Background()
 
 	tlsConfig, err := tls.NewClientTLSConfig(config.TLSConfig)
@@ -40,7 +35,6 @@ func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
 	}
 
 	if tlsConfig != nil {
-		slog.Debug("NewHTTPClientFromConfig", "tlsConfig", tlsConfig)
 		httpClient := http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,

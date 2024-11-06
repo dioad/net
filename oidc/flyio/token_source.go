@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -73,8 +72,6 @@ func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 }
 
 func (ts *tokenSource) Token() (*oauth2.Token, error) {
-	slog.Debug("flyio.TokenSource.Token", "audience", ts.audience)
-
 	tokenURL := &url.URL{
 		Scheme: "http",
 		Host:   "localhost",
