@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"golang.org/x/oauth2"
@@ -25,14 +26,11 @@ func Oauth2ClientWithTLS(client *http.Client, tlsConfig tls.ClientConfig) (*http
 }
 
 func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
-	// var tokenSource oauth2.TokenSource
-	// if config.Type == "flyio" {
-	// 	opt := flyio.WithAudience(config.Audience)
-	// 	tokenSource = flyio.NewTokenSource(opt)
-	// } else {
-	// 	tokenSource = NewTokenSourceFromConfig(*config)
-	// }
 	tokenSource := NewTokenSourceFromConfig(*config)
+
+	// DEBUG
+	token, _ := tokenSource.Token()
+	slog.Debug("NewHTTPClientFromConfig", "token", token.AccessToken)
 
 	ctx := context.Background()
 
@@ -41,13 +39,15 @@ func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
 		return nil, err
 	}
 
-	httpClient := http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
+	if tlsConfig != nil {
+		slog.Debug("NewHTTPClientFromConfig", "tlsConfig", tlsConfig)
+		httpClient := http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConfig,
+			},
+		}
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, &httpClient)
 	}
-
-	ctx = context.WithValue(ctx, oauth2.HTTPClient, &httpClient)
 
 	return oauth2.NewClient(ctx, tokenSource), nil
 }
