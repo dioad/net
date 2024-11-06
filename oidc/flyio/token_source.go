@@ -131,7 +131,7 @@ func decodeToken(accessToken string) (*oauth2.Token, error) {
 	}
 
 	return &oauth2.Token{
-		AccessToken: accessToken,
+		AccessToken: strings.TrimSuffix(accessToken, "\n"),
 		Expiry:      time.Unix(int64(expiry), 0),
 	}, nil
 }
