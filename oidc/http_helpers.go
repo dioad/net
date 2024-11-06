@@ -8,10 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"golang.org/x/oauth2"
-
-	"github.com/dioad/net/tls"
 )
 
 func doRequestAndUnmarshallJSON[T any](ctx context.Context, req *http.Request) (*T, error) {
@@ -59,19 +55,4 @@ func doPost[T any](ctx context.Context, url string, data url.Values) (*T, error)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	return doRequestAndUnmarshallJSON[T](ctx, req)
-}
-
-func Oauth2ClientWithBaseTransport(client *http.Client, baseTransport http.RoundTripper) (*http.Client, error) {
-	t := client.Transport.(*oauth2.Transport)
-	t.Base = baseTransport
-	return client, nil
-}
-
-func Oauth2ClientWithTLS(client *http.Client, tlsConfig tls.ClientConfig) (*http.Client, error) {
-	tlsClientConfig, err := tls.NewClientTLSConfig(tlsConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return Oauth2ClientWithBaseTransport(client, &http.Transport{TLSClientConfig: tlsClientConfig})
 }

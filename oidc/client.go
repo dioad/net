@@ -123,35 +123,6 @@ type Client struct {
 
 // NewHTTPClientFromConfig
 
-func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
-	if config.Type == "flyio" {
-		opt := flyio.WithAudience(config.Audience)
-		return flyio.NewHTTPClient(context.Background(), opt), nil
-	}
-
-	client, err := NewClientFromConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	var token *oauth2.Token
-
-	// if client_id and client_secret are provided, get a token using Client Credentials Grant
-	if config.ClientID != "" && config.ClientSecret.MaskedString() != "" {
-		token, err = client.ClientCredentialsToken(context.Background(), WithAudience(config.Audience))
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// else try and load from file
-		token, err = LoadTokenFromFile(config.TokenFile)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return client.HTTPClient(token)
-}
-
 func NewClientFromConfig(config *ClientConfig) (*Client, error) {
 	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
 	if err != nil {
@@ -325,12 +296,12 @@ func (c *Client) DeviceToken(ctx context.Context, scopes ...string) (*oauth2.Tok
 	return token, err
 }
 
-func (c *Client) HTTPClient(t *oauth2.Token) (*http.Client, error) {
+func (c *Client) HTTPClient(ctx context.Context, t *oauth2.Token) (*http.Client, error) {
 	oauth2Config, err := c.oAuth2Config()
 	if err != nil {
 		return nil, fmt.Errorf("error getting OAuth2 config: %w", err)
 	}
-	return oauth2Config.Client(context.Background(), t), nil
+	return oauth2Config.Client(ctx, t), nil
 }
 
 func (c *Client) TokenSource(t *oauth2.Token) (oauth2.TokenSource, error) {

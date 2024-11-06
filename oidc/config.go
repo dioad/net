@@ -1,6 +1,10 @@
 package oidc
 
-import "github.com/dioad/util"
+import (
+	"github.com/dioad/util"
+
+	"github.com/dioad/net/tls"
+)
 
 type EndpointConfig struct {
 	Type          string `json:"type,omitempty" mapstructure:"type,omitempty"`
@@ -17,7 +21,9 @@ type ClientConfig struct {
 	Audience string `json:"audience,omitempty" mapstructure:"audience,omitempty"`
 
 	// do these belong somewhere else?
-	TokenFile string `json:"token-file" mapstructure:"token-file"`
+	TokenFile string `json:"token-file,omitempty" mapstructure:"token-file,omitempty"`
+
+	TLSConfig tls.ClientConfig `json:"tls-client-config,omitempty" mapstructure:"tls-client-config,omitempty"`
 }
 
 type ValidatorConfig struct {
