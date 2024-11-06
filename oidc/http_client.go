@@ -28,8 +28,10 @@ func Oauth2ClientWithTLS(client *http.Client, tlsConfig tls.ClientConfig) (*http
 func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
 	tokenSource := NewTokenSourceFromConfig(*config)
 
-	// DEBUG
 	token, _ := tokenSource.Token()
+	// DEBUG
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	
 	slog.Debug("NewHTTPClientFromConfig", "token", token.AccessToken)
 
 	ctx := context.Background()
