@@ -30,8 +30,6 @@ func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
 
 	token, _ := tokenSource.Token()
 	// DEBUG
-	slog.SetLogLoggerLevel(slog.LevelDebug)
-
 	slog.Debug("NewHTTPClientFromConfig", "token", token.AccessToken)
 
 	ctx := context.Background()
