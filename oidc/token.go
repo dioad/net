@@ -19,7 +19,6 @@ type clientConfigTokenSource struct {
 }
 
 func (c *clientConfigTokenSource) resolveTokenSource() (oauth2.TokenSource, error) {
-
 	if c.clientConfig.Type == "flyio" {
 		return flyio.NewTokenSource(flyio.WithAudience(c.clientConfig.Audience)), nil
 	}
@@ -30,14 +29,12 @@ func (c *clientConfigTokenSource) resolveTokenSource() (oauth2.TokenSource, erro
 	}
 	if c.clientConfig.TokenFile != "" {
 		token, err := ResolveTokenFromFile(c.clientConfig.TokenFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load OIDC token: %w", err)
+		if err == nil {
+			if token.AccessToken != "" && token.RefreshToken == "" {
+				return oauth2.StaticTokenSource(token), nil
+			}
+			return oidcClient.TokenSource(token)
 		}
-
-		if token.AccessToken != "" && token.RefreshToken == "" {
-			return oauth2.StaticTokenSource(token), nil
-		}
-		return oidcClient.TokenSource(token)
 	}
 
 	if c.clientConfig.ClientID != "" && c.clientConfig.ClientSecret.MaskedString() != "" {

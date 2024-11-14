@@ -4,35 +4,22 @@ import (
 	"context"
 	"net/http"
 
+	stdtls "crypto/tls"
+
 	"golang.org/x/oauth2"
 
 	"github.com/dioad/net/tls"
 )
 
-func Oauth2ClientWithBaseTransport(client *http.Client, baseTransport http.RoundTripper) (*http.Client, error) {
-	t := client.Transport.(*oauth2.Transport)
-	t.Base = baseTransport
-	return client, nil
-}
-
-func Oauth2ClientWithTLS(client *http.Client, tlsConfig tls.ClientConfig) (*http.Client, error) {
-	tlsClientConfig, err := tls.NewClientTLSConfig(tlsConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return Oauth2ClientWithBaseTransport(client, &http.Transport{TLSClientConfig: tlsClientConfig})
-}
-
-func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
+func NewHTTPClientFromConfigWithContext(ctx context.Context, config *ClientConfig) (*http.Client, error) {
 	tokenSource := NewTokenSourceFromConfig(*config)
 
-	ctx := context.Background()
+	return oauth2.NewClient(ctx, tokenSource), nil
+}
 
-	tlsConfig, err := tls.NewClientTLSConfig(config.TLSConfig)
-	if err != nil {
-		return nil, err
-	}
+// TODO: Factor these functions better
+func ContextWithTLSConfig(tlsConfig *stdtls.Config) context.Context {
+	ctx := context.Background()
 
 	if tlsConfig != nil {
 		httpClient := http.Client{
@@ -42,6 +29,24 @@ func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
 		}
 		ctx = context.WithValue(ctx, oauth2.HTTPClient, &httpClient)
 	}
+	return ctx
+}
 
-	return oauth2.NewClient(ctx, tokenSource), nil
+// TODO: Factor these functions better
+func ContextFromTLSConfig(cfg tls.ClientConfig) (context.Context, error) {
+	tlsConfig, err := tls.NewClientTLSConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return ContextWithTLSConfig(tlsConfig), nil
+}
+
+func NewHTTPClientFromConfig(config *ClientConfig) (*http.Client, error) {
+	ctx, err := ContextFromTLSConfig(config.TLSConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewHTTPClientFromConfigWithContext(ctx, config)
 }
