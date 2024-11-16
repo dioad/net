@@ -136,6 +136,7 @@ func (e *oidcEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
 	discoveredConfiguration := OpenIDConfiguration{}
 
 	jsonDecoder := json.NewDecoder(response.Body)
+	_ = response.Body.Close()
 	err = jsonDecoder.Decode(&discoveredConfiguration)
 	return &discoveredConfiguration, err
 }

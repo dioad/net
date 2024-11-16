@@ -140,5 +140,9 @@ func ReadBody[T any](req *http.Request) (T, error) {
 	var t T
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&t)
-	return t, err
+	if err != nil {
+		_ = req.Body.Close()
+		return t, err
+	}
+	return t, req.Body.Close()
 }
