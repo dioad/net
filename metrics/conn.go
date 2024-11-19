@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"errors"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -243,7 +244,7 @@ func NewConnWithCloser(c net.Conn, closer func(net.Conn)) net.Conn {
 func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net.Conn {
 	return NewConnWithCloser(c, func(c net.Conn) {
 		err := c.Close()
-		if err != nil {
+		if err != nil && !errors.Is(err, net.ErrClosed) {
 			logger.Error().
 				Err(err).
 				Msg("connectionCloseError")

@@ -84,13 +84,6 @@ func waitForToken(tokenSource oauth2.TokenSource, interval time.Duration, maxTim
 	}
 
 	t := time.NewTicker(interval)
-	defer t.Stop()
-
-	expired := make(chan bool)
-	go func() {
-		time.Sleep(maxTime)
-		close(expired)
-	}()
 
 	for {
 		var err error
@@ -100,7 +93,7 @@ func waitForToken(tokenSource oauth2.TokenSource, interval time.Duration, maxTim
 			if err == nil && token.Valid() {
 				return tokenSource, nil
 			}
-		case <-expired:
+		case <-time.After(maxTime):
 			if err != nil {
 				return nil, fmt.Errorf("timed out waiting for identity token after %v: %w", maxTime, err)
 			}
