@@ -5,53 +5,65 @@ import (
 	"time"
 )
 
-type ConnWithCloser struct {
-	conn    net.Conn
+type RawConn interface {
+	NetConn() net.Conn
+}
+
+type connWithCloser struct {
+	conn    DoneConn
 	onClose func(net.Conn)
 }
 
-func (s *ConnWithCloser) NetConn() net.Conn {
+func (s *connWithCloser) NetConn() net.Conn {
 	return s.conn
 }
 
-func (s *ConnWithCloser) Read(b []byte) (int, error) {
+func (s *connWithCloser) Read(b []byte) (int, error) {
 	return s.conn.Read(b)
 }
 
-func (s *ConnWithCloser) Write(b []byte) (int, error) {
+func (s *connWithCloser) Write(b []byte) (int, error) {
 	return s.conn.Write(b)
 }
 
-func (s *ConnWithCloser) Close() error {
+func (s *connWithCloser) Close() error {
 	if s.onClose != nil {
 		s.onClose(s.conn)
 	}
 	return s.conn.Close()
 }
 
-func (s *ConnWithCloser) LocalAddr() net.Addr {
+func (s *connWithCloser) Done() <-chan struct{} {
+	return s.conn.Done()
+}
+
+func (s *connWithCloser) Closed() bool {
+	return s.conn.Closed()
+}
+
+func (s *connWithCloser) LocalAddr() net.Addr {
 	return s.conn.LocalAddr()
 }
 
-func (s *ConnWithCloser) RemoteAddr() net.Addr {
+func (s *connWithCloser) RemoteAddr() net.Addr {
 	return s.conn.RemoteAddr()
 }
 
-func (s *ConnWithCloser) SetDeadline(t time.Time) error {
+func (s *connWithCloser) SetDeadline(t time.Time) error {
 	return s.conn.SetDeadline(t)
 }
 
-func (s *ConnWithCloser) SetReadDeadline(t time.Time) error {
+func (s *connWithCloser) SetReadDeadline(t time.Time) error {
 	return s.conn.SetReadDeadline(t)
 }
 
-func (s *ConnWithCloser) SetWriteDeadline(t time.Time) error {
+func (s *connWithCloser) SetWriteDeadline(t time.Time) error {
 	return s.conn.SetWriteDeadline(t)
 }
 
-func NewConnWithCloser(c net.Conn, closer func(net.Conn)) net.Conn {
-	return &ConnWithCloser{
-		conn:    c,
+func NewConnWithCloser(c net.Conn, closer func(net.Conn)) DoneConn {
+	return &connWithCloser{
+		conn:    NewDoneConn(c),
 		onClose: closer,
 	}
 }

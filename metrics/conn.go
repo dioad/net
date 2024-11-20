@@ -111,7 +111,7 @@ func (m *connMetrics) Duration() time.Duration {
 
 // Conn is a net.Conn that records metrics.
 type Conn struct {
-	conn    net.Conn
+	conn    net2.DoneConn
 	metrics *connMetrics
 }
 
@@ -164,6 +164,10 @@ func (s *Conn) Write(b []byte) (int, error) {
 	return n, err
 }
 
+func (s *Conn) Done() <-chan struct{} {
+	return s.conn.Done()
+}
+
 // Close closes the connection.
 func (s *Conn) Close() error {
 	return s.conn.Close()
@@ -196,7 +200,7 @@ func (s *Conn) SetWriteDeadline(t time.Time) error {
 
 // SetKeepAlive sets whether the operating system should send keepalive
 func (s *Conn) SetKeepAlive(keepalive bool) error {
-	if c, ok := s.conn.(*net.TCPConn); ok {
+	if c, ok := s.conn.(net2.RawConn).NetConn().(*net.TCPConn); ok {
 		return c.SetKeepAlive(keepalive)
 	}
 	return nil
@@ -204,7 +208,7 @@ func (s *Conn) SetKeepAlive(keepalive bool) error {
 
 // SetKeepAlivePeriod sets period between keep alives.
 func (s *Conn) SetKeepAlivePeriod(d time.Duration) error {
-	if c, ok := s.conn.(*net.TCPConn); ok {
+	if c, ok := s.conn.(net2.RawConn).NetConn().(*net.TCPConn); ok {
 		return c.SetKeepAlivePeriod(d)
 	}
 	return nil
@@ -220,7 +224,7 @@ func NewConn(c net.Conn) net.Conn {
 // starts recording metrics from the given startTime.
 func NewConnWithStartTime(c net.Conn, startTime time.Time) net.Conn {
 	conn := &Conn{
-		conn: c,
+		conn: net2.NewDoneConn(c),
 		metrics: &connMetrics{
 			startTime: startTime,
 		},
@@ -233,7 +237,7 @@ func NewConnWithStartTime(c net.Conn, startTime time.Time) net.Conn {
 }
 
 // NewConnWithCloser returns a new net.Conn that wraps the given net.Conn and
-func NewConnWithCloser(c net.Conn, closer func(net.Conn)) net.Conn {
+func NewConnWithCloser(c net.Conn, closer func(net.Conn)) net2.DoneConn {
 	conn := NewConn(c)
 
 	return net2.NewConnWithCloser(conn, closer)
@@ -241,7 +245,7 @@ func NewConnWithCloser(c net.Conn, closer func(net.Conn)) net.Conn {
 
 // NewConnWithLogger returns a new net.Conn that wraps the given net.Conn and
 // logs connection stats when the connection is closed.
-func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net.Conn {
+func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net2.DoneConn {
 	return NewConnWithCloser(c, func(c net.Conn) {
 		err := c.Close()
 		if err != nil && !errors.Is(err, net.ErrClosed) {
