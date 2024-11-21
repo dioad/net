@@ -27,10 +27,13 @@ func (s *connWithCloser) Write(b []byte) (int, error) {
 }
 
 func (s *connWithCloser) Close() error {
-	if s.onClose != nil {
-		s.onClose(s.conn)
+	if !s.conn.Closed() {
+		if s.onClose != nil {
+			s.onClose(s.conn)
+		}
+		return s.conn.Close()
 	}
-	return s.conn.Close()
+	return net.ErrClosed
 }
 
 func (s *connWithCloser) Done() <-chan struct{} {

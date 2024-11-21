@@ -8,6 +8,7 @@ import (
 
 type DoneConn interface {
 	net.Conn
+	RawConn
 	Done() <-chan struct{}
 	Closed() bool
 }

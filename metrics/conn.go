@@ -268,3 +268,17 @@ func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net2.DoneConn {
 			Msg("connectionClosed")
 	})
 }
+
+func FindMetricsConn(c net2.RawConn) *Conn {
+	metricsConn, ok := c.NetConn().(*Conn)
+	if ok {
+		return metricsConn
+	}
+
+	rawConn, ok := c.NetConn().(net2.RawConn)
+	if !ok {
+		return nil
+	}
+
+	return FindMetricsConn(rawConn)
+}
