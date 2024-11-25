@@ -2,8 +2,10 @@ package spf
 
 import (
 	"fmt"
+	"net/netip"
 	"strings"
 
+	"github.com/dioad/filter"
 	"github.com/dioad/generics"
 	"github.com/dioad/util"
 )
@@ -24,6 +26,28 @@ type Mechanism struct {
 	Values     []string            `mapstructure:"values"`
 	ValueList  string              `mapstructure:"value-list"`
 	ValuesFunc MechanismValuesFunc `mapstructure:"-" json:"-"`
+}
+
+func IPMechanisms(values ...string) (*Mechanism, *Mechanism) {
+	var ip4Mechanism *Mechanism
+	var ip6Mechanism *Mechanism
+
+	for _, v := range values {
+		ip, _ := netip.ParseAddr(v)
+		if ip.Is6() {
+			if ip6Mechanism == nil {
+				ip6Mechanism = &Mechanism{Name: "ip6", Values: []string{}}
+			}
+			ip6Mechanism.Values = append(ip6Mechanism.Values, v)
+		} else {
+			if ip4Mechanism == nil {
+				ip4Mechanism = &Mechanism{Name: "ip4", Values: []string{}}
+			}
+			ip4Mechanism.Values = append(ip4Mechanism.Values, v)
+		}
+	}
+
+	return ip4Mechanism, ip6Mechanism
 }
 
 func IP4Mechanism(values ...string) Mechanism {
@@ -109,9 +133,27 @@ func (r *Record) String() string {
 		parts = append(parts, fmt.Sprintf("v=%s", r.Version))
 	}
 
-	for _, m := range r.Mechanisms {
-		parts = append(parts, FormatMechanism(m))
+	//
+	ipMechanisms := filter.FilterSlice(r.Mechanisms, func(m Mechanism) bool { return m.Name == "ip" })
+	nonIpMechanisms := filter.FilterSlice(r.Mechanisms, func(m Mechanism) bool { return m.Name != "ip" })
+
+	if len(ipMechanisms) > 0 {
+		for _, ipMechanism := range ipMechanisms {
+			ip4Mechanism, ip6Mechanism := IPMechanisms(ipMechanism.Values...)
+			if ip4Mechanism != nil && ip6Mechanism != nil {
+				parts = append(parts, FormatMechanisms(*ip4Mechanism, *ip6Mechanism))
+			} else {
+				if ip4Mechanism != nil {
+					parts = append(parts, FormatMechanisms(*ip4Mechanism))
+				}
+				if ip6Mechanism != nil {
+					parts = append(parts, FormatMechanisms(*ip6Mechanism))
+				}
+			}
+		}
 	}
+
+	parts = append(parts, FormatMechanisms(nonIpMechanisms...))
 
 	if r.All {
 		parts = append(parts, fmt.Sprintf("%sall", r.AllQualifier))
@@ -131,6 +173,15 @@ func FormatMechanism(mechanism Mechanism) string {
 	outputs := make([]string, 0, len(mechanism.Values))
 	for _, m := range mechanism.Values {
 		outputs = append(outputs, fmt.Sprintf("%s:%s", mechanism.Name, m))
+	}
+
+	return strings.Join(outputs, " ")
+}
+
+func FormatMechanisms(mechanism ...Mechanism) string {
+	outputs := make([]string, 0, len(mechanism))
+	for _, m := range mechanism {
+		outputs = append(outputs, FormatMechanism(m))
 	}
 
 	return strings.Join(outputs, " ")

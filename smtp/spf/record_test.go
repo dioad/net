@@ -2,6 +2,56 @@ package spf
 
 import "testing"
 
+func TestIPMechanism(t *testing.T) {
+	tests := []struct {
+		m []string
+		r string
+	}{
+		{
+			[]string{"1.2.3.4"},
+			"ip4:1.2.3.4",
+		},
+		{
+			[]string{"fdaa:a:f326:a7b:326:fe9f:445d:2"},
+			"ip6:fdaa:a:f326:a7b:326:fe9f:445d:2",
+		},
+		{
+			[]string{"1.2.3.4", "fdaa:a:f326:a7b:326:fe9f:445d:2"},
+			"ip4:1.2.3.4 ip6:fdaa:a:f326:a7b:326:fe9f:445d:2",
+		},
+		{
+			[]string{"1.2.3.4", "1.3.4.5"},
+			"ip4:1.2.3.4 ip4:1.3.4.5",
+		},
+		{
+			[]string{},
+			"",
+		},
+	}
+
+	for _, run := range tests {
+		expectedResult := run.r
+		var result string
+
+		ip4m, ip6m := IPMechanisms(run.m...)
+
+		if ip4m != nil && ip6m != nil {
+			result = FormatMechanisms(*ip4m, *ip6m)
+		} else {
+			if ip6m != nil {
+				result = FormatMechanism(*ip6m)
+			}
+			if ip4m != nil {
+				result = FormatMechanism(*ip4m)
+			}
+		}
+
+		if result != expectedResult {
+			t.Errorf("got: %s, expected: %s", result, expectedResult)
+		}
+	}
+}
+
 func TestFormatMechanism(t *testing.T) {
 	tests := []struct {
 		m Mechanism
