@@ -153,7 +153,10 @@ func (r *Record) String() string {
 		}
 	}
 
-	parts = append(parts, FormatMechanisms(nonIpMechanisms...))
+	mechanisms := FormatMechanisms(nonIpMechanisms...)
+	if mechanisms != "" {
+		parts = append(parts, mechanisms)
+	}
 
 	if r.All {
 		parts = append(parts, fmt.Sprintf("%sall", r.AllQualifier))
@@ -179,7 +182,7 @@ func FormatMechanism(mechanism Mechanism) string {
 }
 
 func FormatMechanisms(mechanism ...Mechanism) string {
-	outputs := make([]string, 0, len(mechanism))
+	outputs := make([]string, 0, 0)
 	for _, m := range mechanism {
 		outputs = append(outputs, FormatMechanism(m))
 	}
