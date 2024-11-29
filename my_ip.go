@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	// TODO: change this to ipv4.myip.dioad.net(A) ipv6.myip.dioad.net (AAAA) and myip.dioad.net(A and AAAA)
 	IPv4ICanHazIP = "http://ipv4.icanhazip.com"
 	IPv6ICanHazIP = "http://ipv6.icanhazip.com"
 )
@@ -45,23 +46,30 @@ func GetMyIPv6(ctx context.Context) (netip.Addr, error) {
 	return getICanHazIP(ctx, IPv6ICanHazIP)
 }
 
-// GetMyIP fetches the public IP address of the host.
-func GetMyIPs(ctx context.Context) ([]netip.Addr, error) {
-	addrs := make([]netip.Addr, 0, 0)
+type GetIPFunc func(ctx context.Context) (netip.Addr, error)
 
-	ipv6, err := GetMyIPv6(ctx)
-	if err == nil {
-		addrs = append(addrs, ipv6)
+func GetMyIPsFromFuncs(ctx context.Context, funcs ...GetIPFunc) ([]netip.Addr, error) {
+	var ipAddresses []netip.Addr
+	var err error
+	for _, f := range funcs {
+		var ip netip.Addr
+		ip, err = f(ctx)
+		if err == nil {
+			ipAddresses = append(ipAddresses, ip)
+		}
 	}
 
-	ipv4, err := GetMyIPv4(ctx)
-	if err != nil {
-		addrs = append(addrs, ipv4)
-	}
-
-	if len(addrs) == 0 {
+	if len(ipAddresses) == 0 {
+		if err != nil {
+			return nil, err
+		}
 		return nil, fmt.Errorf("could not fetch IP address")
 	}
 
-	return addrs, nil
+	return ipAddresses, nil
+}
+
+// GetMyIP fetches the public IP address of the host.
+func GetMyIPs(ctx context.Context) ([]netip.Addr, error) {
+	return GetMyIPsFromFuncs(ctx, GetMyIPv6, GetMyIPv4)
 }
