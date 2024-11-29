@@ -32,8 +32,11 @@ func getICanHazIP(ctx context.Context, url string) (netip.Addr, error) {
 	ipString := strings.TrimRight(string(ipBytes), "\n")
 
 	addr, err := netip.ParseAddr(ipString)
+	if err != nil {
+		return netip.Addr{}, fmt.Errorf("could not parse IP address %v: %w", ipString, err)
+	}
 
-	return addr, fmt.Errorf("could not parse IP address %v: %w", ipString, err)
+	return addr, nil
 }
 
 // GetIPv4 fetches the public IPv4 address of the host.
