@@ -136,6 +136,10 @@ func (r *Response) NoContent() {
 	r.Writer.WriteHeader(http.StatusNoContent)
 }
 
+func (r *Response) AcceptedWithMessage(s string) {
+	r.Data(http.StatusAccepted, map[string]string{"message": s})
+}
+
 func ReadBody[T any](req *http.Request) (T, error) {
 	var t T
 	decoder := json.NewDecoder(req.Body)
