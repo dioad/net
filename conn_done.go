@@ -13,6 +13,20 @@ type DoneConn interface {
 	Closed() bool
 }
 
+func FindTCPConn(c RawConn) *net.TCPConn {
+	tcpConn, ok := c.NetConn().(*net.TCPConn)
+	if ok {
+		return tcpConn
+	}
+
+	rawConn, ok := c.NetConn().(RawConn)
+	if !ok {
+		return nil
+	}
+
+	return FindTCPConn(rawConn)
+}
+
 type doneConn struct {
 	c         net.Conn
 	closeChan chan struct{}
