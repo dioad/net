@@ -5,36 +5,42 @@ import (
 	"net/http"
 
 	"github.com/dioad/generics"
+
 	"github.com/dioad/net/http/auth/basic"
 	"github.com/dioad/net/http/auth/github"
 	"github.com/dioad/net/http/auth/hmac"
 )
 
 type Handler struct {
-	Config ServerConfig
+	Config     ServerConfig
+	middleware Middleware
 }
 
 func NewHandler(cfg *ServerConfig) *Handler {
 	return &Handler{
-		Config: *cfg,
+		Config:     *cfg,
+		middleware: resolveAuthHandler(cfg),
 	}
 }
 
-func (h *Handler) Wrap(handler http.Handler) http.Handler {
-	var mw Middleware
-	if !generics.IsZeroValue(h.Config.GitHubAuthConfig) {
-		mw = github.NewHandler(h.Config.GitHubAuthConfig)
-	} else if !generics.IsZeroValue(h.Config.BasicAuthConfig) {
-		mw = basic.NewHandler(h.Config.BasicAuthConfig)
-	} else if !generics.IsZeroValue(h.Config.HMACAuthConfig) {
-		mw = hmac.NewHandler(h.Config.HMACAuthConfig)
+func resolveAuthHandler(cfg *ServerConfig) Middleware {
+	if !generics.IsZeroValue(cfg.GitHubAuthConfig) {
+		return github.NewHandler(cfg.GitHubAuthConfig)
+	} else if !generics.IsZeroValue(cfg.BasicAuthConfig) {
+		return basic.NewHandler(cfg.BasicAuthConfig)
+	} else if !generics.IsZeroValue(cfg.HMACAuthConfig) {
+		return hmac.NewHandler(cfg.HMACAuthConfig)
 	}
 
-	if mw == nil {
+	return nil
+}
+
+func (h *Handler) Wrap(handler http.Handler) http.Handler {
+	if h.middleware == nil {
 		return handler
 	}
 
-	return mw.Wrap(handler)
+	return h.middleware.Wrap(handler)
 }
 
 func HandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) http.HandlerFunc {

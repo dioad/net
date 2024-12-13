@@ -40,7 +40,6 @@ type Config struct {
 // Server ...
 type Server struct {
 	Config            Config
-	ListenAddress     string
 	Router            *mux.Router
 	Logger            zerolog.Logger
 	ResourceMap       map[string]Resource
@@ -52,7 +51,6 @@ type Server struct {
 	ListenAddr        net.Addr
 	LogHandler        HandlerWrapper
 	metadataStatusMap map[string]any
-	Authenticator     mux.MiddlewareFunc
 }
 
 func newDefaultServer(config Config) *Server {
@@ -62,7 +60,6 @@ func newDefaultServer(config Config) *Server {
 
 	server := &Server{
 		Config:            config,
-		ListenAddress:     config.ListenAddress,
 		Router:            rtr,
 		ResourceMap:       make(map[string]Resource),
 		metricSet:         m,
@@ -98,9 +95,10 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 	}
 }
 
-func WithAuthenticator(a mux.MiddlewareFunc) ServerOption {
+func WithServerAuth(cfg auth.ServerConfig) ServerOption {
 	return func(s *Server) {
-		s.Authenticator = a
+		h := auth.NewHandler(&cfg)
+		s.Use(h.Wrap)
 	}
 }
 
@@ -120,13 +118,17 @@ func NewServerWithLogger(config Config, logger zerolog.Logger) *Server {
 	return NewServer(config, WithLogger(logger))
 }
 
-func (s *Server) ConfigureTelemetryInstrument(i middleware.Instrument) {
-	s.instrument = &i
-	s.Router.Use(s.instrument.Wrap)
+func WithTelemetryInstrument(i middleware.Instrument) ServerOption {
+	return func(s *Server) {
+		s.instrument = &i
+		s.Use(s.instrument.Wrap)
+	}
 }
 
-func (s *Server) ConfigurePrometheusRegistry(r prometheus.Registerer) {
-	s.metricSet.Register(r)
+func WithPrometheusRegistry(r prometheus.Registerer) ServerOption {
+	return func(s *Server) {
+		s.metricSet.Register(r)
+	}
 }
 
 // AddResource ...
@@ -196,15 +198,6 @@ func (s *Server) Use(middlewares ...mux.MiddlewareFunc) {
 	s.Router.Use(nonNilMiddlewares...)
 }
 
-func (s *Server) addDefaultMiddleware() {
-	if s.instrument != nil {
-		s.Router.Use(s.instrument.Wrap)
-	}
-	if s.Authenticator != nil {
-		s.Router.Use(s.Authenticator)
-	}
-}
-
 func (s *Server) AddStatusStaticMetadataItem(key string, value any) {
 	s.metadataStatusMap[key] = value
 }
@@ -249,7 +242,7 @@ func (s *Server) initialiseServer() {
 			ReadTimeout:  time.Minute,
 			WriteTimeout: time.Minute,
 			Handler:      s.handler(),
-			Addr:         s.ListenAddress,
+			Addr:         s.Config.ListenAddress,
 			ErrorLog:     l,
 		}
 	})
@@ -263,7 +256,7 @@ func (s *Server) ListenAndServe() error {
 // tlsConfig will override any prior configuration in s.Config
 func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
 	s.Config.TLSConfig = tlsConfig
-	ln, err := net.Listen("tcp", s.ListenAddress)
+	ln, err := net.Listen("tcp", s.Config.ListenAddress)
 	if err != nil {
 		return err
 	}

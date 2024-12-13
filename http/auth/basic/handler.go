@@ -15,14 +15,22 @@ type Handler struct {
 
 func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	reqUser, reqPass, _ := r.BasicAuth()
+
+	if reqUser == "" {
+		return r.Context(), fmt.Errorf("no credentials provided")
+	}
+
 	authenticated, err := h.authMap.Authenticate(reqUser, reqPass)
-	if !authenticated || err != nil {
+
+	if authenticated {
+		return context.NewContextWithAuthenticatedPrincipal(r.Context(), reqUser), nil
+	}
+
+	if err != nil {
 		return r.Context(), err
 	}
 
-	ctx := context.NewContextWithAuthenticatedPrincipal(r.Context(), reqUser)
-
-	return ctx, nil
+	return r.Context(), fmt.Errorf("authentication failed")
 }
 
 func (h *Handler) Wrap(handler http.Handler) http.Handler {
@@ -45,6 +53,8 @@ func (h *Handler) Wrap(handler http.Handler) http.Handler {
 }
 
 func NewHandler(cfg ServerConfig) *Handler {
+	// TODO: reload from file every x seconds
+	// and figure out a way to handle the err
 	authMap, _ := LoadBasicAuthFromFile(cfg.HTPasswdFile)
 
 	h := &Handler{
