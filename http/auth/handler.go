@@ -16,23 +16,27 @@ type Handler struct {
 	middleware Middleware
 }
 
-func NewHandler(cfg *ServerConfig) *Handler {
+func NewHandler(cfg *ServerConfig) (*Handler, error) {
+	mw, err := resolveAuthHandler(cfg)
+	if err != nil {
+		return nil, err
+	}
 	return &Handler{
 		Config:     *cfg,
-		middleware: resolveAuthHandler(cfg),
-	}
+		middleware: mw,
+	}, nil
 }
 
-func resolveAuthHandler(cfg *ServerConfig) Middleware {
+func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {
 	if !generics.IsZeroValue(cfg.GitHubAuthConfig) {
-		return github.NewHandler(cfg.GitHubAuthConfig)
+		return github.NewHandler(cfg.GitHubAuthConfig), nil
 	} else if !generics.IsZeroValue(cfg.BasicAuthConfig) {
 		return basic.NewHandler(cfg.BasicAuthConfig)
 	} else if !generics.IsZeroValue(cfg.HMACAuthConfig) {
-		return hmac.NewHandler(cfg.HMACAuthConfig)
+		return hmac.NewHandler(cfg.HMACAuthConfig), nil
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (h *Handler) Wrap(handler http.Handler) http.Handler {
@@ -43,8 +47,12 @@ func (h *Handler) Wrap(handler http.Handler) http.Handler {
 	return h.middleware.Wrap(handler)
 }
 
-func HandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) http.HandlerFunc {
-	return NewHandler(cfg).Wrap(origHandler).ServeHTTP
+func HandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) (http.HandlerFunc, error) {
+	h, err := NewHandler(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return h.Wrap(origHandler).ServeHTTP, nil
 }
 
 func NullHandler(next http.HandlerFunc) http.HandlerFunc {
@@ -59,14 +67,17 @@ func MultiAuthnHandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) http
 
 		// ctx := r.Context()
 		var ctx stdctx.Context
-		var err error = nil
+		var err error
 		for _, provider := range cfg.Providers {
 			var a Authenticator
 			switch provider {
 			case "github":
 				a = github.NewHandler(cfg.GitHubAuthConfig)
 			case "basic":
-				a = basic.NewHandler(cfg.BasicAuthConfig)
+				a, err = basic.NewHandler(cfg.BasicAuthConfig)
+				if err != nil {
+					continue
+				}
 			case "hmac":
 				a = hmac.NewHandler(cfg.HMACAuthConfig)
 			}

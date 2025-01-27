@@ -75,9 +75,10 @@ type waitingTokenSource struct {
 	tokenSource       oauth2.TokenSource
 	Interval          time.Duration
 	MaxTime           time.Duration
+	parentCtx         context.Context
 }
 
-func waitForToken(tokenSource oauth2.TokenSource, interval time.Duration, maxTime time.Duration) (oauth2.TokenSource, error) {
+func waitForToken(ctx context.Context, tokenSource oauth2.TokenSource, interval time.Duration, maxTime time.Duration) (oauth2.TokenSource, error) {
 	token, err := tokenSource.Token()
 	if err == nil && token.Valid() {
 		return tokenSource, nil
@@ -98,6 +99,8 @@ func waitForToken(tokenSource oauth2.TokenSource, interval time.Duration, maxTim
 				return nil, fmt.Errorf("timed out waiting for identity token after %v: %w", maxTime, err)
 			}
 			return nil, fmt.Errorf("timed out waiting for identity token after %v", maxTime)
+		case <-ctx.Done():
+			return nil, fmt.Errorf("context cancelled while waiting for identity token")
 		}
 	}
 }
@@ -107,7 +110,7 @@ func (w *waitingTokenSource) Token() (*oauth2.Token, error) {
 		return w.tokenSource.Token()
 	}
 
-	tokenSource, err := waitForToken(w.sourceTokenSource, w.Interval, w.MaxTime)
+	tokenSource, err := waitForToken(w.parentCtx, w.sourceTokenSource, w.Interval, w.MaxTime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get identity token: %w", err)
 	}
@@ -116,16 +119,17 @@ func (w *waitingTokenSource) Token() (*oauth2.Token, error) {
 	return w.tokenSource.Token()
 }
 
-func NewWaitingTokenSource(tokenSource oauth2.TokenSource, interval time.Duration, maxTime time.Duration) oauth2.TokenSource {
+func NewWaitingTokenSource(ctx context.Context, tokenSource oauth2.TokenSource, interval time.Duration, maxTime time.Duration) oauth2.TokenSource {
 	return &waitingTokenSource{
 		sourceTokenSource: tokenSource,
+		parentCtx:         ctx,
 		Interval:          interval,
 		MaxTime:           maxTime,
 	}
 }
 
-func NewWaitingTokenSourceFromConfig(config ClientConfig, interval time.Duration, maxTime time.Duration) oauth2.TokenSource {
+func NewWaitingTokenSourceFromConfig(ctx context.Context, config ClientConfig, interval time.Duration, maxTime time.Duration) oauth2.TokenSource {
 	tokenSource := NewTokenSourceFromConfig(config)
 
-	return NewWaitingTokenSource(tokenSource, interval, maxTime)
+	return NewWaitingTokenSource(ctx, tokenSource, interval, maxTime)
 }

@@ -52,23 +52,23 @@ func (h *Handler) Wrap(handler http.Handler) http.Handler {
 	})
 }
 
-func NewHandler(cfg ServerConfig) *Handler {
+func NewHandler(cfg ServerConfig) (*Handler, error) {
 	// TODO: reload from file every x seconds
 	// and figure out a way to handle the err
-	authMap, _ := LoadBasicAuthFromFile(cfg.HTPasswdFile)
+	authMap, err := LoadBasicAuthFromFile(cfg.HTPasswdFile)
 
 	h := &Handler{
 		authMap: authMap,
 		config:  cfg,
 	}
 
-	return h
+	return h, err
 }
 
-func NewHandlerWithMap(authMap AuthMap) *Handler {
+func NewHandlerWithMap(authMap AuthMap) (*Handler, error) {
 	h := &Handler{
 		authMap: authMap,
 	}
 
-	return h
+	return h, nil
 }

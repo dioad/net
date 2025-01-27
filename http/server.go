@@ -97,7 +97,11 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 
 func WithServerAuth(cfg auth.ServerConfig) ServerOption {
 	return func(s *Server) {
-		h := auth.NewHandler(&cfg)
+		h, err := auth.NewHandler(&cfg)
+		if err != nil {
+			s.Logger.Fatal().Err(err).Msg("error creating auth handler.")
+			return
+		}
 		s.Use(h.Wrap)
 	}
 }
@@ -132,8 +136,13 @@ func WithPrometheusRegistry(r prometheus.Registerer) ServerOption {
 }
 
 // AddResource ...
-func (s *Server) AddResource(pathPrefix string, r Resource) {
+func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...mux.MiddlewareFunc) {
+	nonNilMiddlewares := filter.FilterSlice(middlewares, func(m mux.MiddlewareFunc) bool {
+		return m != nil
+	})
+
 	subrouter := s.Router.PathPrefix(pathPrefix).Subrouter()
+	subrouter.Use(nonNilMiddlewares...)
 
 	if rp, ok := r.(PathResource); ok {
 		rp.RegisterRoutesWithPrefix(subrouter, pathPrefix)
