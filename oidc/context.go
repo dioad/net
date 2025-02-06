@@ -7,6 +7,15 @@ import (
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
 )
 
+func RegisteredClaimsFromContext(ctx context.Context) jwtvalidator.RegisteredClaims {
+	val := ctx.Value(jwtmiddleware.ContextKey{})
+	if val != nil {
+		claims := val.(*jwtvalidator.ValidatedClaims)
+		return claims.RegisteredClaims
+	}
+	return jwtvalidator.RegisteredClaims{}
+}
+
 func CustomClaimsFromContext[T jwtvalidator.CustomClaims](ctx context.Context) T {
 	val := ctx.Value(jwtmiddleware.ContextKey{})
 	if val != nil {

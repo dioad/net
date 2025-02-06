@@ -3,6 +3,7 @@ package oidc
 import (
 	"fmt"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/oauth2"
 
 	"github.com/dioad/util"
@@ -32,4 +33,17 @@ func ResolveTokenFromFile(tokenFile string) (*oauth2.Token, error) {
 	}
 
 	return nil, NoTokenFoundError
+}
+
+func ExtractClaimsMap(accessToken string) (jwt.MapClaims, error) {
+	parsedToken, _, err := new(jwt.Parser).ParseUnverified(accessToken, jwt.MapClaims{})
+	if err != nil {
+		return nil, fmt.Errorf("error parsing token: %w", err)
+	}
+
+	if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
+		return claims, nil
+	}
+
+	return nil, fmt.Errorf("invalid token claims")
 }

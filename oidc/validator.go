@@ -14,8 +14,13 @@ import (
 )
 
 type ValidatorDebugger struct {
-	logger    zerolog.Logger
-	validator TokenValidator
+	logger          zerolog.Logger
+	parentValidator TokenValidator
+}
+
+type PredicateValidator struct {
+	parentValidator TokenValidator
+	predicate       ClaimPredicate
 }
 
 type TokenValidator interface {
@@ -38,7 +43,7 @@ type ValidatorDebugOpts func(*ValidatorDebugger)
 
 func NewValidatorDebugger(validator TokenValidator, opts ...ValidatorDebugOpts) *ValidatorDebugger {
 	v := &ValidatorDebugger{
-		validator: validator,
+		parentValidator: validator,
 	}
 
 	for _, o := range opts {
@@ -46,6 +51,31 @@ func NewValidatorDebugger(validator TokenValidator, opts ...ValidatorDebugOpts) 
 	}
 
 	return v
+}
+
+func NewPredicateValidator(validator TokenValidator, predicate ClaimPredicate) *PredicateValidator {
+	return &PredicateValidator{
+		parentValidator: validator,
+		predicate:       predicate,
+	}
+}
+
+func (v *PredicateValidator) ValidateToken(ctx context.Context, tokenString string) (interface{}, error) {
+	claims, err := v.parentValidator.ValidateToken(ctx, tokenString)
+	if err != nil {
+		return nil, fmt.Errorf("error validating token: %w", err)
+	}
+
+	claimsMap, err := ExtractClaimsMap(tokenString)
+	if err != nil {
+		return nil, fmt.Errorf("error extracting claims map: %w", err)
+	}
+
+	if !v.predicate.Validate(claimsMap) {
+		return nil, fmt.Errorf("predicate validation failed")
+	}
+
+	return claims, nil
 }
 
 func decodeTokenData(accessToken string) (interface{}, error) {
@@ -65,22 +95,16 @@ func decodeTokenData(accessToken string) (interface{}, error) {
 		return nil, fmt.Errorf("failed to unmarshal token payload: %w", err)
 	}
 
-	var tokenDataExpiry time.Time
 	if expiry, ok := tokenData["exp"].(float64); ok {
-		tokenDataExpiry = time.Unix(int64(expiry), 0)
-		tokenData["exp_datetime"] = tokenDataExpiry
+		tokenData["exp_datetime"] = time.Unix(int64(expiry), 0)
 	}
 
-	var tokenDataIssuedAt time.Time
 	if issuedAt, ok := tokenData["iat"].(float64); ok {
-		tokenDataIssuedAt = time.Unix(int64(issuedAt), 0)
-		tokenData["iat_datetime"] = tokenDataIssuedAt
+		tokenData["iat_datetime"] = time.Unix(int64(issuedAt), 0)
 	}
 
-	var tokenDataNotBefore time.Time
 	if notBefore, ok := tokenData["nbf"].(float64); ok {
-		tokenDataNotBefore = time.Unix(int64(notBefore), 0)
-		tokenData["nbf_datetime"] = tokenDataNotBefore
+		tokenData["nbf_datetime"] = time.Unix(int64(notBefore), 0)
 	}
 
 	return tokenData, nil
@@ -94,7 +118,7 @@ func (v *ValidatorDebugger) ValidateToken(ctx context.Context, tokenString strin
 
 	v.logger.Debug().Interface("DecodedToken", tokenDetails).Msg("decoded token")
 
-	claims, err := v.validator.ValidateToken(ctx, tokenString)
+	claims, err := v.parentValidator.ValidateToken(ctx, tokenString)
 	if err != nil {
 		v.logger.Error().Err(err).Msg("error validating token")
 	}
@@ -134,7 +158,7 @@ func NewMultiValidatorFromConfig(configs []ValidatorConfig, opts ...jwtvalidator
 }
 
 func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option) (TokenValidator, error) {
-	var validator TokenValidator
+
 	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error creating endpoint from config: %w", err)
@@ -166,6 +190,7 @@ func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option
 
 	provider := jwks.NewCachingProvider(endpoint.URL(), cacheTTL)
 
+	var validator TokenValidator
 	validator, err = jwtvalidator.New(
 		provider.KeyFunc,
 		signatureAlgorithm,
@@ -175,6 +200,11 @@ func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure validator for %v: %w", config.URL, err)
+	}
+
+	if config.ClaimPredicate != nil {
+		predicate := ParseClaimPredicates(config.ClaimPredicate)
+		validator = NewPredicateValidator(validator, predicate)
 	}
 
 	if config.Debug {
@@ -194,10 +224,9 @@ func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option
 func NewValidatorsFromConfig(configs []ValidatorConfig, opts ...jwtvalidator.Option) ([]TokenValidator, error) {
 	validators := make([]TokenValidator, 0)
 	for _, config := range configs {
-		config := config
 		validator, err := NewValidatorFromConfig(&config, opts...)
 		if err != nil {
-			return nil, fmt.Errorf("error creating validator from config: %w", err)
+			return nil, fmt.Errorf("error creating parentValidator from config: %w", err)
 		}
 		validators = append(validators, validator)
 	}

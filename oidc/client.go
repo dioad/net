@@ -157,7 +157,6 @@ func (c *Client) GothProvider(callbackURL *url.URL, scopes ...string) (goth.Prov
 	}
 
 	return ge.GothProvider(c.clientID, c.clientSecret, callbackURL, scopes...)
-	// return NewGothProvider(c, callbackURL, scopes...)
 }
 
 // oAuth2Config returns an OAuth2 configuration for the OIDC client

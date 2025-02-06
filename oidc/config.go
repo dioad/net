@@ -28,12 +28,13 @@ type ClientConfig struct {
 
 type ValidatorConfig struct {
 	EndpointConfig     `mapstructure:",squash"`
-	Audiences          []string `json:"audiences" mapstructure:"audiences"`
-	Issuer             string   `json:"issuer" mapstructure:"issuer"`
-	CacheTTL           int      `json:"cache_ttl_seconds" mapsstructure:"cache_ttl_seconds"`
-	SignatureAlgorithm string   `json:"signature_algorithm" mapstructure:"signature_algorithm"`
-	AllowedClockSkew   int      `json:"allowed_clock_skew_seconds" mapstructure:"allowed_clock_skew_seconds"`
-	Debug              bool     `json:"debug" mapstructure:"debug"`
+	Audiences          []string               `json:"audiences" mapstructure:"audiences"`
+	Issuer             string                 `json:"issuer" mapstructure:"issuer"`
+	CacheTTL           int                    `json:"cache_ttl_seconds" mapsstructure:"cache_ttl_seconds"`
+	SignatureAlgorithm string                 `json:"signature_algorithm" mapstructure:"signature_algorithm"`
+	AllowedClockSkew   int                    `json:"allowed_clock_skew_seconds" mapstructure:"allowed_clock_skew_seconds"`
+	Debug              bool                   `json:"debug" mapstructure:"debug"`
+	ClaimPredicate     map[string]interface{} `json:"claim_predicates" mapstructure:"claim_predicates"`
 }
 
 type TrustConfig struct {
