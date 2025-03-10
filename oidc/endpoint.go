@@ -12,8 +12,6 @@ import (
 	"github.com/markbates/goth/providers/openidConnect"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
-
-	"github.com/dioad/net/oidc/flyio"
 )
 
 /*
