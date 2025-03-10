@@ -3,6 +3,9 @@ package oidc
 import (
 	// "reflect"
 
+	"fmt"
+	"strings"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -21,25 +24,35 @@ import (
 
 type ClaimPredicate interface {
 	Validate(input jwt.MapClaims) bool
+	String() string
 }
 
-type Combinator func([]ClaimPredicate) ClaimPredicate
+type PredicateComposer interface {
+	And(predicates ...ClaimPredicate) ClaimPredicate
+	Or(predicates ...ClaimPredicate) ClaimPredicate
+}
+
+type Combinator func(...ClaimPredicate) ClaimPredicate
 
 // And combines the children with an AND
-func And(children []ClaimPredicate) ClaimPredicate {
-	return &and{Children: children}
+func And(children ...ClaimPredicate) ClaimPredicate {
+	return &andPredicate{Children: children}
 }
 
 // Or combines the children with an OR
-func Or(children []ClaimPredicate) ClaimPredicate {
-	return &or{Children: children}
+func Or(children ...ClaimPredicate) ClaimPredicate {
+	return &orPredicate{Children: children}
 }
 
-type and struct {
+type andPredicate struct {
 	Children []ClaimPredicate
 }
 
-func (a *and) Validate(claims jwt.MapClaims) bool {
+func (a *andPredicate) Validate(claims jwt.MapClaims) bool {
+	if len(a.Children) == 0 {
+		return true
+	}
+
 	for _, child := range a.Children {
 		if !child.Validate(claims) {
 			return false
@@ -49,11 +62,28 @@ func (a *and) Validate(claims jwt.MapClaims) bool {
 	return true
 }
 
-type or struct {
+func StringifyList[T fmt.Stringer](list []T) []string {
+	result := make([]string, 0, len(list))
+	for _, item := range list {
+		result = append(result, item.String())
+	}
+	return result
+}
+
+func (a *andPredicate) String() string {
+	childrenStrings := StringifyList(a.Children)
+	return strings.Join(childrenStrings, " AND ")
+}
+
+type orPredicate struct {
 	Children []ClaimPredicate
 }
 
-func (o *or) Validate(claims jwt.MapClaims) bool {
+func (o *orPredicate) Validate(claims jwt.MapClaims) bool {
+	if len(o.Children) == 0 {
+		return false
+	}
+
 	for _, child := range o.Children {
 		if child.Validate(claims) {
 			return true
@@ -61,6 +91,11 @@ func (o *or) Validate(claims jwt.MapClaims) bool {
 	}
 
 	return false
+}
+
+func (o *orPredicate) String() string {
+	childrenStrings := StringifyList(o.Children)
+	return strings.Join(childrenStrings, " OR ")
 }
 
 // ClaimKey is a claim key predicate
@@ -89,6 +124,10 @@ func (c *ClaimKey) Validate(claims jwt.MapClaims) bool {
 	return false
 }
 
+func (c *ClaimKey) String() string {
+	return fmt.Sprintf("%s == %v", c.Key, c.Value)
+}
+
 func parseClaimPredicateList(predicateList []interface{}, combine Combinator) ClaimPredicate {
 	result := make([]ClaimPredicate, 0, len(predicateList))
 	for _, predicate := range predicateList {
@@ -96,7 +135,7 @@ func parseClaimPredicateList(predicateList []interface{}, combine Combinator) Cl
 			result = append(result, ParseClaimPredicates(p))
 		}
 	}
-	return combine(result)
+	return combine(result...)
 }
 
 type staticPredicate struct {
@@ -105,6 +144,10 @@ type staticPredicate struct {
 
 func (p *staticPredicate) Validate(_ jwt.MapClaims) bool {
 	return p.result
+}
+
+func (p *staticPredicate) String() string {
+	return fmt.Sprintf("%v", p.result)
 }
 
 // ParseClaimPredicates parses the input into a claim predicate
@@ -144,5 +187,5 @@ func parseClaimPredicateMap(predicateMap map[string]interface{}) ClaimPredicate 
 		}
 	}
 
-	return And(predicates)
+	return And(predicates...)
 }

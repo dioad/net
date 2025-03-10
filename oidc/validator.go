@@ -25,6 +25,7 @@ type PredicateValidator struct {
 
 type TokenValidator interface {
 	ValidateToken(ctx context.Context, tokenString string) (interface{}, error)
+	String() string
 }
 
 func WithLogger(logger zerolog.Logger) func(*ValidatorDebugger) {
@@ -40,18 +41,6 @@ func WithLabel(key, value string) func(*ValidatorDebugger) {
 }
 
 type ValidatorDebugOpts func(*ValidatorDebugger)
-
-func NewValidatorDebugger(validator TokenValidator, opts ...ValidatorDebugOpts) *ValidatorDebugger {
-	v := &ValidatorDebugger{
-		parentValidator: validator,
-	}
-
-	for _, o := range opts {
-		o(v)
-	}
-
-	return v
-}
 
 func NewPredicateValidator(validator TokenValidator, predicate ClaimPredicate) *PredicateValidator {
 	return &PredicateValidator{
@@ -78,8 +67,12 @@ func (v *PredicateValidator) ValidateToken(ctx context.Context, tokenString stri
 	return claims, nil
 }
 
+func (v *PredicateValidator) String() string {
+	return fmt.Sprintf("PredicateValidator(validator:%v, predicate:%v)", v.parentValidator, v.predicate)
+}
+
 func decodeTokenData(accessToken string) (interface{}, error) {
-	// Decode Access Token and extract expiry and any other details necessary from the token
+	// Decode Access Token and extract expiry andPredicate any other details necessary from the token
 	tokenParts := strings.Split(accessToken, ".")
 	if len(tokenParts) != 3 {
 		return nil, fmt.Errorf("invalid token format")
@@ -110,19 +103,37 @@ func decodeTokenData(accessToken string) (interface{}, error) {
 	return tokenData, nil
 }
 
+func NewValidatorDebugger(validator TokenValidator, opts ...ValidatorDebugOpts) *ValidatorDebugger {
+	v := &ValidatorDebugger{
+		parentValidator: validator,
+	}
+
+	for _, o := range opts {
+		o(v)
+	}
+
+	return v
+}
+
 func (v *ValidatorDebugger) ValidateToken(ctx context.Context, tokenString string) (interface{}, error) {
 	tokenDetails, err := decodeTokenData(tokenString)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding token data: %w", err)
 	}
 
-	v.logger.Debug().Interface("DecodedToken", tokenDetails).Msg("decoded token")
-
+	v.logger.Debug().
+		Stringer("validator", v.parentValidator).
+		Interface("DecodedToken", tokenDetails).
+		Msg("decoded token")
 	claims, err := v.parentValidator.ValidateToken(ctx, tokenString)
 	if err != nil {
 		v.logger.Error().Err(err).Msg("error validating token")
 	}
 	return claims, err
+}
+
+func (v *ValidatorDebugger) String() string {
+	return fmt.Sprintf("ValidatorDebugger(%v)", v.parentValidator)
 }
 
 type MultiValidator struct {
@@ -142,7 +153,15 @@ func (v *MultiValidator) ValidateToken(ctx context.Context, tokenString string) 
 		errs = append(errs, err.Error())
 	}
 
-	return nil, fmt.Errorf("token validation failed: %w", err)
+	return nil, fmt.Errorf("%w: %w, %v", ErrTokenValidation, err, strings.Join(errs, ", "))
+}
+
+func (v *MultiValidator) String() string {
+	validators := make([]string, len(v.validators))
+	for i, vtor := range v.validators {
+		validators[i] = vtor.String()
+	}
+	return fmt.Sprintf("MultiValidator(%v)", strings.Join(validators, ", "))
 }
 
 func NewMultiValidator(validators ...TokenValidator) *MultiValidator {
@@ -157,50 +176,83 @@ func NewMultiValidatorFromConfig(configs []ValidatorConfig, opts ...jwtvalidator
 	return NewMultiValidator(validators...), nil
 }
 
-func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option) (TokenValidator, error) {
+type jwtValidator struct {
+	jwtValidator *jwtvalidator.Validator
 
-	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
+	endpoint           Endpoint
+	cacheTTL           time.Duration
+	signatureAlgorithm jwtvalidator.SignatureAlgorithm
+	issuerURL          string
+	allowedClockSkew   time.Duration
+}
+
+func (v *jwtValidator) ValidateToken(ctx context.Context, tokenString string) (interface{}, error) {
+	return v.jwtValidator.ValidateToken(ctx, tokenString)
+}
+
+func (v *jwtValidator) String() string {
+	return fmt.Sprintf("jwtValidator(endpoint:%v, issuer:%v, signatureAlgorithm:%v)", v.endpoint.URL().String(), v.issuerURL, v.signatureAlgorithm)
+}
+
+func newJWTValidator(config *ValidatorConfig, opts ...jwtvalidator.Option) (*jwtValidator, error) {
+	v := &jwtValidator{}
+
+	var err error
+
+	v.endpoint, err = NewEndpointFromConfig(&config.EndpointConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error creating endpoint from config: %w", err)
 	}
 
-	cacheTTL := 5 * time.Minute
+	v.cacheTTL = 5 * time.Minute
 	if config.CacheTTL != 0 {
-		cacheTTL = time.Duration(config.CacheTTL) * time.Second
+		v.cacheTTL = time.Duration(config.CacheTTL) * time.Second
 	}
 
-	signatureAlgorithm := jwtvalidator.RS256
+	v.signatureAlgorithm = jwtvalidator.RS256
 	if config.SignatureAlgorithm != "" {
-		signatureAlgorithm = jwtvalidator.SignatureAlgorithm(config.SignatureAlgorithm)
+		v.signatureAlgorithm = jwtvalidator.SignatureAlgorithm(config.SignatureAlgorithm)
 	}
 
-	issuerURL := config.URL
+	v.issuerURL = config.URL
 	if config.Issuer != "" {
-		issuerURL = config.Issuer
+		v.issuerURL = config.Issuer
 	}
 
-	allowedClockSkew := time.Minute
+	v.allowedClockSkew = time.Minute
 	if config.AllowedClockSkew != 0 {
-		allowedClockSkew = time.Duration(config.AllowedClockSkew) * time.Second
+		v.allowedClockSkew = time.Duration(config.AllowedClockSkew) * time.Second
 	}
 
 	opts = append([]jwtvalidator.Option{
-		jwtvalidator.WithAllowedClockSkew(allowedClockSkew),
+		jwtvalidator.WithAllowedClockSkew(v.allowedClockSkew),
 	}, opts...)
 
-	provider := jwks.NewCachingProvider(endpoint.URL(), cacheTTL)
+	provider := jwks.NewCachingProvider(v.endpoint.URL(), v.cacheTTL)
 
-	var validator TokenValidator
-	validator, err = jwtvalidator.New(
+	// var validator TokenValidator
+	v.jwtValidator, err = jwtvalidator.New(
 		provider.KeyFunc,
-		signatureAlgorithm,
-		issuerURL,
+		v.signatureAlgorithm,
+		v.issuerURL,
 		config.Audiences,
 		opts...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure validator for %v: %w", config.URL, err)
 	}
+
+	return v, nil
+}
+
+func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option) (TokenValidator, error) {
+	v, err := newJWTValidator(config, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	var validator TokenValidator
+	validator = v
 
 	if config.ClaimPredicate != nil {
 		predicate := ParseClaimPredicates(config.ClaimPredicate)
@@ -209,12 +261,12 @@ func NewValidatorFromConfig(config *ValidatorConfig, opts ...jwtvalidator.Option
 
 	if config.Debug {
 		validator = NewValidatorDebugger(validator,
-			WithLabel("issuer", issuerURL),
+			WithLabel("issuer", v.issuerURL),
 			WithLabel("type", config.Type),
 			WithLabel("audiences", strings.Join(config.Audiences, ",")),
 			WithLabel("signatureAlgorithm", config.SignatureAlgorithm),
-			WithLabel("allowedClockSkew", allowedClockSkew.String()),
-			WithLabel("cacheTTL", cacheTTL.String()),
+			WithLabel("allowedClockSkew", v.allowedClockSkew.String()),
+			WithLabel("cacheTTL", v.cacheTTL.String()),
 		)
 	}
 

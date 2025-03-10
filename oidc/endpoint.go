@@ -12,6 +12,8 @@ import (
 	"github.com/markbates/goth/providers/openidConnect"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
+
+	"github.com/dioad/net/oidc/flyio"
 )
 
 /*
@@ -30,7 +32,7 @@ OAuth 2.0 Rich Authorization Requests (RAR):
 authorization_details_types_supported: Lists the types of authorization details supported.
 Financial-grade API (FAPI):
 tls_client_certificate_bound_access_tokens: Indicates if access tokens are bound to client certificates.
-These extensions are defined in their respective RFCs and specifications, providing additional capabilities and security features for OpenID Connect and OAuth 2.0 implementations.
+These extensions are defined in their respective RFCs and specifications, providing additional capabilities and security features for OpenID Connect andPredicate OAuth 2.0 implementations.
 */
 
 type OpenIDConfiguration struct {
@@ -123,12 +125,11 @@ func (e *oidcEndpoint) DiscoveryEndpoint() (*url.URL, error) {
 	return e.url.JoinPath(".well-known", "openid-configuration"), nil
 }
 
-// func (e *oidcEndpoint) CustomClaimsFunc() func() jwtvalidator.CustomClaims {
-// 	return func() jwtvalidator.CustomClaims { return &IntrospectionResponse{} }
-// }
-
 func (e *oidcEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
-	discoveryEndpoint, _ := e.DiscoveryEndpoint()
+	discoveryEndpoint, err := e.DiscoveryEndpoint()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch discover endpoint: %w", err)
+	}
 	response, err := http.Get(discoveryEndpoint.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get discovery URL %v: %w", discoveryEndpoint, err)
@@ -215,8 +216,6 @@ type KeycloakEndpoint struct {
 
 func (e *KeycloakEndpoint) RealmEndpoint(realm string, opts ...EndpointOption) (Endpoint, error) {
 	return NewEndpoint(e.url.JoinPath("realms", realm).String(), opts...)
-
-	// return &oidcEndpoint{url: e.url.JoinPath("realms", realm)}
 }
 
 func NewKeycloakEndpoint(baseURLStr string) (*KeycloakEndpoint, error) {

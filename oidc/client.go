@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,6 +14,12 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/dioad/net/oidc/flyio"
+)
+
+var (
+	ErrInvalidToken    = errors.New("invalid token")
+	ErrTokenValidation = errors.New("token validation failed")
+	ErrInvalidClaims   = errors.New("invalid claims format")
 )
 
 type IntrospectionResponse struct {
@@ -50,7 +57,7 @@ type IntrospectionResponse struct {
 	TokenType         string   `json:"token_type"`
 	Active            bool     `json:"active"`
 	Website           string   `json:"website"`
-	Organisation      string   `json:"org"`
+	Organisation      []string `json:"org"`
 	flyio.Claims      `json:",squash"`
 }
 
@@ -194,12 +201,12 @@ func (c *Client) ValidateToken(ctx context.Context, token string, audiences []st
 		return nil, fmt.Errorf("failed to configure validator for %v: %w", c.endpoint.URL(), err)
 	}
 
-	o, err := jwtValidator.ValidateToken(ctx, token)
+	validatedClaims, err := jwtValidator.ValidateToken(ctx, token)
 	if err != nil {
 		return nil, fmt.Errorf("error validating token: %w", err)
 	}
 
-	return o.(*jwtvalidator.ValidatedClaims), nil
+	return validatedClaims.(*jwtvalidator.ValidatedClaims), nil
 }
 
 type RequestOpt func(url.Values)
@@ -315,18 +322,22 @@ func ExtractClaims[T jwtvalidator.CustomClaims](claims interface{}) (jwtvalidato
 	var zeroCustomClaims T
 	var zeroRegisteredClaims jwtvalidator.RegisteredClaims
 
-	c, ok := claims.(*jwtvalidator.ValidatedClaims)
+	validatedClaims, ok := claims.(*jwtvalidator.ValidatedClaims)
 	if !ok {
-		return zeroRegisteredClaims, zeroCustomClaims, fmt.Errorf("error extracting claims")
+		return zeroRegisteredClaims, zeroCustomClaims,
+			fmt.Errorf("error extracting claims")
 	}
 
-	rc := c.RegisteredClaims
-
-	if c.CustomClaims != nil {
-		cc := c.CustomClaims.(T)
-
-		return rc, cc, nil
+	if validatedClaims.CustomClaims == nil {
+		return validatedClaims.RegisteredClaims, zeroCustomClaims, nil
 	}
 
-	return rc, zeroCustomClaims, nil
+	customClaims, ok := validatedClaims.CustomClaims.(T)
+	if !ok {
+		return validatedClaims.RegisteredClaims, zeroCustomClaims,
+			fmt.Errorf("%w: expected custom claims type %T, got %T",
+				ErrInvalidClaims, zeroCustomClaims, validatedClaims.CustomClaims)
+	}
+
+	return validatedClaims.RegisteredClaims, customClaims, nil
 }
