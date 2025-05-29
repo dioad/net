@@ -13,7 +13,7 @@ import (
 
 type HandlerWrapper func(next http.Handler) http.Handler
 
-// DefaultLogHandler returns a HandlerWrapper that logs HTTP requests using the default logger.
+// DefaultCombinedLogHandler returns a HandlerWrapper that logs HTTP requests using the combined log format.
 func DefaultCombinedLogHandler(logWriter io.Writer) HandlerWrapper {
 	return func(next http.Handler) http.Handler {
 		return handlers.CombinedLoggingHandler(logWriter, next)

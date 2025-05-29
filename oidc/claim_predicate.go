@@ -171,15 +171,17 @@ func parseClaimPredicateMap(predicateMap map[string]interface{}) ClaimPredicate 
 	predicates := make([]ClaimPredicate, 0, len(predicateMap))
 
 	for key, value := range predicateMap {
-		if key == "and" {
+		
+		switch key {
+		case "and":
 			if children, ok := value.([]interface{}); ok {
 				predicates = append(predicates, parseClaimPredicateList(children, And))
 			}
-		} else if key == "or" {
+		case "or":
 			if children, ok := value.([]interface{}); ok {
 				predicates = append(predicates, parseClaimPredicateList(children, Or))
 			}
-		} else {
+		default:
 			predicates = append(predicates, &ClaimKey{
 				Key:   key,
 				Value: value,

@@ -58,7 +58,7 @@ type IntrospectionResponse struct {
 	Active            bool     `json:"active"`
 	Website           string   `json:"website"`
 	Organisation      []string `json:"org"`
-	flyio.Claims      `json:",squash"`
+	flyio.Claims
 }
 
 func (c *IntrospectionResponse) Validate(_ context.Context) error {

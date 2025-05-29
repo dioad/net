@@ -11,7 +11,9 @@ import (
 
 var (
 	// TODO: change this to ipv4.myip.dioad.net(A) ipv6.myip.dioad.net (AAAA) and myip.dioad.net(A and AAAA)
+	// IPv4ICanHazIP is the URL to fetch the public IPv4 address.
 	IPv4ICanHazIP = "http://ipv4.icanhazip.com"
+	// IPv6ICanHazIP is the URL to fetch the public IPv6 address.
 	IPv6ICanHazIP = "http://ipv6.icanhazip.com"
 )
 
@@ -39,18 +41,20 @@ func getICanHazIP(ctx context.Context, url string) (netip.Addr, error) {
 	return addr, nil
 }
 
-// GetIPv4 fetches the public IPv4 address of the host.
+// GetMyIPv4 fetches the public IPv4 address of the host.
 func GetMyIPv4(ctx context.Context) (netip.Addr, error) {
 	return getICanHazIP(ctx, IPv4ICanHazIP)
 }
 
-// GetIPv6 fetches the public IPv6 address of the host.
+// GetMyIPv6 fetches the public IPv6 address of the host.
 func GetMyIPv6(ctx context.Context) (netip.Addr, error) {
 	return getICanHazIP(ctx, IPv6ICanHazIP)
 }
 
+// GetIPFunc is a function type that fetches an IP address.
 type GetIPFunc func(ctx context.Context) (netip.Addr, error)
 
+// GetMyIPsFromFuncs fetches the public IP addresses using the provided functions.
 func GetMyIPsFromFuncs(ctx context.Context, funcs ...GetIPFunc) ([]netip.Addr, error) {
 	var ipAddresses []netip.Addr
 	var err error
@@ -72,7 +76,7 @@ func GetMyIPsFromFuncs(ctx context.Context, funcs ...GetIPFunc) ([]netip.Addr, e
 	return ipAddresses, nil
 }
 
-// GetMyIP fetches the public IP address of the host.
+// GetMyIPs fetches the public IP addresses of the host.
 func GetMyIPs(ctx context.Context) ([]netip.Addr, error) {
 	return GetMyIPsFromFuncs(ctx, GetMyIPv6, GetMyIPv4)
 }

@@ -10,6 +10,7 @@ import (
 	"text/template"
 )
 
+// TCPAddrFromURL returns a TCP address in the form of "host:port" from a given URL.
 func TCPAddrFromURL(url *url.URL) (string, error) {
 	addr := url.Host
 	if url.Port() == "" {
@@ -22,6 +23,7 @@ func TCPAddrFromURL(url *url.URL) (string, error) {
 	return addr, nil
 }
 
+// TCPPortFromURL returns the TCP port from a given URL.
 // returns string because that's what url.URL.Port() does
 func TCPPortFromURL(url *url.URL) (string, error) {
 	defaultPort := url.Port()

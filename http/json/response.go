@@ -104,7 +104,6 @@ func (r *Response) Data(status int, data any) {
 			r.logError(err, "error encoding response")
 		}
 	}
-	return
 }
 
 func (r *Response) OK(data any) {

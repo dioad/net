@@ -33,7 +33,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 
 	authType := strings.ToLower(authParts[0])
 
-	if !(authType == "bearer" || authType == "token") {
+	if authType != "bearer" && authType != "token" {
 		return r.Context(), errors.New("invalid auth type")
 	}
 
