@@ -35,7 +35,7 @@ type Claims struct {
 	Sub            string `json:"sub"`
 }
 
-func (c *Claims) Validate(ctx context.Context) error {
+func (c *Claims) Validate(_ context.Context) error {
 	return nil
 }
 

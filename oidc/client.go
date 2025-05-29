@@ -61,7 +61,7 @@ type IntrospectionResponse struct {
 	flyio.Claims      `json:",squash"`
 }
 
-func (c *IntrospectionResponse) Validate(ctx context.Context) error {
+func (c *IntrospectionResponse) Validate(_ context.Context) error {
 	return nil
 }
 

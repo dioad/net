@@ -182,7 +182,7 @@ func FormatMechanism(mechanism Mechanism) string {
 }
 
 func FormatMechanisms(mechanism ...Mechanism) string {
-	outputs := make([]string, 0, 0)
+	outputs := make([]string, 0)
 	for _, m := range mechanism {
 		outputs = append(outputs, FormatMechanism(m))
 	}
