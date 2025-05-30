@@ -1,7 +1,6 @@
 package mtasts
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -18,6 +17,6 @@ func TestSimplePolicy(t *testing.T) {
 	result, _ := FormatPolicy(&p)
 
 	if expected != result {
-		t.Errorf(fmt.Sprintf("got: %s, expected: %s", result, expected))
+		t.Errorf("got: %s, expected: %s", result, expected)
 	}
 }

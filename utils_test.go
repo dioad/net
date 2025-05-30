@@ -24,7 +24,7 @@ func TestTcpPortFromURL(t *testing.T) {
 			got, _ := TCPPortFromURL(&tc.input)
 			diff := cmp.Diff(tc.want, got)
 			if diff != "" {
-				t.Fatalf(diff)
+				t.Fatal(diff)
 			}
 		})
 	}
@@ -46,7 +46,7 @@ func TestTcpAddrFromURL(t *testing.T) {
 			got, _ := TCPAddrFromURL(&tc.input)
 			diff := cmp.Diff(tc.want, got)
 			if diff != "" {
-				t.Fatalf(diff)
+				t.Fatal(diff)
 			}
 		})
 	}

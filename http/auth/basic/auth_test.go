@@ -50,7 +50,7 @@ func TestLoadBasicAuthFromScanner(t *testing.T) {
 			userMap := LoadBasicAuthFromScanner(scanner)
 			diff := cmp.Diff(tc.mapLength, len(userMap))
 			if diff != "" {
-				t.Fatalf(diff)
+				t.Fatal(diff)
 			}
 
 			valid, _ := userMap.Authenticate(tc.checkUser, tc.checkPassword)
