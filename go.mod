@@ -33,7 +33,7 @@ require (
 	github.com/coredns/coredns v1.12.1
 	github.com/dioad/filter v0.4.1
 	github.com/dioad/generics v0.0.7
-	github.com/dioad/util v0.5.0
+	github.com/dioad/util v0.6.0
 	github.com/emersion/go-msgauth v0.6.8
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
@@ -46,7 +46,7 @@ require (
 	github.com/weaveworks/common v0.0.0-20230728070032-dd9e68f319d5
 	github.com/yeqown/go-qrcode/v2 v2.2.5
 	github.com/yeqown/go-qrcode/writer/terminal v1.1.2
-	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6
+	golang.org/x/exp v0.0.0-20250531010427-b6e5de432a8b
 	golang.org/x/oauth2 v0.30.0
 )
 

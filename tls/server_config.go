@@ -1,12 +1,14 @@
 package tls
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"path/filepath"
 	"time"
 
 	"github.com/dioad/generics"
+
 	"github.com/dioad/util"
 )
 
@@ -69,19 +71,19 @@ type ServerConfig struct {
 
 type ConfigFunc func() (*tls.Config, error)
 
-func configFuncFromConfig(c ServerConfig) ConfigFunc {
+func configFuncFromConfig(ctx context.Context, c ServerConfig) ConfigFunc {
 	if !generics.IsZeroValue(c.AutoCertConfig) {
 		return NewAutocertTLSConfigFunc(c.AutoCertConfig)
 	} else if !generics.IsZeroValue(c.SelfSignedConfig) {
 		return NewSelfSignedTLSConfigFunc(c.SelfSignedConfig)
 	} else if !generics.IsZeroValue(c.LocalConfig) {
-		return NewLocalTLSConfigFunc(c.LocalConfig)
+		return NewLocalTLSConfigFunc(ctx, c.LocalConfig)
 	}
 	return nil
 }
 
-func NewServerTLSConfig(c ServerConfig) (*tls.Config, error) {
-	configFunc := configFuncFromConfig(c)
+func NewServerTLSConfig(ctx context.Context, c ServerConfig) (*tls.Config, error) {
+	configFunc := configFuncFromConfig(ctx, c)
 	if configFunc == nil {
 		return nil, nil
 	}
@@ -125,16 +127,16 @@ func NewServerTLSConfig(c ServerConfig) (*tls.Config, error) {
 	return tlsConfig, nil
 }
 
-func NewLocalTLSConfigFunc(c LocalConfig) ConfigFunc {
-	return func() (*tls.Config, error) { return NewLocalTLSConfig(c) }
+func NewLocalTLSConfigFunc(ctx context.Context, c LocalConfig) ConfigFunc {
+	return func() (*tls.Config, error) { return NewLocalTLSConfig(ctx, c) }
 }
 
-func NewLocalTLSConfig(config LocalConfig) (*tls.Config, error) {
+func NewLocalTLSConfig(ctx context.Context, config LocalConfig) (*tls.Config, error) {
 	if generics.IsZeroValue(config) {
 		return nil, nil
 	}
 	if config.SinglePEMFile != "" {
-		certs, err := CertificatesFromSinglePEMFile(config.SinglePEMFile, config.FileWaitConfig)
+		certs, err := CertificatesFromSinglePEMFile(ctx, config.SinglePEMFile, config.FileWaitConfig)
 		if err != nil {
 			return nil, fmt.Errorf("error loading certificates from single pem file: %w", err)
 		}
@@ -149,7 +151,7 @@ func NewLocalTLSConfig(config LocalConfig) (*tls.Config, error) {
 		return nil, fmt.Errorf("both certificate and key need to be specified")
 	}
 
-	cert, err := CertificateFromKeyAndCertificateFiles(config.Key,
+	cert, err := CertificateFromKeyAndCertificateFiles(ctx, config.Key,
 		config.Certificate,
 		config.FileWaitConfig)
 	if err != nil {
@@ -194,10 +196,10 @@ func NewSelfSignedTLSConfig(config SelfSignedConfig) (*tls.Config, error) {
 	}, nil
 }
 
-func CertificatesFromSinglePEMFile(singlePEMFile string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
+func CertificatesFromSinglePEMFile(ctx context.Context, singlePEMFile string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
 	interval := time.Duration(waitConfig.WaitInterval) * time.Second
 
-	cert, err := util.WaitForReturn(interval, waitConfig.WaitMax, func() (*tls.Certificate, error) {
+	cert, err := util.WaitForReturn(ctx, interval, waitConfig.WaitMax, func() (*tls.Certificate, error) {
 		return LoadKeyPairAndCertsFromFile(singlePEMFile)
 	})
 
@@ -207,11 +209,11 @@ func CertificatesFromSinglePEMFile(singlePEMFile string, waitConfig FileWaitConf
 	return []tls.Certificate{*cert}, nil
 }
 
-func CertificateFromKeyAndCertificateFiles(key, cert string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
+func CertificateFromKeyAndCertificateFiles(ctx context.Context, key, cert string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
 
 	interval := time.Duration(waitConfig.WaitInterval) * time.Second
 
-	serverCertificate, err := util.WaitForReturn(interval, waitConfig.WaitMax, func() (*tls.Certificate, error) {
+	serverCertificate, err := util.WaitForReturn(ctx, interval, waitConfig.WaitMax, func() (*tls.Certificate, error) {
 		certificate, err := tls.LoadX509KeyPair(cert, key)
 		return &certificate, err
 	})

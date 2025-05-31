@@ -1,6 +1,7 @@
 package tls
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"path/filepath"
@@ -144,7 +145,7 @@ func TestNewLocalTLSConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewLocalTLSConfig(tt.c)
+			got, err := NewLocalTLSConfig(context.Background(), tt.c)
 			if err != nil {
 				t.Errorf("NewLocalTLSConfig() error = %v", err)
 			}
@@ -180,7 +181,7 @@ func TestNewServerTLSConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewServerTLSConfig(tt.c)
+			got, err := NewServerTLSConfig(context.Background(), tt.c)
 			if err != nil {
 				t.Errorf("NewServerTLSConfig() error = %v", err)
 			} else {
