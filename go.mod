@@ -30,7 +30,7 @@ require (
 
 require (
 	github.com/auth0/go-jwt-middleware/v2 v2.3.0
-	github.com/coredns/coredns v1.12.1
+	github.com/coredns/coredns v1.12.2
 	github.com/dioad/filter v0.4.1
 	github.com/dioad/generics v0.0.7
 	github.com/dioad/util v0.6.0
@@ -68,14 +68,16 @@ require (
 	github.com/nsf/termbox-go v1.1.1 // indirect
 	github.com/opentracing-contrib/go-stdlib v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/weaveworks/promrus v1.2.0 // indirect
 	github.com/yeqown/reedsolomon v1.0.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.35.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
