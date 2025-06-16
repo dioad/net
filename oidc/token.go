@@ -37,7 +37,7 @@ func (c *clientConfigTokenSource) resolveTokenSource() (oauth2.TokenSource, erro
 		}
 	}
 
-	if c.clientConfig.ClientID != "" && c.clientConfig.ClientSecret.MaskedString() != "" {
+	if c.clientConfig.ClientID != "" && c.clientConfig.ClientSecret.UnmaskedString() != "" {
 		token, err := oidcClient.ClientCredentialsToken(context.Background())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get client credentials token: %w", err)

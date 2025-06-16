@@ -135,7 +135,7 @@ func NewClientFromConfig(config *ClientConfig) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new oidc endpoint: %w", err)
 	}
-	return NewClient(endpoint, WithClientIDAndSecret(config.ClientID, config.ClientSecret.MaskedString())), nil
+	return NewClient(endpoint, WithClientIDAndSecret(config.ClientID, config.ClientSecret.UnmaskedString())), nil
 }
 
 func NewClient(endpoint Endpoint, opts ...ClientOpt) *Client {
