@@ -31,7 +31,7 @@ require (
 require (
 	github.com/auth0/go-jwt-middleware/v2 v2.3.0
 	github.com/coredns/coredns v1.12.1
-	github.com/dioad/filter v0.4.1
+	github.com/dioad/filter v0.5.0
 	github.com/dioad/generics v0.0.7
 	github.com/dioad/util v0.6.0
 	github.com/emersion/go-msgauth v0.6.8
