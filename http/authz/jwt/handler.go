@@ -15,9 +15,10 @@ type TokenValidator interface {
 }
 
 type Handler struct {
-	validator TokenValidator
-	opts      []jwtmiddleware.Option
-	logger    zerolog.Logger
+	validator  TokenValidator
+	opts       []jwtmiddleware.Option
+	logger     zerolog.Logger
+	cookieName string
 }
 
 func (h *Handler) Wrap(next http.Handler) http.Handler {
@@ -29,6 +30,13 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 	handlerOpts := append(
 		[]jwtmiddleware.Option{
 			jwtmiddleware.WithErrorHandler(errorHandler),
+			jwtmiddleware.WithTokenExtractor(
+				jwtmiddleware.MultiTokenExtractor(
+					jwtmiddleware.AuthHeaderTokenExtractor,
+					jwtmiddleware.CookieTokenExtractor(h.cookieName),
+					// GothTokenExtractor()),
+				),
+			),
 		},
 		h.opts...,
 	)
@@ -41,10 +49,11 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 	return middleware.CheckJWT(next)
 }
 
-func NewHandler(validator TokenValidator, opts ...jwtmiddleware.Option) *Handler {
+func NewHandler(validator TokenValidator, cookieName string, opts ...jwtmiddleware.Option) *Handler {
 	return &Handler{
-		validator: validator,
-		opts:      opts,
+		cookieName: cookieName,
+		validator:  validator,
+		opts:       opts,
 	}
 }
 
