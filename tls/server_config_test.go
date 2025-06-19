@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
+	"os"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -159,10 +161,43 @@ func TestNewLocalTLSConfig(t *testing.T) {
 }
 
 func TestNewServerTLSConfig(t *testing.T) {
+	// Create a temporary directory for test files
+	tempDir := t.TempDir()
+
+	// Create a self-signed certificate for testing
+	cert, _ := helperCreateSelfSignedKeyPair(t, tempDir)
+	certPath := filepath.Join(tempDir, "cert.pem")
+	keyPath := filepath.Join(tempDir, "key.pem")
+	err := SaveTLSCertificateToFiles(cert, certPath, keyPath)
+	if err != nil {
+		t.Fatalf("Failed to save certificate: %v", err)
+	}
+
+	// Create a single PEM file for testing
+	singlePEMPath := filepath.Join(tempDir, "single.pem")
+	err = SaveTLSCertificateToFile(cert, singlePEMPath, 0644)
+	if err != nil {
+		t.Fatalf("Failed to save certificate to single PEM file: %v", err)
+	}
+
+	// Create a CA file for testing
+	caPath := filepath.Join(tempDir, "ca.pem")
+	caFile, err := os.Create(caPath)
+	if err != nil {
+		t.Fatalf("Failed to create CA file: %v", err)
+	}
+	err = pem.Encode(caFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]})
+	if err != nil {
+		t.Fatalf("Failed to write CA file: %v", err)
+	}
+	caFile.Close()
+
 	tests := []struct {
-		name string
-		c    ServerConfig
-		want *tls.Config
+		name        string
+		c           ServerConfig
+		want        *tls.Config
+		expectError bool
+		checkFunc   func(*testing.T, *tls.Config)
 	}{
 		{
 			name: "empty",
@@ -171,29 +206,123 @@ func TestNewServerTLSConfig(t *testing.T) {
 		},
 		{
 			name: "with client CA file",
-			c:    ServerConfig{ClientCAFile: "client-ca-file"},
-			// want: &tls.Config{
-			// 	MinVersion: tls.VersionTLS12,
-			// 	ClientAuth: tls.NoClientCert,
-			// 	ClientCAs:  nil,
-			// },
+			c:    ServerConfig{ClientCAFile: caPath},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				if got.ClientCAs == nil {
+					t.Errorf("ClientCAs is nil, expected non-nil")
+				}
+				if got.ClientAuth != tls.NoClientCert {
+					t.Errorf("ClientAuth = %v, want %v", got.ClientAuth, tls.NoClientCert)
+				}
+				if got.MinVersion != tls.VersionTLS12 {
+					t.Errorf("MinVersion = %v, want %v", got.MinVersion, tls.VersionTLS12)
+				}
+			},
+		},
+		{
+			name: "with client auth type",
+			c:    ServerConfig{ClientCAFile: caPath, ClientAuthType: "RequireAndVerifyClientCert"},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				if got.ClientAuth != tls.RequireAndVerifyClientCert {
+					t.Errorf("ClientAuth = %v, want %v", got.ClientAuth, tls.RequireAndVerifyClientCert)
+				}
+			},
+		},
+		{
+			name: "with TLS min version",
+			c:    ServerConfig{TLSMinVersion: "TLS13"},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				if got.MinVersion != tls.VersionTLS13 {
+					t.Errorf("MinVersion = %v, want %v", got.MinVersion, tls.VersionTLS13)
+				}
+			},
+		},
+		{
+			name: "with server name",
+			c:    ServerConfig{ServerName: "example.com"},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				if got.ServerName != "example.com" {
+					t.Errorf("ServerName = %v, want %v", got.ServerName, "example.com")
+				}
+			},
+		},
+		{
+			name: "with next protos",
+			c:    ServerConfig{NextProtos: []string{"http/1.1", "h2c"}},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				if !slices.Contains(got.NextProtos, "http/1.1") {
+					t.Errorf("NextProtos = %v, should contain [http/1.1]", got.NextProtos)
+				}
+				if !slices.Contains(got.NextProtos, "h2c") {
+					t.Errorf("NextProtos = %v, should contain [h2c]", got.NextProtos)
+				}
+			},
+		},
+		{
+			name: "with local config",
+			c: ServerConfig{
+				LocalConfig: LocalConfig{
+					SinglePEMFile: singlePEMPath,
+				},
+			},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				if len(got.Certificates) == 0 {
+					t.Errorf("Certificates is empty, expected non-empty")
+				}
+			},
+		},
+		{
+			name: "with self-signed config",
+			c: ServerConfig{
+				SelfSignedConfig: SelfSignedConfig{
+					CacheDirectory: tempDir,
+					Subject:        CertificateSubject{CommonName: "test"},
+					SANConfig: SANConfig{
+						DNSNames: []string{"localhost"},
+					},
+					Duration: "1h",
+					Bits:     1024,
+				},
+			},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				if len(got.Certificates) == 0 {
+					t.Errorf("Certificates is empty, expected non-empty")
+				}
+			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewServerTLSConfig(context.Background(), tt.c)
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("NewServerTLSConfig() expected error, got nil")
+				}
+				return
+			}
+
 			if err != nil {
 				t.Errorf("NewServerTLSConfig() error = %v", err)
-			} else {
-				if tt.want == nil && got == nil {
-					return
-				}
-				if got != nil {
-					if !slices.Contains(got.NextProtos, "h2") {
-						t.Errorf("NewAutocertTLSConfig() NextProtos = %v, should contain [h2]", got.NextProtos)
-					}
+				return
+			}
 
-					// ignored for now until we have a way to test the generated certificate
+			if tt.want == nil && got == nil {
+				return
+			}
+
+			if got != nil {
+				// Check default next protos
+				if !slices.Contains(got.NextProtos, "h2") {
+					t.Errorf("NextProtos = %v, should contain [h2]", got.NextProtos)
+				}
+				if !slices.Contains(got.NextProtos, "http/1.1") {
+					t.Errorf("NextProtos = %v, should contain [http/1.1]", got.NextProtos)
+				}
+
+				// Run custom checks if provided
+				if tt.checkFunc != nil {
+					tt.checkFunc(t, got)
 				}
 			}
 		})

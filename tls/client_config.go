@@ -3,8 +3,6 @@ package tls
 import (
 	"crypto/tls"
 	"fmt"
-	// "time"
-	// "golang.org/x/crypto/acme/autocert"
 
 	"github.com/dioad/generics"
 )

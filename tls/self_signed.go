@@ -19,7 +19,6 @@ import (
 func CreateAndSaveSelfSignedKeyPair(config SelfSignedConfig, certPath, keyPath string) (*tls.Certificate, *x509.CertPool, error) {
 	cert, certPool, err := CreateSelfSignedKeyPair(config)
 	if err != nil {
-
 		return nil, nil, fmt.Errorf("error creating self-signed key pair: %w", err)
 	}
 

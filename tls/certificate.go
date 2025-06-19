@@ -57,7 +57,9 @@ func LoadCertPoolFromFile(certPoolPath string) (*x509.CertPool, error) {
 	}
 
 	certPool := x509.NewCertPool()
-	certPool.AppendCertsFromPEM(certPoolPEM)
+	if ok := certPool.AppendCertsFromPEM(certPoolPEM); !ok {
+		return nil, fmt.Errorf("failed to append certificates from PEM file: %s", certPoolPath)
+	}
 
 	return certPool, nil
 }
@@ -70,7 +72,10 @@ func saveBlockToPEMFile(filename string, perm int, blockType string, data []byte
 		return err
 	}
 
-	err = encodeBlock(f, blockType, data)
+	if err = encodeBlock(f, blockType, data); err != nil {
+		f.Close()
+		return err
+	}
 
 	return f.Close()
 }
