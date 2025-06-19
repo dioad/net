@@ -39,6 +39,8 @@ type Config struct {
 	EnableStatus bool
 	// EnableProxyProtocol enables the PROXY protocol for client IP forwarding
 	EnableProxyProtocol bool
+	// EnableOptionsAuthorisation enables authorization checks for incoming OPTION requests
+	EnableOptionsAuthorisation bool
 	// TLSConfig is the TLS configuration for the server
 	TLSConfig *tls.Config
 	// AuthConfig is the authentication configuration for the server
@@ -114,7 +116,11 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 		validator, err := oidc.NewMultiValidatorFromConfig(v)
 		if err == nil {
 			authHandler := jwt.NewHandler(validator, "auth_token")
-			s.Use(wrapWithOptionsMethodBypass(authHandler))
+			if s.Config.EnableOptionsAuthorisation {
+				s.Use(authHandler.Wrap)
+			} else {
+			x	s.Use(wrapWithOptionsMethodBypass(authHandler))
+			}
 		} else {
 			s.Logger.Error().Err(err).Msg("failed to create OAuth2 validator")
 		}

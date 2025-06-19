@@ -2,13 +2,15 @@ package http
 
 import (
 	"context"
-	"crypto/tls"
+
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	dnt "github.com/dioad/net/tls"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
@@ -106,10 +108,27 @@ func TestServerWithTLS(t *testing.T) {
 		ListenAddress: ":0", // Use a random port
 	}
 
+	tlsConfig, _ := dnt.NewServerTLSConfig(context.Background(), dnt.ServerConfig{
+		SelfSignedConfig: dnt.SelfSignedConfig{
+			CacheDirectory: t.TempDir(),
+			Subject: dnt.CertificateSubject{
+				CommonName:   "TestServerWithTLS",
+				Organization: []string{"TestOrg"},
+				Country:      []string{"GB"},
+			},
+			SANConfig: dnt.SANConfig{
+				DNSNames:    []string{"localhost"},
+				IPAddresses: []string{"127.0.0.1"},
+			},
+			Duration: "5m",
+		},
+	})
+
 	// Create a minimal TLS config for testing
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true,
-	}
+	// tlsConfig := &tls.Config{
+	//
+	// 	InsecureSkipVerify: true,
+	// }
 
 	server := NewServer(config)
 	server.Config.TLSConfig = tlsConfig
@@ -296,7 +315,7 @@ type mockAuthMiddleware struct {
 	handler http.Handler
 }
 
-func (m *mockAuthMiddleware) Wrap(next http.Handler) http.Handler {
+func (m *mockAuthMiddleware) Wrap(_ http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("unauthorized"))
