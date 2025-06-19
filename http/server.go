@@ -119,7 +119,7 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 			if s.Config.EnableOptionsAuthorisation {
 				s.Use(authHandler.Wrap)
 			} else {
-			x	s.Use(wrapWithOptionsMethodBypass(authHandler))
+				s.Use(wrapWithOptionsMethodBypass(authHandler))
 			}
 		} else {
 			s.Logger.Error().Err(err).Msg("failed to create OAuth2 validator")
