@@ -40,8 +40,6 @@ type Config struct {
 	EnableStatus bool
 	// EnableProxyProtocol enables the PROXY protocol for client IP forwarding
 	EnableProxyProtocol bool
-	// EnableOptionsAuthorisation enables authorization checks for incoming OPTION requests
-	EnableOptionsAuthorisation bool
 	// TLSConfig is the TLS configuration for the server
 	TLSConfig *tls.Config
 	// AuthConfig is the authentication configuration for the server
@@ -117,33 +115,29 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 		validator, err := oidc.NewMultiValidatorFromConfig(v)
 		if err == nil {
 			authHandler := jwt.NewHandler(validator, "auth_token")
-			if s.Config.EnableOptionsAuthorisation {
-				s.Use(authHandler.Wrap)
-			} else {
-				s.Use(wrapWithOptionsMethodBypass(authHandler))
-			}
+			s.Use(authHandler.Wrap)
 		} else {
 			s.Logger.Fatal().Err(err).Msg("failed to create OAuth2 validator")
 		}
 	}
 }
 
-// wrapWithOptionsMethodBypass creates middleware that allows OPTIONS requests to pass through
-// without authentication, while still applying the authentication middleware to other methods.
-func wrapWithOptionsMethodBypass(authMiddleware auth.Middleware) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodOptions || authMiddleware == nil {
-				// If the request is an OPTIONS request, we bypass authentication
-				// and just call the next handler directly.
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			authMiddleware.Wrap(next).ServeHTTP(w, r)
-		})
-	}
-}
+// // wrapWithOptionsMethodBypass creates middleware that allows OPTIONS requests to pass through
+// // without authentication, while still applying the authentication middleware to other methods.
+// func wrapWithOptionsMethodBypass(authMiddleware auth.Middleware) mux.MiddlewareFunc {
+// 	return func(next http.Handler) http.Handler {
+// 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 			if r.Method == http.MethodOptions || authMiddleware == nil {
+// 				// If the request is an OPTIONS request, we bypass authentication
+// 				// and just call the next handler directly.
+// 				next.ServeHTTP(w, r)
+// 				return
+// 			}
+//
+// 			authMiddleware.Wrap(next).ServeHTTP(w, r)
+// 		})
+// 	}
+// }
 
 func WithCORS(options cors.Options) ServerOption {
 	return func(s *Server) {
@@ -162,7 +156,7 @@ func WithServerAuth(cfg auth.ServerConfig) ServerOption {
 			return
 		}
 
-		s.Use(wrapWithOptionsMethodBypass(h))
+		s.Use(h.Wrap)
 	}
 }
 
