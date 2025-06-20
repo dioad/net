@@ -15,6 +15,7 @@ import (
 	"github.com/pires/go-proxyproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/weaveworks/common/middleware"
@@ -122,7 +123,7 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 				s.Use(wrapWithOptionsMethodBypass(authHandler))
 			}
 		} else {
-			s.Logger.Error().Err(err).Msg("failed to create OAuth2 validator")
+			s.Logger.Fatal().Err(err).Msg("failed to create OAuth2 validator")
 		}
 	}
 }
@@ -132,16 +133,22 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 func wrapWithOptionsMethodBypass(authMiddleware auth.Middleware) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if authMiddleware != nil && r.Method == http.MethodOptions {
+			if r.Method == http.MethodOptions || authMiddleware == nil {
+				// If the request is an OPTIONS request, we bypass authentication
+				// and just call the next handler directly.
 				next.ServeHTTP(w, r)
 				return
 			}
-			if authMiddleware != nil {
-				authMiddleware.Wrap(next).ServeHTTP(w, r)
-				return
-			}
-			next.ServeHTTP(w, r)
+
+			authMiddleware.Wrap(next).ServeHTTP(w, r)
 		})
+	}
+}
+
+func WithCORS(options cors.Options) ServerOption {
+	return func(s *Server) {
+		corsMiddleware := cors.New(options)
+		s.Use(corsMiddleware.Handler)
 	}
 }
 
