@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"io"
 	stdlog "log"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -108,14 +111,28 @@ func WithLogger(l zerolog.Logger) ServerOption {
 	}
 }
 
+func OAuth2ValidatorHandler(v []oidc.ValidatorConfig) (mux.MiddlewareFunc, error) {
+	validator, err := oidc.NewMultiValidatorFromConfig(v)
+	if err != nil {
+		return nil, err
+	}
+
+	authHandler := jwt.NewHandler(validator, "auth_token")
+	return authHandler.Wrap, nil
+}
+
+func CORSHandler(options cors.Options) (mux.MiddlewareFunc, error) {
+	corsMiddleware := cors.New(options)
+	return corsMiddleware.Handler, nil
+}
+
 // WithOAuth2Validator returns a ServerOption that configures the server to use OAuth2 validation
 // for authentication using the given validator configurations
 func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 	return func(s *Server) {
-		validator, err := oidc.NewMultiValidatorFromConfig(v)
+		handler, err := OAuth2ValidatorHandler(v)
 		if err == nil {
-			authHandler := jwt.NewHandler(validator, "auth_token")
-			s.Use(authHandler.Wrap)
+			s.Use(handler)
 		} else {
 			s.Logger.Fatal().Err(err).Msg("failed to create OAuth2 validator")
 		}
@@ -139,10 +156,26 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 // 	}
 // }
 
+func CORSAllowLocalhostOrigin(origin string) bool {
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	host, _, _ := strings.Cut(u.Host, ":")
+
+	return host == "localhost"
+}
+
 func WithCORS(options cors.Options) ServerOption {
 	return func(s *Server) {
-		corsMiddleware := cors.New(options)
-		s.Use(corsMiddleware.Handler)
+		if options.Logger == nil {
+			corsLogger := s.Logger.With().
+				Str("component", "cors").Logger()
+
+			options.Logger = &corsLogger
+		}
+		handler, _ := CORSHandler(options)
+		s.Use(handler)
 	}
 }
 
@@ -337,13 +370,15 @@ func (s *Server) initialiseServer() {
 		// Create a standard logger that writes to our zerolog logger
 		errorLogger := stdlog.New(s.Logger.With().Str("level", "error").Logger(), "", stdlog.Lshortfile)
 
-		s.server = &http.Server{
+		server := &http.Server{
 			ReadTimeout:  time.Minute,
 			WriteTimeout: time.Minute,
 			Handler:      s.handler(),
 			Addr:         s.Config.ListenAddress,
 			ErrorLog:     errorLogger,
 		}
+
+		s.server = server
 	})
 }
 
@@ -375,8 +410,15 @@ func (s *Server) Serve(ln net.Listener) error {
 	s.initialiseServer()
 	s.server.TLSConfig = s.Config.TLSConfig
 
+	addr := ln.Addr()
+	addrString := "missing"
+	if addr != nil {
+		addrString = addr.String()
+		s.Logger.Warn().Msg("listener address is nil, using default")
+	}
+
 	s.Logger.Info().
-		Str("address", ln.Addr().String()).
+		Str("address", addrString).
 		Bool("tls_enabled", s.Config.TLSConfig != nil).
 		Bool("proxy_protocol_enabled", s.Config.EnableProxyProtocol).
 		Msg("starting server")
@@ -396,7 +438,7 @@ func (s *Server) Serve(ln net.Listener) error {
 		err = s.server.Serve(ln)
 	}
 
-	if err != nil && err != http.ErrServerClosed {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
 		s.Logger.Error().Err(err).Msg("server error")
 	} else {
 		s.Logger.Info().Msg("server stopped")
