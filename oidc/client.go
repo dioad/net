@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/auth0/go-jwt-middleware/v2/jwks"
@@ -217,6 +219,153 @@ func WithAudience(audience string) RequestOpt {
 			v.Set("audience", audience)
 		}
 	}
+}
+
+func (c *Client) RefreshToken(ctx context.Context, refreshToken string, opts ...RequestOpt) (*oauth2.Token, error) {
+	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration()
+	if err != nil {
+		return nil, err
+	}
+	tokenURL := discoveredConfiguration.TokenEndpoint
+	if tokenURL == "" {
+		return nil, fmt.Errorf("token endpoint not available")
+	}
+
+	data := url.Values{}
+	data.Set("grant_type", "refresh_token")
+	data.Set("refresh_token", refreshToken)
+	data.Set("client_id", c.clientID)
+	data.Set("client_secret", c.clientSecret)
+
+	for _, opt := range opts {
+		opt(data)
+	}
+
+	tokenResponse, err := doPost[oauth2.Token](ctx, tokenURL, data)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokenResponse, nil
+}
+
+// AuthorizationCodeRedirectFlow generates the authorization URL for the Authorization Code Flow
+// TODO: figure out a better name
+func (c *Client) AuthorizationCodeRedirectFlow(ctx context.Context, state string, scopes []string, redirectURI string, opts ...RequestOpt) (string, error) {
+	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration()
+	if err != nil {
+		return "", err
+	}
+	authURL := discoveredConfiguration.AuthorizationEndpoint
+	if authURL == "" {
+		return "", fmt.Errorf("authorization endpoint not available")
+	}
+
+	data := url.Values{}
+	data.Set("response_type", "code")
+	data.Set("client_id", c.clientID)
+	data.Set("redirect_uri", redirectURI)
+
+	// TODO extract this to request parameter?
+	data.Set("scope", strings.Join(scopes, " "))
+	data.Set("state", state)
+
+	for _, opt := range opts {
+		opt(data)
+	}
+
+	authURLWithParams := authURL + "?" + data.Encode()
+	return authURLWithParams, nil
+}
+
+func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redirect_uri string, opts ...RequestOpt) (*oauth2.Token, error) {
+	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration()
+	if err != nil {
+		return nil, err
+	}
+	tokenURL := discoveredConfiguration.TokenEndpoint
+	if tokenURL == "" {
+		return nil, fmt.Errorf("token endpoint not available")
+	}
+
+	data := url.Values{}
+	data.Set("grant_type", "authorization_code")
+	data.Set("code", code)
+	data.Set("client_id", c.clientID)
+	data.Set("client_secret", c.clientSecret)
+
+	// data.Set("grant_type", "authorization_code")
+	// data.Set("code", code)
+	data.Set("redirect_uri", redirect_uri)
+	// data.Set("client_id", h.Config.ClientID)
+	// data.Set("client_secret", h.Config.ClientSecret)
+
+	for _, opt := range opts {
+		opt(data)
+	}
+
+	tokenResponse, err := doPost[oauth2.Token](ctx, tokenURL, data)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokenResponse, nil
+}
+
+type RefreshingClientCredentialsTokenSource struct {
+	client *Client
+	ctx    context.Context
+	opts   []RequestOpt
+
+	mu           sync.Mutex // to ensure thread safety
+	currentToken *oauth2.Token
+}
+
+func (ts *RefreshingClientCredentialsTokenSource) Token() (*oauth2.Token, error) {
+	var err error
+	if ts.currentToken == nil {
+		ts.mu.Lock()
+		defer ts.mu.Unlock()
+
+		ts.currentToken, err = ts.client.ClientCredentialsToken(ts.ctx, ts.opts...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get client credentials token: %w", err)
+		}
+	} else {
+		// If the token is expired, refresh it
+		if ts.currentToken.Expiry.Before(time.Now()) {
+			ts.mu.Lock()
+			defer ts.mu.Unlock()
+
+			// Double-check if the token is still valid after acquiring the lock
+			if ts.currentToken.Expiry.Before(time.Now()) {
+				ts.currentToken, err = ts.client.ClientCredentialsToken(ts.ctx, ts.opts...)
+				if err != nil {
+					return nil, fmt.Errorf("failed to refresh client credentials token: %w", err)
+				}
+			}
+		}
+	}
+
+	return ts.currentToken, nil
+	// return ts.client.ClientCredentialsToken(ts.ctx, ts.opts...)
+}
+
+func (c *Client) RefreshingClientCredentialsToken(ctx context.Context, opts ...RequestOpt) (oauth2.TokenSource, error) {
+	// token, err := c.ClientCredentialsToken(ctx, opts...)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to get client credentials token: %w", err)
+	// }
+	//
+	// if token.AccessToken == "" {
+	// 	return nil, fmt.Errorf("client credentials token is empty")
+	// }
+
+	return &RefreshingClientCredentialsTokenSource{
+		client: c,
+		ctx:    ctx,
+		opts:   opts,
+	}, nil
 }
 
 // ClientCredentialsToken gets a token using the client_credentials grant

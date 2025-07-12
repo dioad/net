@@ -8,11 +8,15 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 func doRequestAndUnmarshallJSON[T any](ctx context.Context, req *http.Request) (*T, error) {
 	ctxReq := req.WithContext(ctx)
-	resp, err := http.DefaultClient.Do(ctxReq)
+
+	// client L= http.DefaultClient
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(ctxReq)
 	if err != nil {
 		return nil, err
 	}
