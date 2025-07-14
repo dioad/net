@@ -394,6 +394,9 @@ func (c *Client) ClientCredentialsToken(ctx context.Context, opts ...RequestOpt)
 	if err != nil {
 		return nil, err
 	}
+	if tokenResponse.Expiry.IsZero() && tokenResponse.ExpiresIn > 0 {
+		tokenResponse.Expiry = time.Now().Add(time.Duration(tokenResponse.ExpiresIn) * time.Second)
+	}
 
 	return tokenResponse, nil
 }
