@@ -2,7 +2,6 @@ package prefixlist
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"time"
@@ -10,7 +9,8 @@ import (
 
 // GitHubProvider fetches IP ranges from GitHub's meta API
 type GitHubProvider struct {
-	filter string // "hooks", "git", "actions", "pages", "importer", "dependabot", or empty for all
+	filter  string // "hooks", "git", "actions", "pages", "importer", "dependabot", or empty for all
+	fetcher *CachingFetcher[githubMeta]
 }
 
 type githubMeta struct {
@@ -26,6 +26,13 @@ type githubMeta struct {
 func NewGitHubProvider(filter string) *GitHubProvider {
 	return &GitHubProvider{
 		filter: filter,
+		fetcher: NewCachingFetcher[githubMeta](
+			"https://api.github.com/meta",
+			CacheConfig{
+				StaticExpiry: 1 * time.Hour,
+				ReturnStale:  true,
+			},
+		),
 	}
 }
 
@@ -41,13 +48,8 @@ func (p *GitHubProvider) CacheDuration() time.Duration {
 }
 
 func (p *GitHubProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
-	body, err := fetchURL(ctx, "https://api.github.com/meta")
+	meta, _, err := p.fetcher.Get(ctx)
 	if err != nil {
-		return nil, err
-	}
-
-	var meta githubMeta
-	if err := json.Unmarshal(body, &meta); err != nil {
 		return nil, err
 	}
 
