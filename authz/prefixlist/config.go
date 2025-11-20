@@ -31,10 +31,5 @@ type ProviderConfig struct {
 	//   Google: {"scope": "us-central1", "service": "Google Cloud"}
 	//   Atlassian: {"region": "global", "product": "jira"}
 	//   Cloudflare: {"version": "ipv6"}
-	// For backward compatibility, Filter is also supported as a string
 	Filter map[string]string `mapstructure:"filter" yaml:"filter,omitempty"`
-	
-	// FilterString is deprecated but maintained for backward compatibility
-	// Use Filter (map) instead for clearer semantics
-	FilterString string `mapstructure:"filter_string" yaml:"filter_string,omitempty"`
 }

@@ -26,21 +26,11 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "github with filter map",
+			name: "github with filter",
 			config: ProviderConfig{
 				Name:    "github",
 				Enabled: true,
 				Filter:  map[string]string{"service": "hooks"},
-			},
-			wantName: "github-hooks",
-			wantErr:  false,
-		},
-		{
-			name: "github with filter string (backward compat)",
-			config: ProviderConfig{
-				Name:         "github",
-				Enabled:      true,
-				FilterString: "hooks",
 			},
 			wantName: "github-hooks",
 			wantErr:  false,
@@ -55,21 +45,11 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "cloudflare ipv6 with map",
+			name: "cloudflare ipv6",
 			config: ProviderConfig{
 				Name:    "cloudflare",
 				Enabled: true,
 				Filter:  map[string]string{"version": "ipv6"},
-			},
-			wantName: "cloudflare-ipv6",
-			wantErr:  false,
-		},
-		{
-			name: "cloudflare ipv6 with string (backward compat)",
-			config: ProviderConfig{
-				Name:         "cloudflare",
-				Enabled:      true,
-				FilterString: "ipv6",
 			},
 			wantName: "cloudflare-ipv6",
 			wantErr:  false,
@@ -121,17 +101,7 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "aws with filter string (backward compat)",
-			config: ProviderConfig{
-				Name:         "aws",
-				Enabled:      true,
-				FilterString: "EC2:us-east-1",
-			},
-			wantName: "aws-EC2-us-east-1",
-			wantErr:  false,
-		},
-		{
-			name: "google with filter map",
+			name: "google with filter",
 			config: ProviderConfig{
 				Name:    "google",
 				Enabled: true,
@@ -141,7 +111,7 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "atlassian with filter map",
+			name: "atlassian with filter",
 			config: ProviderConfig{
 				Name:    "atlassian",
 				Enabled: true,
@@ -281,71 +251,6 @@ func TestNewManagerFromConfig(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, manager)
 	})
-}
-
-func TestParseFilterStringToMap(t *testing.T) {
-	tests := []struct {
-		name         string
-		providerName string
-		filter       string
-		want         map[string]string
-	}{
-		{
-			name:         "github filter",
-			providerName: "github",
-			filter:       "hooks",
-			want:         map[string]string{"service": "hooks"},
-		},
-		{
-			name:         "aws service only",
-			providerName: "aws",
-			filter:       "EC2",
-			want:         map[string]string{"service": "EC2"},
-		},
-		{
-			name:         "aws service and region",
-			providerName: "aws",
-			filter:       "EC2:us-east-1",
-			want:         map[string]string{"service": "EC2", "region": "us-east-1"},
-		},
-		{
-			name:         "google scope and service",
-			providerName: "google",
-			filter:       "us-central1:Google Cloud",
-			want:         map[string]string{"scope": "us-central1", "service": "Google Cloud"},
-		},
-		{
-			name:         "google scope only",
-			providerName: "google",
-			filter:       "us-central1",
-			want:         map[string]string{"scope": "us-central1"},
-		},
-		{
-			name:         "atlassian region and product",
-			providerName: "atlassian",
-			filter:       "global:jira",
-			want:         map[string]string{"region": "global", "product": "jira"},
-		},
-		{
-			name:         "cloudflare ipv6",
-			providerName: "cloudflare",
-			filter:       "ipv6",
-			want:         map[string]string{"version": "ipv6"},
-		},
-		{
-			name:         "empty filter",
-			providerName: "github",
-			filter:       "",
-			want:         map[string]string{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := parseFilterStringToMap(tt.providerName, tt.filter)
-			assert.Equal(t, tt.want, got)
-		})
-	}
 }
 
 func TestParseCommaSeparated(t *testing.T) {

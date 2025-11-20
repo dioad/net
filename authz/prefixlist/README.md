@@ -55,7 +55,7 @@ if manager.Contains(ip) {
 
 ### Using Configuration
 
-The new map-based filter format provides clear, explicit filtering:
+The map-based filter format provides clear, explicit filtering:
 
 ```go
 config := prefixlist.Config{
@@ -86,7 +86,7 @@ if err != nil {
 
 ### YAML Configuration
 
-**New Format (Recommended)**: Use explicit key-value pairs for clarity
+Use explicit key-value pairs for clarity:
 
 ```yaml
 prefixlist:
@@ -111,19 +111,6 @@ prefixlist:
       filter:
         region: global
         product: jira
-```
-
-**Legacy Format**: Still supported for backward compatibility
-
-```yaml
-prefixlist:
-  providers:
-    - name: github
-      enabled: true
-      filter_string: hooks  # backward compatible
-    - name: aws
-      enabled: true
-      filter_string: "EC2:us-east-1"  # service:region format
 ```
 
 ### Using with net.Listener
