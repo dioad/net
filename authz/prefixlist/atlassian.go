@@ -2,7 +2,6 @@ package prefixlist
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 type AtlassianProvider struct {
 	regions  []string // optional filter for regions (e.g., ["us-east-1", "global"])
 	products []string // optional filter for products (e.g., ["jira", "confluence"])
+	fetcher  *CachingFetcher[atlassianIPRanges]
 }
 
 type atlassianIPRanges struct {
@@ -31,6 +31,13 @@ func NewAtlassianProvider(regions, products []string) *AtlassianProvider {
 	return &AtlassianProvider{
 		regions:  regions,
 		products: products,
+		fetcher: NewCachingFetcher[atlassianIPRanges](
+			"https://ip-ranges.atlassian.com/",
+			CacheConfig{
+				StaticExpiry: 24 * time.Hour,
+				ReturnStale:  true,
+			},
+		),
 	}
 }
 
@@ -50,13 +57,8 @@ func (p *AtlassianProvider) CacheDuration() time.Duration {
 }
 
 func (p *AtlassianProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
-	body, err := fetchURL(ctx, "https://ip-ranges.atlassian.com/")
+	data, _, err := p.fetcher.Get(ctx)
 	if err != nil {
-		return nil, err
-	}
-
-	var data atlassianIPRanges
-	if err := json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
 

@@ -2,13 +2,14 @@ package prefixlist
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"time"
 )
 
 // FastlyProvider fetches IP ranges from Fastly CDN
-type FastlyProvider struct{}
+type FastlyProvider struct {
+	fetcher *CachingFetcher[fastlyIPRanges]
+}
 
 type fastlyIPRanges struct {
 	Addresses     []string `json:"addresses"`
@@ -17,7 +18,15 @@ type fastlyIPRanges struct {
 
 // NewFastlyProvider creates a new Fastly prefix list provider
 func NewFastlyProvider() *FastlyProvider {
-	return &FastlyProvider{}
+	return &FastlyProvider{
+		fetcher: NewCachingFetcher[fastlyIPRanges](
+			"https://api.fastly.com/public-ip-list",
+			CacheConfig{
+				StaticExpiry: 24 * time.Hour,
+				ReturnStale:  true,
+			},
+		),
+	}
 }
 
 func (p *FastlyProvider) Name() string {
@@ -29,13 +38,8 @@ func (p *FastlyProvider) CacheDuration() time.Duration {
 }
 
 func (p *FastlyProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
-	body, err := fetchURL(ctx, "https://api.fastly.com/public-ip-list")
+	data, _, err := p.fetcher.Get(ctx)
 	if err != nil {
-		return nil, err
-	}
-
-	var data fastlyIPRanges
-	if err := json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
 

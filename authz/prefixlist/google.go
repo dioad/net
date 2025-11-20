@@ -2,7 +2,6 @@ package prefixlist
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 type GoogleProvider struct {
 	scopes   []string // optional filter for scopes (e.g., "us-central1", "europe-west1")
 	services []string // optional filter for services (e.g., "Google Cloud", "Google Cloud Storage")
+	fetcher  *CachingFetcher[googleIPRanges]
 }
 
 type googleIPRanges struct {
@@ -30,6 +30,13 @@ func NewGoogleProvider(scopes, services []string) *GoogleProvider {
 	return &GoogleProvider{
 		scopes:   scopes,
 		services: services,
+		fetcher: NewCachingFetcher[googleIPRanges](
+			"https://www.gstatic.com/ipranges/cloud.json",
+			CacheConfig{
+				StaticExpiry: 24 * time.Hour,
+				ReturnStale:  true,
+			},
+		),
 	}
 }
 
@@ -49,13 +56,8 @@ func (p *GoogleProvider) CacheDuration() time.Duration {
 }
 
 func (p *GoogleProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
-	body, err := fetchURL(ctx, "https://www.gstatic.com/ipranges/cloud.json")
+	data, _, err := p.fetcher.Get(ctx)
 	if err != nil {
-		return nil, err
-	}
-
-	var data googleIPRanges
-	if err := json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
 
