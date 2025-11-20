@@ -101,6 +101,24 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr:  false,
 		},
 		{
+			name: "fastly",
+			config: ProviderConfig{
+				Name:    "fastly",
+				Enabled: true,
+			},
+			wantName: "fastly",
+			wantErr:  false,
+		},
+		{
+			name: "hetzner",
+			config: ProviderConfig{
+				Name:    "hetzner",
+				Enabled: true,
+			},
+			wantName: "hetzner",
+			wantErr:  false,
+		},
+		{
 			name: "disabled provider",
 			config: ProviderConfig{
 				Name:    "github",

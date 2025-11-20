@@ -32,6 +32,10 @@ func NewProviderFromConfig(cfg ProviderConfig) (Provider, error) {
 		// Parse filter for service and region (format: "service:region" or just "service")
 		service, region := parseAWSFilter(cfg.Filter)
 		return NewAWSProvider(service, region), nil
+	case "fastly":
+		return NewFastlyProvider(), nil
+	case "hetzner":
+		return NewHetznerProvider(), nil
 	default:
 		return nil, fmt.Errorf("unknown provider: %s", cfg.Name)
 	}

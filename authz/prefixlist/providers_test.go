@@ -29,6 +29,28 @@ func TestGitLabProvider(t *testing.T) {
 	}
 }
 
+func TestHetznerProvider(t *testing.T) {
+	provider := NewHetznerProvider()
+
+	assert.Equal(t, "hetzner", provider.Name())
+	assert.Equal(t, 7*24*time.Hour, provider.CacheDuration())
+
+	ctx := context.Background()
+	prefixes, err := provider.FetchPrefixes(ctx)
+	require.NoError(t, err)
+	assert.Greater(t, len(prefixes), 30, "Expected at least 30 Hetzner prefixes")
+
+	// Verify at least one known Hetzner range is included
+	found := false
+	for _, prefix := range prefixes {
+		if prefix.String() == "5.9.0.0/16" {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "Expected to find Hetzner range 5.9.0.0/16")
+}
+
 func TestProviderNames(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -80,6 +102,16 @@ func TestProviderNames(t *testing.T) {
 			provider: NewAWSProvider("EC2", "us-east-1"),
 			expected: "aws-EC2-us-east-1",
 		},
+		{
+			name:     "fastly",
+			provider: NewFastlyProvider(),
+			expected: "fastly",
+		},
+		{
+			name:     "hetzner",
+			provider: NewHetznerProvider(),
+			expected: "hetzner",
+		},
 	}
 
 	for _, tt := range tests {
@@ -124,6 +156,16 @@ func TestCacheDurations(t *testing.T) {
 			name:     "aws",
 			provider: NewAWSProvider("", ""),
 			expected: 24 * time.Hour,
+		},
+		{
+			name:     "fastly",
+			provider: NewFastlyProvider(),
+			expected: 24 * time.Hour,
+		},
+		{
+			name:     "hetzner",
+			provider: NewHetznerProvider(),
+			expected: 7 * 24 * time.Hour,
 		},
 	}
 

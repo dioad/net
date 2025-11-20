@@ -31,6 +31,11 @@ func TestIntegrationProviders(t *testing.T) {
 			provider:            NewGitLabProvider(),
 			expectedMinPrefixes: 2,
 		},
+		{
+			name:                "hetzner",
+			provider:            NewHetznerProvider(),
+			expectedMinPrefixes: 30,
+		},
 		// Uncomment these to test against real APIs
 		// They are commented by default to avoid rate limits and external dependencies
 		/*
@@ -104,6 +109,18 @@ func TestProviderResponseFormat(t *testing.T) {
 		{
 			name:         "gitlab webhook IP not in range",
 			provider:     NewGitLabProvider(),
+			testIP:       "1.2.3.4",
+			shouldContain: false,
+		},
+		{
+			name:         "hetzner IP in range",
+			provider:     NewHetznerProvider(),
+			testIP:       "5.9.1.1",
+			shouldContain: true,
+		},
+		{
+			name:         "hetzner IP not in range",
+			provider:     NewHetznerProvider(),
 			testIP:       "1.2.3.4",
 			shouldContain: false,
 		},

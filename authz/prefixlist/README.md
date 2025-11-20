@@ -21,6 +21,8 @@ The `prefixlist` package provides dynamic IP prefix list management for network 
 | Atlassian | Atlassian Cloud services | 24 hours |
 | GitLab | GitLab webhooks (static IPs) | 7 days |
 | AWS | Amazon Web Services (with optional service/region filtering) | 24 hours |
+| Fastly | Fastly CDN | 24 hours |
+| Hetzner | Hetzner Cloud (static ranges) | 7 days |
 
 ## Usage
 
@@ -181,6 +183,22 @@ The GitLab provider uses static IP ranges for webhooks:
 - `34.74.226.0/24`
 
 Note: GitLab Actions run on Google Cloud Platform, so enable the Google provider if you need to allow GitLab Actions runners.
+
+### Fastly
+
+The Fastly provider fetches IP ranges from Fastly's public API.
+
+```go
+provider := prefixlist.NewFastlyProvider()
+```
+
+### Hetzner
+
+The Hetzner provider uses static IP ranges for Hetzner Cloud services. This includes all major Hetzner Cloud data centers.
+
+```go
+provider := prefixlist.NewHetznerProvider()
+```
 
 ## Integration with Existing authz Package
 
