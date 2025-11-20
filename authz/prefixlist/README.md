@@ -55,17 +55,25 @@ if manager.Contains(ip) {
 
 ### Using Configuration
 
+The new map-based filter format provides clear, explicit filtering:
+
 ```go
 config := prefixlist.Config{
     Providers: []prefixlist.ProviderConfig{
         {
             Name:    "github",
             Enabled: true,
-            Filter:  "hooks",
+            Filter:  map[string]string{"service": "hooks"},
         },
         {
-            Name:    "cloudflare",
+            Name:    "aws",
             Enabled: true,
+            Filter:  map[string]string{"service": "EC2", "region": "us-east-1"},
+        },
+        {
+            Name:    "google",
+            Enabled: true,
+            Filter:  map[string]string{"scope": "us-central1", "service": "Google Cloud"},
         },
     },
 }
@@ -78,18 +86,44 @@ if err != nil {
 
 ### YAML Configuration
 
+**New Format (Recommended)**: Use explicit key-value pairs for clarity
+
 ```yaml
 prefixlist:
   update_interval: 1h
   providers:
     - name: github
       enabled: true
-      filter: hooks
-    - name: cloudflare
-      enabled: true
+      filter:
+        service: hooks
     - name: aws
       enabled: true
-      filter: "EC2:us-east-1"
+      filter:
+        service: EC2
+        region: us-east-1
+    - name: google
+      enabled: true
+      filter:
+        scope: us-central1
+        service: Google Cloud
+    - name: atlassian
+      enabled: true
+      filter:
+        region: global
+        product: jira
+```
+
+**Legacy Format**: Still supported for backward compatibility
+
+```yaml
+prefixlist:
+  providers:
+    - name: github
+      enabled: true
+      filter_string: hooks  # backward compatible
+    - name: aws
+      enabled: true
+      filter_string: "EC2:us-east-1"  # service:region format
 ```
 
 ### Using with net.Listener
@@ -118,14 +152,9 @@ for {
 
 ### GitHub
 
-The GitHub provider supports filtering by service type:
-- `hooks`: GitHub webhooks
-- `git`: Git protocol access
-- `actions`: GitHub Actions runners
-- `pages`: GitHub Pages
-- `importer`: GitHub Importer
-- `dependabot`: Dependabot
-- Empty string (default): All GitHub services
+The GitHub provider supports filtering by service type using the `service` key:
+
+**Available services**: `hooks`, `git`, `actions`, `pages`, `importer`, `dependabot`
 
 ```go
 // Only GitHub webhooks
@@ -135,9 +164,17 @@ provider := prefixlist.NewGitHubProvider("hooks")
 provider := prefixlist.NewGitHubProvider("")
 ```
 
+**YAML Configuration**:
+```yaml
+- name: github
+  enabled: true
+  filter:
+    service: hooks  # or actions, git, pages, importer, dependabot
+```
+
 ### Cloudflare
 
-The Cloudflare provider supports IPv4 and IPv6:
+The Cloudflare provider supports IPv4 and IPv6 using the `version` key:
 
 ```go
 // IPv4 ranges
@@ -147,11 +184,12 @@ provider := prefixlist.NewCloudflareProvider(false)
 provider := prefixlist.NewCloudflareProvider(true)
 ```
 
-Or via config:
+**YAML Configuration**:
 ```yaml
 - name: cloudflare
   enabled: true
-  filter: ipv6  # or omit for IPv4
+  filter:
+    version: ipv6  # or omit for IPv4
 ```
 
 ### Google Cloud
@@ -175,16 +213,18 @@ provider := prefixlist.NewGoogleProvider(
 )
 ```
 
-Or via config (format: `scope1,scope2:service1,service2`):
+**YAML Configuration** (supports comma-separated values):
 ```yaml
 - name: google
   enabled: true
-  filter: "us-central1,europe-west1:Google Cloud"
+  filter:
+    scope: us-central1,europe-west1    # comma-separated regions
+    service: Google Cloud               # single or comma-separated services
 ```
 
 ### Atlassian
 
-The Atlassian provider supports filtering by region and product. **Note: Only prefixes with "egress" direction are included.**
+The Atlassian provider supports filtering by `region` and `product` keys. **Note: Only prefixes with "egress" direction are included.**
 
 ```go
 // All Atlassian IP ranges (egress only)
@@ -203,16 +243,18 @@ provider := prefixlist.NewAtlassianProvider(
 )
 ```
 
-Or via config (format: `region1,region2:product1,product2`):
+**YAML Configuration** (supports comma-separated values):
 ```yaml
 - name: atlassian
   enabled: true
-  filter: "global:jira,confluence"
+  filter:
+    region: global,us-east-1           # comma-separated regions
+    product: jira,confluence            # comma-separated products
 ```
 
 ### AWS
 
-The AWS provider supports filtering by service and region:
+The AWS provider supports filtering by `service` and `region` keys:
 
 ```go
 // All AWS services in all regions
@@ -225,11 +267,13 @@ provider := prefixlist.NewAWSProvider("EC2", "")
 provider := prefixlist.NewAWSProvider("EC2", "us-east-1")
 ```
 
-Or via config:
+**YAML Configuration**:
 ```yaml
 - name: aws
   enabled: true
-  filter: "EC2:us-east-1"  # service:region format
+  filter:
+    service: EC2                        # specific AWS service
+    region: us-east-1                   # specific AWS region
 ```
 
 ### GitLab

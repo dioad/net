@@ -26,11 +26,21 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "github with filter",
+			name: "github with filter map",
 			config: ProviderConfig{
 				Name:    "github",
 				Enabled: true,
-				Filter:  "hooks",
+				Filter:  map[string]string{"service": "hooks"},
+			},
+			wantName: "github-hooks",
+			wantErr:  false,
+		},
+		{
+			name: "github with filter string (backward compat)",
+			config: ProviderConfig{
+				Name:         "github",
+				Enabled:      true,
+				FilterString: "hooks",
 			},
 			wantName: "github-hooks",
 			wantErr:  false,
@@ -45,11 +55,21 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "cloudflare ipv6",
+			name: "cloudflare ipv6 with map",
 			config: ProviderConfig{
 				Name:    "cloudflare",
 				Enabled: true,
-				Filter:  "ipv6",
+				Filter:  map[string]string{"version": "ipv6"},
+			},
+			wantName: "cloudflare-ipv6",
+			wantErr:  false,
+		},
+		{
+			name: "cloudflare ipv6 with string (backward compat)",
+			config: ProviderConfig{
+				Name:         "cloudflare",
+				Enabled:      true,
+				FilterString: "ipv6",
 			},
 			wantName: "cloudflare-ipv6",
 			wantErr:  false,
@@ -91,13 +111,43 @@ func TestNewProviderFromConfig(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "aws with filter",
+			name: "aws with filter map",
 			config: ProviderConfig{
 				Name:    "aws",
 				Enabled: true,
-				Filter:  "EC2:us-east-1",
+				Filter:  map[string]string{"service": "EC2", "region": "us-east-1"},
 			},
 			wantName: "aws-EC2-us-east-1",
+			wantErr:  false,
+		},
+		{
+			name: "aws with filter string (backward compat)",
+			config: ProviderConfig{
+				Name:         "aws",
+				Enabled:      true,
+				FilterString: "EC2:us-east-1",
+			},
+			wantName: "aws-EC2-us-east-1",
+			wantErr:  false,
+		},
+		{
+			name: "google with filter map",
+			config: ProviderConfig{
+				Name:    "google",
+				Enabled: true,
+				Filter:  map[string]string{"scope": "us-central1", "service": "Google Cloud"},
+			},
+			wantName: "google-Google Cloud-us-central1",
+			wantErr:  false,
+		},
+		{
+			name: "atlassian with filter map",
+			config: ProviderConfig{
+				Name:    "atlassian",
+				Enabled: true,
+				Filter:  map[string]string{"region": "global", "product": "jira"},
+			},
+			wantName: "atlassian-jira-global",
 			wantErr:  false,
 		},
 		{
@@ -191,7 +241,7 @@ func TestNewManagerFromConfig(t *testing.T) {
 				{
 					Name:    "github",
 					Enabled: true,
-					Filter:  "hooks",
+					Filter:  map[string]string{"service": "hooks"},
 				},
 			},
 		}
@@ -233,110 +283,108 @@ func TestNewManagerFromConfig(t *testing.T) {
 	})
 }
 
-func TestParseGoogleFilter(t *testing.T) {
+func TestParseFilterStringToMap(t *testing.T) {
 	tests := []struct {
 		name         string
+		providerName string
 		filter       string
-		wantScopes   []string
-		wantServices []string
+		want         map[string]string
 	}{
 		{
-			name:         "empty filter",
-			filter:       "",
-			wantScopes:   nil,
-			wantServices: nil,
+			name:         "github filter",
+			providerName: "github",
+			filter:       "hooks",
+			want:         map[string]string{"service": "hooks"},
 		},
 		{
-			name:         "scope only",
-			filter:       "us-central1",
-			wantScopes:   []string{"us-central1"},
-			wantServices: nil,
+			name:         "aws service only",
+			providerName: "aws",
+			filter:       "EC2",
+			want:         map[string]string{"service": "EC2"},
 		},
 		{
-			name:         "multiple scopes",
-			filter:       "us-central1,europe-west1",
-			wantScopes:   []string{"us-central1", "europe-west1"},
-			wantServices: nil,
+			name:         "aws service and region",
+			providerName: "aws",
+			filter:       "EC2:us-east-1",
+			want:         map[string]string{"service": "EC2", "region": "us-east-1"},
 		},
 		{
-			name:         "scope and service",
+			name:         "google scope and service",
+			providerName: "google",
 			filter:       "us-central1:Google Cloud",
-			wantScopes:   []string{"us-central1"},
-			wantServices: []string{"Google Cloud"},
+			want:         map[string]string{"scope": "us-central1", "service": "Google Cloud"},
 		},
 		{
-			name:         "multiple scopes and services",
-			filter:       "us-central1,europe-west1:Google Cloud,Google Cloud Storage",
-			wantScopes:   []string{"us-central1", "europe-west1"},
-			wantServices: []string{"Google Cloud", "Google Cloud Storage"},
+			name:         "google scope only",
+			providerName: "google",
+			filter:       "us-central1",
+			want:         map[string]string{"scope": "us-central1"},
 		},
 		{
-			name:         "service only",
-			filter:       ":Google Cloud",
-			wantScopes:   nil,
-			wantServices: []string{"Google Cloud"},
+			name:         "atlassian region and product",
+			providerName: "atlassian",
+			filter:       "global:jira",
+			want:         map[string]string{"region": "global", "product": "jira"},
+		},
+		{
+			name:         "cloudflare ipv6",
+			providerName: "cloudflare",
+			filter:       "ipv6",
+			want:         map[string]string{"version": "ipv6"},
+		},
+		{
+			name:         "empty filter",
+			providerName: "github",
+			filter:       "",
+			want:         map[string]string{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			scopes, services := parseGoogleFilter(tt.filter)
-			assert.Equal(t, tt.wantScopes, scopes)
-			assert.Equal(t, tt.wantServices, services)
+			got := parseFilterStringToMap(tt.providerName, tt.filter)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
 
-func TestParseAtlassianFilter(t *testing.T) {
+func TestParseCommaSeparated(t *testing.T) {
 	tests := []struct {
-		name         string
-		filter       string
-		wantRegions  []string
-		wantProducts []string
+		name  string
+		value string
+		want  []string
 	}{
 		{
-			name:         "empty filter",
-			filter:       "",
-			wantRegions:  nil,
-			wantProducts: nil,
+			name:  "single value",
+			value: "us-central1",
+			want:  []string{"us-central1"},
 		},
 		{
-			name:         "region only",
-			filter:       "global",
-			wantRegions:  []string{"global"},
-			wantProducts: nil,
+			name:  "multiple values",
+			value: "us-central1,europe-west1",
+			want:  []string{"us-central1", "europe-west1"},
 		},
 		{
-			name:         "multiple regions",
-			filter:       "global,us-east-1",
-			wantRegions:  []string{"global", "us-east-1"},
-			wantProducts: nil,
+			name:  "values with spaces",
+			value: "us-central1, europe-west1 , asia-east1",
+			want:  []string{"us-central1", "europe-west1", "asia-east1"},
 		},
 		{
-			name:         "region and product",
-			filter:       "global:jira",
-			wantRegions:  []string{"global"},
-			wantProducts: []string{"jira"},
+			name:  "empty string",
+			value: "",
+			want:  nil,
 		},
 		{
-			name:         "multiple regions and products",
-			filter:       "global,us-east-1:jira,confluence",
-			wantRegions:  []string{"global", "us-east-1"},
-			wantProducts: []string{"jira", "confluence"},
-		},
-		{
-			name:         "product only",
-			filter:       ":jira",
-			wantRegions:  nil,
-			wantProducts: []string{"jira"},
+			name:  "only commas",
+			value: ",,,",
+			want:  nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			regions, products := parseAtlassianFilter(tt.filter)
-			assert.Equal(t, tt.wantRegions, regions)
-			assert.Equal(t, tt.wantProducts, products)
+			got := parseCommaSeparated(tt.value)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

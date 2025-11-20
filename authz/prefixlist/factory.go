@@ -15,26 +15,35 @@ func NewProviderFromConfig(cfg ProviderConfig) (Provider, error) {
 	}
 
 	name := strings.ToLower(cfg.Name)
+	
+	// Get filter as map, handling backward compatibility
+	filterMap := getFilterMap(cfg)
 
 	switch name {
 	case "github":
-		return NewGitHubProvider(cfg.Filter), nil
+		// GitHub: support "service" key (e.g., "hooks", "actions")
+		service := filterMap["service"]
+		return NewGitHubProvider(service), nil
 	case "cloudflare":
-		// Default to IPv4, can be extended with filter for "ipv6"
-		return NewCloudflareProvider(cfg.Filter == "ipv6"), nil
+		// Cloudflare: support "version" key (e.g., "ipv6")
+		version := filterMap["version"]
+		return NewCloudflareProvider(version == "ipv6"), nil
 	case "google":
-		// Parse filter for scope and service (format: "scope1,scope2:service1,service2")
-		scopes, services := parseGoogleFilter(cfg.Filter)
+		// Google: support "scope" and "service" keys (comma-separated values)
+		scopes := parseCommaSeparated(filterMap["scope"])
+		services := parseCommaSeparated(filterMap["service"])
 		return NewGoogleProvider(scopes, services), nil
 	case "atlassian":
-		// Parse filter for region and product (format: "region1,region2:product1,product2")
-		regions, products := parseAtlassianFilter(cfg.Filter)
+		// Atlassian: support "region" and "product" keys (comma-separated values)
+		regions := parseCommaSeparated(filterMap["region"])
+		products := parseCommaSeparated(filterMap["product"])
 		return NewAtlassianProvider(regions, products), nil
 	case "gitlab":
 		return NewGitLabProvider(), nil
 	case "aws":
-		// Parse filter for service and region (format: "service:region" or just "service")
-		service, region := parseAWSFilter(cfg.Filter)
+		// AWS: support "service" and "region" keys
+		service := filterMap["service"]
+		region := filterMap["region"]
 		return NewAWSProvider(service, region), nil
 	case "fastly":
 		return NewFastlyProvider(), nil
@@ -45,64 +54,100 @@ func NewProviderFromConfig(cfg ProviderConfig) (Provider, error) {
 	}
 }
 
-// parseAWSFilter parses AWS filter string in format "service:region" or just "service"
-func parseAWSFilter(filter string) (service, region string) {
-	if filter == "" {
-		return "", ""
+// getFilterMap converts the filter configuration to a map, handling backward compatibility
+func getFilterMap(cfg ProviderConfig) map[string]string {
+	// If Filter map is provided, use it directly
+	if len(cfg.Filter) > 0 {
+		return cfg.Filter
 	}
+	
+	// For backward compatibility, convert FilterString to map based on provider
+	if cfg.FilterString != "" {
+		return parseFilterStringToMap(cfg.Name, cfg.FilterString)
+	}
+	
+	return make(map[string]string)
+}
 
+// parseFilterStringToMap converts old string-based filters to map format for backward compatibility
+func parseFilterStringToMap(providerName, filter string) map[string]string {
+	if filter == "" {
+		return make(map[string]string)
+	}
+	
+	result := make(map[string]string)
+	name := strings.ToLower(providerName)
+	
+	switch name {
+	case "github":
+		// GitHub: simple service name
+		result["service"] = filter
+	case "cloudflare":
+		// Cloudflare: "ipv6" or empty
+		if filter == "ipv6" {
+			result["version"] = "ipv6"
+		}
+	case "google":
+		// Google: "scope:service" format
+		scopes, services := parseColonSeparatedPair(filter)
+		if scopes != "" {
+			result["scope"] = scopes
+		}
+		if services != "" {
+			result["service"] = services
+		}
+	case "atlassian":
+		// Atlassian: "region:product" format
+		regions, products := parseColonSeparatedPair(filter)
+		if regions != "" {
+			result["region"] = regions
+		}
+		if products != "" {
+			result["product"] = products
+		}
+	case "aws":
+		// AWS: "service:region" format
+		service, region := parseColonSeparatedPair(filter)
+		if service != "" {
+			result["service"] = service
+		}
+		if region != "" {
+			result["region"] = region
+		}
+	}
+	
+	return result
+}
+
+// parseColonSeparatedPair parses "first:second" format
+func parseColonSeparatedPair(filter string) (first, second string) {
 	parts := strings.SplitN(filter, ":", 2)
-	service = parts[0]
+	first = strings.TrimSpace(parts[0])
 	if len(parts) > 1 {
-		region = parts[1]
+		second = strings.TrimSpace(parts[1])
 	}
 	return
 }
 
-// parseGoogleFilter parses Google filter string in format "scope1,scope2:service1,service2"
-// Returns scopes and services as separate slices
-func parseGoogleFilter(filter string) (scopes, services []string) {
-	if filter == "" {
-		return nil, nil
+// parseCommaSeparated parses comma-separated values into a slice
+func parseCommaSeparated(value string) []string {
+	if value == "" {
+		return nil
 	}
-
-	parts := strings.SplitN(filter, ":", 2)
-	if len(parts) > 0 && parts[0] != "" {
-		scopes = strings.Split(parts[0], ",")
-		for i := range scopes {
-			scopes[i] = strings.TrimSpace(scopes[i])
+	
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
 		}
 	}
-	if len(parts) > 1 && parts[1] != "" {
-		services = strings.Split(parts[1], ",")
-		for i := range services {
-			services[i] = strings.TrimSpace(services[i])
-		}
+	
+	if len(result) == 0 {
+		return nil
 	}
-	return
-}
-
-// parseAtlassianFilter parses Atlassian filter string in format "region1,region2:product1,product2"
-// Returns regions and products as separate slices
-func parseAtlassianFilter(filter string) (regions, products []string) {
-	if filter == "" {
-		return nil, nil
-	}
-
-	parts := strings.SplitN(filter, ":", 2)
-	if len(parts) > 0 && parts[0] != "" {
-		regions = strings.Split(parts[0], ",")
-		for i := range regions {
-			regions[i] = strings.TrimSpace(regions[i])
-		}
-	}
-	if len(parts) > 1 && parts[1] != "" {
-		products = strings.Split(parts[1], ",")
-		for i := range products {
-			products[i] = strings.TrimSpace(products[i])
-		}
-	}
-	return
+	return result
 }
 
 // NewManagerFromConfig creates a manager from configuration

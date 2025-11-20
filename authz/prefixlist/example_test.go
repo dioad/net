@@ -44,7 +44,7 @@ func ExampleNewManagerFromConfig() {
 			{
 				Name:    "github",
 				Enabled: true,
-				Filter:  "hooks", // Only GitHub webhook IPs
+				Filter:  map[string]string{"service": "hooks"}, // Only GitHub webhook IPs
 			},
 			{
 				Name:    "gitlab",

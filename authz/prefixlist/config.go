@@ -24,6 +24,17 @@ type ProviderConfig struct {
 	// CacheDuration overrides the default cache duration for this provider
 	CacheDuration time.Duration `mapstructure:"cache_duration" yaml:"cache_duration,omitempty"`
 	
-	// Filter optionally filters prefixes (e.g., "hooks" for GitHub webhooks only)
-	Filter string `mapstructure:"filter" yaml:"filter,omitempty"`
+	// Filter optionally filters prefixes using a map of key-value pairs
+	// Examples:
+	//   GitHub: {"service": "hooks"} or {"service": "actions"}
+	//   AWS: {"service": "EC2", "region": "us-east-1"}
+	//   Google: {"scope": "us-central1", "service": "Google Cloud"}
+	//   Atlassian: {"region": "global", "product": "jira"}
+	//   Cloudflare: {"version": "ipv6"}
+	// For backward compatibility, Filter is also supported as a string
+	Filter map[string]string `mapstructure:"filter" yaml:"filter,omitempty"`
+	
+	// FilterString is deprecated but maintained for backward compatibility
+	// Use Filter (map) instead for clearer semantics
+	FilterString string `mapstructure:"filter_string" yaml:"filter_string,omitempty"`
 }

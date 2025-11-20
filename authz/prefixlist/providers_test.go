@@ -176,38 +176,4 @@ func TestCacheDurations(t *testing.T) {
 	}
 }
 
-func TestParseAWSFilter(t *testing.T) {
-	tests := []struct {
-		name           string
-		filter         string
-		wantService    string
-		wantRegion     string
-	}{
-		{
-			name:        "empty filter",
-			filter:      "",
-			wantService: "",
-			wantRegion:  "",
-		},
-		{
-			name:        "service only",
-			filter:      "EC2",
-			wantService: "EC2",
-			wantRegion:  "",
-		},
-		{
-			name:        "service and region",
-			filter:      "EC2:us-east-1",
-			wantService: "EC2",
-			wantRegion:  "us-east-1",
-		},
-	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			service, region := parseAWSFilter(tt.filter)
-			assert.Equal(t, tt.wantService, service)
-			assert.Equal(t, tt.wantRegion, region)
-		})
-	}
-}
