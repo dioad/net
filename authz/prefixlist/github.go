@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"time"
 )
 
@@ -43,23 +41,7 @@ func (p *GitHubProvider) CacheDuration() time.Duration {
 }
 
 func (p *GitHubProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/meta", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
+	body, err := fetchURL(ctx, "https://api.github.com/meta")
 	if err != nil {
 		return nil, err
 	}

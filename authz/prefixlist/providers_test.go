@@ -79,12 +79,12 @@ func TestProviderNames(t *testing.T) {
 		},
 		{
 			name:     "google",
-			provider: NewGoogleProvider(),
+			provider: NewGoogleProvider(nil, nil),
 			expected: "google",
 		},
 		{
 			name:     "atlassian",
-			provider: NewAtlassianProvider(),
+			provider: NewAtlassianProvider(nil, nil),
 			expected: "atlassian",
 		},
 		{
@@ -139,12 +139,12 @@ func TestCacheDurations(t *testing.T) {
 		},
 		{
 			name:     "google",
-			provider: NewGoogleProvider(),
+			provider: NewGoogleProvider(nil, nil),
 			expected: 24 * time.Hour,
 		},
 		{
 			name:     "atlassian",
-			provider: NewAtlassianProvider(),
+			provider: NewAtlassianProvider(nil, nil),
 			expected: 24 * time.Hour,
 		},
 		{

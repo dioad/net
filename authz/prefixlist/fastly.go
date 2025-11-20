@@ -3,10 +3,7 @@ package prefixlist
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"time"
 )
 
@@ -14,7 +11,7 @@ import (
 type FastlyProvider struct{}
 
 type fastlyIPRanges struct {
-	Addresses    []string `json:"addresses"`
+	Addresses     []string `json:"addresses"`
 	IPv6Addresses []string `json:"ipv6_addresses"`
 }
 
@@ -32,23 +29,7 @@ func (p *FastlyProvider) CacheDuration() time.Duration {
 }
 
 func (p *FastlyProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.fastly.com/public-ip-list", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
+	body, err := fetchURL(ctx, "https://api.fastly.com/public-ip-list")
 	if err != nil {
 		return nil, err
 	}

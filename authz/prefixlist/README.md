@@ -154,6 +154,62 @@ Or via config:
   filter: ipv6  # or omit for IPv4
 ```
 
+### Google Cloud
+
+The Google Cloud provider supports filtering by scope (region) and service:
+
+```go
+// All Google Cloud IP ranges
+provider := prefixlist.NewGoogleProvider(nil, nil)
+
+// Only specific regions
+provider := prefixlist.NewGoogleProvider([]string{"us-central1", "europe-west1"}, nil)
+
+// Only specific services
+provider := prefixlist.NewGoogleProvider(nil, []string{"Google Cloud"})
+
+// Specific regions and services
+provider := prefixlist.NewGoogleProvider(
+    []string{"us-central1"}, 
+    []string{"Google Cloud", "Google Cloud Storage"},
+)
+```
+
+Or via config (format: `scope1,scope2:service1,service2`):
+```yaml
+- name: google
+  enabled: true
+  filter: "us-central1,europe-west1:Google Cloud"
+```
+
+### Atlassian
+
+The Atlassian provider supports filtering by region and product. **Note: Only prefixes with "egress" direction are included.**
+
+```go
+// All Atlassian IP ranges (egress only)
+provider := prefixlist.NewAtlassianProvider(nil, nil)
+
+// Only specific regions
+provider := prefixlist.NewAtlassianProvider([]string{"global", "us-east-1"}, nil)
+
+// Only specific products
+provider := prefixlist.NewAtlassianProvider(nil, []string{"jira", "confluence"})
+
+// Specific regions and products
+provider := prefixlist.NewAtlassianProvider(
+    []string{"global"}, 
+    []string{"jira", "confluence"},
+)
+```
+
+Or via config (format: `region1,region2:product1,product2`):
+```yaml
+- name: atlassian
+  enabled: true
+  filter: "global:jira,confluence"
+```
+
 ### AWS
 
 The AWS provider supports filtering by service and region:
