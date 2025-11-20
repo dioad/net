@@ -91,7 +91,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 		// Start background refresh if not already refreshing
 		if !f.refreshing {
 			f.refreshing = true
-			go f.backgroundRefresh(context.Background())
+			go f.backgroundRefresh(ctx)
 		}
 		
 		f.mu.Unlock()

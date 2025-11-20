@@ -38,7 +38,7 @@ func fetchURL(ctx context.Context, url string) ([]byte, error) {
 		return nil, err
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
