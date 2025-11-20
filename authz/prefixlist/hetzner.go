@@ -2,8 +2,7 @@ package prefixlist
 
 import (
 	"context"
-	"net"
-	"time"
+	"net/netip"
 )
 
 // HetznerProvider provides static IP ranges for Hetzner Cloud
@@ -18,12 +17,7 @@ func (p *HetznerProvider) Name() string {
 	return "hetzner"
 }
 
-func (p *HetznerProvider) CacheDuration() time.Duration {
-	// Static/semi-static ranges, refresh less frequently
-	return 7 * 24 * time.Hour
-}
-
-func (p *HetznerProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
+func (p *HetznerProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
 	// Hetzner Cloud main IP ranges
 	// These are well-known stable ranges for Hetzner services
 	cidrs := []string{

@@ -2,7 +2,7 @@ package prefixlist
 
 import (
 	"context"
-	"net"
+	"net/netip"
 	"strings"
 	"time"
 )
@@ -52,11 +52,7 @@ func (p *AtlassianProvider) Name() string {
 	return name
 }
 
-func (p *AtlassianProvider) CacheDuration() time.Duration {
-	return 24 * time.Hour
-}
-
-func (p *AtlassianProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
+func (p *AtlassianProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
 	data, _, err := p.fetcher.Get(ctx)
 	if err != nil {
 		return nil, err

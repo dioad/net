@@ -3,7 +3,6 @@ package prefixlist
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -72,8 +71,8 @@ func parseCommaSeparated(value string) []string {
 	return result
 }
 
-// NewManagerFromConfig creates a manager from configuration
-func NewManagerFromConfig(cfg Config, logger zerolog.Logger) (*Manager, error) {
+// NewMultiProviderFromConfig creates a MultiProvider from configuration
+func NewMultiProviderFromConfig(cfg Config, logger zerolog.Logger) (*MultiProvider, error) {
 	var providers []Provider
 
 	for _, providerCfg := range cfg.Providers {
@@ -83,14 +82,6 @@ func NewManagerFromConfig(cfg Config, logger zerolog.Logger) (*Manager, error) {
 			continue
 		}
 
-		// Override cache duration if specified in config
-		if providerCfg.CacheDuration > 0 {
-			provider = &cacheDurationOverride{
-				Provider: provider,
-				duration: providerCfg.CacheDuration,
-			}
-		}
-
 		providers = append(providers, provider)
 	}
 
@@ -98,15 +89,5 @@ func NewManagerFromConfig(cfg Config, logger zerolog.Logger) (*Manager, error) {
 		return nil, fmt.Errorf("no valid providers configured")
 	}
 
-	return NewManager(providers, logger), nil
-}
-
-// cacheDurationOverride wraps a provider to override its cache duration
-type cacheDurationOverride struct {
-	Provider
-	duration time.Duration
-}
-
-func (c *cacheDurationOverride) CacheDuration() time.Duration {
-	return c.duration
+	return NewMultiProvider(providers, logger), nil
 }

@@ -2,6 +2,7 @@ package prefixlist
 
 import (
 	"net"
+	"net/netip"
 
 	"github.com/rs/zerolog"
 )
@@ -9,15 +10,15 @@ import (
 // Listener wraps a net.Listener and filters connections based on prefix lists
 type Listener struct {
 	listener net.Listener
-	manager  *Manager
+	provider *MultiProvider
 	logger   zerolog.Logger
 }
 
 // NewListener creates a new prefix list filtering listener
-func NewListener(listener net.Listener, manager *Manager, logger zerolog.Logger) *Listener {
+func NewListener(listener net.Listener, provider *MultiProvider, logger zerolog.Logger) *Listener {
 	return &Listener{
 		listener: listener,
-		manager:  manager,
+		provider: provider,
 		logger:   logger,
 	}
 }
@@ -40,17 +41,27 @@ func (l *Listener) Accept() (net.Conn, error) {
 			continue
 		}
 
-		// Check if IP is in allowed prefix lists
-		if !l.manager.Contains(tcpAddr.IP) {
+		// Convert net.IP to netip.Addr
+		addr, ok := netip.AddrFromSlice(tcpAddr.IP)
+		if !ok {
 			l.logger.Warn().
 				Str("remoteAddr", tcpAddr.IP.String()).
+				Msg("invalid IP address, rejecting")
+			conn.Close()
+			continue
+		}
+
+		// Check if IP is in allowed prefix lists
+		if !l.provider.Contains(addr) {
+			l.logger.Warn().
+				Str("remoteAddr", addr.String()).
 				Msg("connection not in allowed prefix lists, rejecting")
 			conn.Close()
 			continue
 		}
 
 		l.logger.Debug().
-			Str("remoteAddr", tcpAddr.IP.String()).
+			Str("remoteAddr", addr.String()).
 			Msg("connection accepted")
 
 		return conn, nil

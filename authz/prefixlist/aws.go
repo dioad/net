@@ -2,7 +2,7 @@ package prefixlist
 
 import (
 	"context"
-	"net"
+	"net/netip"
 	"time"
 )
 
@@ -52,11 +52,7 @@ func (p *AWSProvider) Name() string {
 	return name
 }
 
-func (p *AWSProvider) CacheDuration() time.Duration {
-	return 24 * time.Hour
-}
-
-func (p *AWSProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
+func (p *AWSProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
 	data, _, err := p.fetcher.Get(ctx)
 	if err != nil {
 		return nil, err

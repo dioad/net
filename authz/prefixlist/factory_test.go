@@ -2,7 +2,6 @@ package prefixlist
 
 import (
 	"testing"
-	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -169,21 +168,7 @@ func TestNewProviderFromConfig(t *testing.T) {
 	}
 }
 
-func TestCacheDurationOverride(t *testing.T) {
-	baseProvider := NewGitHubProvider("")
-	originalDuration := baseProvider.CacheDuration()
-
-	override := &cacheDurationOverride{
-		Provider: baseProvider,
-		duration: 5 * time.Hour,
-	}
-
-	assert.Equal(t, originalDuration, 1*time.Hour)
-	assert.Equal(t, 5*time.Hour, override.CacheDuration())
-	assert.Equal(t, "github", override.Name())
-}
-
-func TestNewManagerFromConfig(t *testing.T) {
+func TestNewMultiProviderFromConfig(t *testing.T) {
 	logger := zerolog.Nop()
 
 	t.Run("valid config", func(t *testing.T) {
@@ -196,9 +181,9 @@ func TestNewManagerFromConfig(t *testing.T) {
 			},
 		}
 
-		manager, err := NewManagerFromConfig(config, logger)
+		multiProvider, err := NewMultiProviderFromConfig(config, logger)
 		require.NoError(t, err)
-		assert.NotNil(t, manager)
+		assert.NotNil(t, multiProvider)
 	})
 
 	t.Run("multiple providers", func(t *testing.T) {
@@ -216,9 +201,9 @@ func TestNewManagerFromConfig(t *testing.T) {
 			},
 		}
 
-		manager, err := NewManagerFromConfig(config, logger)
+		multiProvider, err := NewMultiProviderFromConfig(config, logger)
 		require.NoError(t, err)
-		assert.NotNil(t, manager)
+		assert.NotNil(t, multiProvider)
 	})
 
 	t.Run("no valid providers", func(t *testing.T) {
@@ -231,25 +216,9 @@ func TestNewManagerFromConfig(t *testing.T) {
 			},
 		}
 
-		_, err := NewManagerFromConfig(config, logger)
+		_, err := NewMultiProviderFromConfig(config, logger)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no valid providers")
-	})
-
-	t.Run("with cache duration override", func(t *testing.T) {
-		config := Config{
-			Providers: []ProviderConfig{
-				{
-					Name:          "gitlab",
-					Enabled:       true,
-					CacheDuration: 10 * time.Hour,
-				},
-			},
-		}
-
-		manager, err := NewManagerFromConfig(config, logger)
-		require.NoError(t, err)
-		assert.NotNil(t, manager)
 	})
 }
 

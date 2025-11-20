@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"time"
+	"net/netip"
 
 	"github.com/dioad/net/authz/prefixlist"
 	"github.com/rs/zerolog"
@@ -14,19 +14,22 @@ import (
 func Example() {
 	logger := zerolog.Nop()
 
-	// Create a manager with GitLab provider
+	// Create a multi-provider with GitLab provider
 	gitlabProvider := prefixlist.NewGitLabProvider()
-	manager := prefixlist.NewManager([]prefixlist.Provider{gitlabProvider}, logger)
+	multiProvider := prefixlist.NewMultiProvider([]prefixlist.Provider{gitlabProvider}, logger)
 
 	ctx := context.Background()
-	if err := manager.Start(ctx); err != nil {
+	_, err := multiProvider.FetchPrefixes(ctx)
+	if err != nil {
 		panic(err)
 	}
-	defer manager.Stop()
 
 	// Check if an IP is in the allowed list
-	ip := net.ParseIP("34.74.90.65")
-	if manager.Contains(ip) {
+	addr, err := netip.ParseAddr("34.74.90.65")
+	if err != nil {
+		panic(err)
+	}
+	if multiProvider.Contains(addr) {
 		fmt.Println("IP is allowed")
 	} else {
 		fmt.Println("IP is denied")
@@ -35,8 +38,8 @@ func Example() {
 	// Output: IP is allowed
 }
 
-// ExampleNewManagerFromConfig demonstrates creating a manager from configuration
-func ExampleNewManagerFromConfig() {
+// ExampleNewMultiProviderFromConfig demonstrates creating a multi-provider from configuration
+func ExampleNewMultiProviderFromConfig() {
 	logger := zerolog.Nop()
 
 	config := prefixlist.Config{
@@ -51,22 +54,21 @@ func ExampleNewManagerFromConfig() {
 				Enabled: true,
 			},
 		},
-		UpdateInterval: 1 * time.Hour,
 	}
 
-	manager, err := prefixlist.NewManagerFromConfig(config, logger)
+	multiProvider, err := prefixlist.NewMultiProviderFromConfig(config, logger)
 	if err != nil {
 		panic(err)
 	}
 
 	ctx := context.Background()
-	if err := manager.Start(ctx); err != nil {
+	_, err = multiProvider.FetchPrefixes(ctx)
+	if err != nil {
 		panic(err)
 	}
-	defer manager.Stop()
 
-	fmt.Println("Manager started with multiple providers")
-	// Output: Manager started with multiple providers
+	fmt.Println("MultiProvider created with multiple providers")
+	// Output: MultiProvider created with multiple providers
 }
 
 // ExampleListener demonstrates using the prefix list listener
@@ -80,18 +82,18 @@ func ExampleListener() {
 	}
 	defer baseListener.Close()
 
-	// Create a manager with GitLab provider
+	// Create a multi-provider with GitLab provider
 	gitlabProvider := prefixlist.NewGitLabProvider()
-	manager := prefixlist.NewManager([]prefixlist.Provider{gitlabProvider}, logger)
+	multiProvider := prefixlist.NewMultiProvider([]prefixlist.Provider{gitlabProvider}, logger)
 
 	ctx := context.Background()
-	if err := manager.Start(ctx); err != nil {
+	_, err = multiProvider.FetchPrefixes(ctx)
+	if err != nil {
 		panic(err)
 	}
-	defer manager.Stop()
 
 	// Wrap with prefix list listener
-	plListener := prefixlist.NewListener(baseListener, manager, logger)
+	plListener := prefixlist.NewListener(baseListener, multiProvider, logger)
 
 	fmt.Printf("Listening on %s with prefix list filtering\n", plListener.Addr())
 

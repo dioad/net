@@ -2,8 +2,7 @@ package prefixlist
 
 import (
 	"context"
-	"net"
-	"time"
+	"net/netip"
 )
 
 // GitLabProvider provides static IP ranges for GitLab webhooks
@@ -18,12 +17,7 @@ func (p *GitLabProvider) Name() string {
 	return "gitlab"
 }
 
-func (p *GitLabProvider) CacheDuration() time.Duration {
-	// Static IPs, refresh less frequently
-	return 7 * 24 * time.Hour
-}
-
-func (p *GitLabProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
+func (p *GitLabProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
 	// GitLab webhook static IPs
 	// Note: GitLab Actions come from GCP, so users should also enable Google provider
 	cidrs := []string{

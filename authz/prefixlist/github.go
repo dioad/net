@@ -3,7 +3,7 @@ package prefixlist
 import (
 	"context"
 	"fmt"
-	"net"
+	"net/netip"
 	"time"
 )
 
@@ -43,11 +43,7 @@ func (p *GitHubProvider) Name() string {
 	return "github"
 }
 
-func (p *GitHubProvider) CacheDuration() time.Duration {
-	return 1 * time.Hour
-}
-
-func (p *GitHubProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
+func (p *GitHubProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
 	meta, _, err := p.fetcher.Get(ctx)
 	if err != nil {
 		return nil, err

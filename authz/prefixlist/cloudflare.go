@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 	"time"
 )
@@ -30,11 +30,7 @@ func (p *CloudflareProvider) Name() string {
 	return "cloudflare-ipv4"
 }
 
-func (p *CloudflareProvider) CacheDuration() time.Duration {
-	return 24 * time.Hour
-}
-
-func (p *CloudflareProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error) {
+func (p *CloudflareProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
 	url := "https://www.cloudflare.com/ips-v4/"
 	if p.ipv6 {
 		url = "https://www.cloudflare.com/ips-v6/"
@@ -60,7 +56,7 @@ func (p *CloudflareProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, e
 }
 
 // parseTextPrefixes parses plain text list of CIDR ranges (one per line)
-func parseTextPrefixes(r io.Reader) ([]*net.IPNet, error) {
+func parseTextPrefixes(r io.Reader) ([]netip.Prefix, error) {
 	var cidrs []string
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {

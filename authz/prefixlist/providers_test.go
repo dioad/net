@@ -2,9 +2,7 @@ package prefixlist
 
 import (
 	"context"
-	"net"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,7 +12,6 @@ func TestGitLabProvider(t *testing.T) {
 	provider := NewGitLabProvider()
 
 	assert.Equal(t, "gitlab", provider.Name())
-	assert.Equal(t, 7*24*time.Hour, provider.CacheDuration())
 
 	ctx := context.Background()
 	prefixes, err := provider.FetchPrefixes(ctx)
@@ -24,8 +21,7 @@ func TestGitLabProvider(t *testing.T) {
 	// Verify the static IPs are parsed correctly
 	expectedCIDRs := []string{"34.74.90.64/28", "34.74.226.0/24"}
 	for i, expected := range expectedCIDRs {
-		_, expectedNet, _ := net.ParseCIDR(expected)
-		assert.Equal(t, expectedNet.String(), prefixes[i].String())
+		assert.Equal(t, expected, prefixes[i].String())
 	}
 }
 
@@ -33,7 +29,6 @@ func TestHetznerProvider(t *testing.T) {
 	provider := NewHetznerProvider()
 
 	assert.Equal(t, "hetzner", provider.Name())
-	assert.Equal(t, 7*24*time.Hour, provider.CacheDuration())
 
 	ctx := context.Background()
 	prefixes, err := provider.FetchPrefixes(ctx)
@@ -117,61 +112,6 @@ func TestProviderNames(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expected, tt.provider.Name())
-		})
-	}
-}
-
-func TestCacheDurations(t *testing.T) {
-	tests := []struct {
-		name     string
-		provider Provider
-		expected time.Duration
-	}{
-		{
-			name:     "github",
-			provider: NewGitHubProvider(""),
-			expected: 1 * time.Hour,
-		},
-		{
-			name:     "cloudflare",
-			provider: NewCloudflareProvider(false),
-			expected: 24 * time.Hour,
-		},
-		{
-			name:     "google",
-			provider: NewGoogleProvider(nil, nil),
-			expected: 24 * time.Hour,
-		},
-		{
-			name:     "atlassian",
-			provider: NewAtlassianProvider(nil, nil),
-			expected: 24 * time.Hour,
-		},
-		{
-			name:     "gitlab",
-			provider: NewGitLabProvider(),
-			expected: 7 * 24 * time.Hour,
-		},
-		{
-			name:     "aws",
-			provider: NewAWSProvider("", ""),
-			expected: 24 * time.Hour,
-		},
-		{
-			name:     "fastly",
-			provider: NewFastlyProvider(),
-			expected: 24 * time.Hour,
-		},
-		{
-			name:     "hetzner",
-			provider: NewHetznerProvider(),
-			expected: 7 * 24 * time.Hour,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, tt.provider.CacheDuration())
 		})
 	}
 }

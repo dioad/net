@@ -2,7 +2,7 @@ package prefixlist
 
 import (
 	"context"
-	"net"
+	"net/netip"
 	"testing"
 	"time"
 
@@ -80,11 +80,9 @@ func TestIntegrationProviders(t *testing.T) {
 				"Expected at least %d prefixes from %s, got %d",
 				tt.expectedMinPrefixes, tt.name, len(prefixes))
 
-			// Verify all returned values are valid IPNet objects
+			// Verify all returned values are valid Prefix objects
 			for i, prefix := range prefixes {
-				assert.NotNil(t, prefix, "Prefix %d is nil", i)
-				assert.NotNil(t, prefix.IP, "Prefix %d has nil IP", i)
-				assert.NotNil(t, prefix.Mask, "Prefix %d has nil Mask", i)
+				assert.True(t, prefix.IsValid(), "Prefix %d is invalid", i)
 			}
 
 			t.Logf("%s returned %d prefixes", tt.name, len(prefixes))
@@ -133,12 +131,12 @@ func TestProviderResponseFormat(t *testing.T) {
 			prefixes, err := tt.provider.FetchPrefixes(ctx)
 			require.NoError(t, err)
 
-			ip := net.ParseIP(tt.testIP)
-			require.NotNil(t, ip)
+			addr, err := netip.ParseAddr(tt.testIP)
+			require.NoError(t, err)
 
 			found := false
 			for _, prefix := range prefixes {
-				if prefix.Contains(ip) {
+				if prefix.Contains(addr) {
 					found = true
 					break
 				}

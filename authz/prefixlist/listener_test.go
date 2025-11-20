@@ -3,6 +3,7 @@ package prefixlist
 import (
 	"context"
 	"net"
+	"net/netip"
 	"testing"
 	"time"
 
@@ -10,6 +11,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// mockProvider is a test provider
+type mockProvider struct {
+	name     string
+	prefixes []string
+	fetchErr error
+}
+
+func (m *mockProvider) Name() string {
+	return m.name
+}
+
+func (m *mockProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
+	if m.fetchErr != nil {
+		return nil, m.fetchErr
+	}
+	return parseCIDRs(m.prefixes)
+}
 
 func TestListener(t *testing.T) {
 	logger := zerolog.Nop()
@@ -19,21 +38,19 @@ func TestListener(t *testing.T) {
 	require.NoError(t, err)
 	defer listener.Close()
 
-	// Create a manager with test provider
+	// Create a multi-provider with test provider
 	provider := &mockProvider{
 		name:     "test",
 		prefixes: []string{"127.0.0.0/8"}, // Allow localhost
-		duration: 1 * time.Hour,
 	}
 
-	manager := NewManager([]Provider{provider}, logger)
+	multiProvider := NewMultiProvider([]Provider{provider}, logger)
 	ctx := context.Background()
-	err = manager.Start(ctx)
+	_, err = multiProvider.FetchPrefixes(ctx)
 	require.NoError(t, err)
-	defer manager.Stop()
 
 	// Create prefix list listener
-	plListener := NewListener(listener, manager, logger)
+	plListener := NewListener(listener, multiProvider, logger)
 
 	// Test accepting a connection from allowed IP
 	go func() {
@@ -60,11 +77,10 @@ func TestListenerAddr(t *testing.T) {
 	provider := &mockProvider{
 		name:     "test",
 		prefixes: []string{"127.0.0.0/8"},
-		duration: 1 * time.Hour,
 	}
 
-	manager := NewManager([]Provider{provider}, logger)
-	plListener := NewListener(listener, manager, logger)
+	multiProvider := NewMultiProvider([]Provider{provider}, logger)
+	plListener := NewListener(listener, multiProvider, logger)
 
 	assert.Equal(t, listener.Addr(), plListener.Addr())
 }
