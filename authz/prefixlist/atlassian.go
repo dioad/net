@@ -52,7 +52,7 @@ func (p *AtlassianProvider) Name() string {
 	return name
 }
 
-func (p *AtlassianProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
+func (p *AtlassianProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	data, _, err := p.fetcher.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -79,6 +79,19 @@ func (p *AtlassianProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, 
 	}
 
 	return parseCIDRs(cidrs)
+}
+
+func (p *AtlassianProvider) Contains(addr netip.Addr) bool {
+	prefixes, err := p.Prefixes(context.Background())
+	if err != nil {
+		return false
+	}
+	for _, prefix := range prefixes {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
 }
 
 // containsAny checks if any item from needles exists in haystack (case-insensitive)

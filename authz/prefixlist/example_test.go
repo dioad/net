@@ -19,7 +19,7 @@ func Example() {
 	multiProvider := prefixlist.NewMultiProvider([]prefixlist.Provider{gitlabProvider}, logger)
 
 	ctx := context.Background()
-	_, err := multiProvider.FetchPrefixes(ctx)
+	_, err := multiProvider.Prefixes(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func ExampleNewMultiProviderFromConfig() {
 	}
 
 	ctx := context.Background()
-	_, err = multiProvider.FetchPrefixes(ctx)
+	_, err = multiProvider.Prefixes(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -87,7 +87,7 @@ func ExampleListener() {
 	multiProvider := prefixlist.NewMultiProvider([]prefixlist.Provider{gitlabProvider}, logger)
 
 	ctx := context.Background()
-	_, err = multiProvider.FetchPrefixes(ctx)
+	_, err = multiProvider.Prefixes(ctx)
 	if err != nil {
 		panic(err)
 	}

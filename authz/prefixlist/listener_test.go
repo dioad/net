@@ -23,11 +23,24 @@ func (m *mockProvider) Name() string {
 	return m.name
 }
 
-func (m *mockProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
+func (m *mockProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	if m.fetchErr != nil {
 		return nil, m.fetchErr
 	}
 	return parseCIDRs(m.prefixes)
+}
+
+func (m *mockProvider) Contains(addr netip.Addr) bool {
+	prefixes, err := m.Prefixes(context.Background())
+	if err != nil {
+		return false
+	}
+	for _, prefix := range prefixes {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestListener(t *testing.T) {
@@ -46,7 +59,7 @@ func TestListener(t *testing.T) {
 
 	multiProvider := NewMultiProvider([]Provider{provider}, logger)
 	ctx := context.Background()
-	_, err = multiProvider.FetchPrefixes(ctx)
+	_, err = multiProvider.Prefixes(ctx)
 	require.NoError(t, err)
 
 	// Create prefix list listener

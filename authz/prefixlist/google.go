@@ -51,7 +51,7 @@ func (p *GoogleProvider) Name() string {
 	return name
 }
 
-func (p *GoogleProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
+func (p *GoogleProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	data, _, err := p.fetcher.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -78,6 +78,19 @@ func (p *GoogleProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, err
 	}
 
 	return parseCIDRs(cidrs)
+}
+
+func (p *GoogleProvider) Contains(addr netip.Addr) bool {
+	prefixes, err := p.Prefixes(context.Background())
+	if err != nil {
+		return false
+	}
+	for _, prefix := range prefixes {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
 }
 
 // contains checks if a slice contains a string (case-insensitive)

@@ -14,7 +14,7 @@ func TestGitLabProvider(t *testing.T) {
 	assert.Equal(t, "gitlab", provider.Name())
 
 	ctx := context.Background()
-	prefixes, err := provider.FetchPrefixes(ctx)
+	prefixes, err := provider.Prefixes(ctx)
 	require.NoError(t, err)
 	assert.Len(t, prefixes, 2)
 
@@ -31,7 +31,7 @@ func TestHetznerProvider(t *testing.T) {
 	assert.Equal(t, "hetzner", provider.Name())
 
 	ctx := context.Background()
-	prefixes, err := provider.FetchPrefixes(ctx)
+	prefixes, err := provider.Prefixes(ctx)
 	require.NoError(t, err)
 	assert.Greater(t, len(prefixes), 30, "Expected at least 30 Hetzner prefixes")
 

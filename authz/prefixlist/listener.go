@@ -10,12 +10,12 @@ import (
 // Listener wraps a net.Listener and filters connections based on prefix lists
 type Listener struct {
 	listener net.Listener
-	provider *MultiProvider
+	provider Provider
 	logger   zerolog.Logger
 }
 
 // NewListener creates a new prefix list filtering listener
-func NewListener(listener net.Listener, provider *MultiProvider, logger zerolog.Logger) *Listener {
+func NewListener(listener net.Listener, provider Provider, logger zerolog.Logger) *Listener {
 	return &Listener{
 		listener: listener,
 		provider: provider,

@@ -74,7 +74,7 @@ func TestIntegrationProviders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prefixes, err := tt.provider.FetchPrefixes(ctx)
+			prefixes, err := tt.provider.Prefixes(ctx)
 			require.NoError(t, err, "Failed to fetch prefixes from %s", tt.name)
 			assert.GreaterOrEqual(t, len(prefixes), tt.expectedMinPrefixes,
 				"Expected at least %d prefixes from %s, got %d",
@@ -128,7 +128,7 @@ func TestProviderResponseFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prefixes, err := tt.provider.FetchPrefixes(ctx)
+			prefixes, err := tt.provider.Prefixes(ctx)
 			require.NoError(t, err)
 
 			addr, err := netip.ParseAddr(tt.testIP)

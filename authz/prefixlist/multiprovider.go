@@ -37,13 +37,13 @@ func (m *MultiProvider) Name() string {
 	return fmt.Sprintf("multiprovider-%d-providers", len(m.providers))
 }
 
-// FetchPrefixes fetches prefixes from all wrapped providers
-func (m *MultiProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
+// Prefixes fetches prefixes from all wrapped providers
+func (m *MultiProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	var allPrefixes []netip.Prefix
 	var fetchErrors []error
 
 	for _, provider := range m.providers {
-		prefixes, err := provider.FetchPrefixes(ctx)
+		prefixes, err := provider.Prefixes(ctx)
 		if err != nil {
 			m.logger.Error().
 				Err(err).

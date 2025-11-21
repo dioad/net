@@ -30,7 +30,7 @@ func (p *CloudflareProvider) Name() string {
 	return "cloudflare-ipv4"
 }
 
-func (p *CloudflareProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
+func (p *CloudflareProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	url := "https://www.cloudflare.com/ips-v4/"
 	if p.ipv6 {
 		url = "https://www.cloudflare.com/ips-v6/"
@@ -53,6 +53,19 @@ func (p *CloudflareProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix,
 	}
 
 	return parseTextPrefixes(resp.Body)
+}
+
+func (p *CloudflareProvider) Contains(addr netip.Addr) bool {
+	prefixes, err := p.Prefixes(context.Background())
+	if err != nil {
+		return false
+	}
+	for _, prefix := range prefixes {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
 }
 
 // parseTextPrefixes parses plain text list of CIDR ranges (one per line)

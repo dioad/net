@@ -10,6 +10,9 @@ type Provider interface {
 	// Name returns the provider name (e.g., "github", "cloudflare")
 	Name() string
 	
-	// FetchPrefixes fetches the current list of IP prefixes from the provider
-	FetchPrefixes(ctx context.Context) ([]netip.Prefix, error)
+	// Prefixes returns the current list of IP prefixes from the provider
+	Prefixes(ctx context.Context) ([]netip.Prefix, error)
+	
+	// Contains checks if an IP address is in the provider's prefix list
+	Contains(addr netip.Addr) bool
 }

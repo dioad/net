@@ -43,7 +43,7 @@ func (p *GitHubProvider) Name() string {
 	return "github"
 }
 
-func (p *GitHubProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
+func (p *GitHubProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	meta, _, err := p.fetcher.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -75,4 +75,17 @@ func (p *GitHubProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, err
 	}
 
 	return parseCIDRs(cidrs)
+}
+
+func (p *GitHubProvider) Contains(addr netip.Addr) bool {
+	prefixes, err := p.Prefixes(context.Background())
+	if err != nil {
+		return false
+	}
+	for _, prefix := range prefixes {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
 }

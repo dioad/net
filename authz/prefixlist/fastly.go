@@ -33,7 +33,7 @@ func (p *FastlyProvider) Name() string {
 	return "fastly"
 }
 
-func (p *FastlyProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, error) {
+func (p *FastlyProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	data, _, err := p.fetcher.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -44,4 +44,17 @@ func (p *FastlyProvider) FetchPrefixes(ctx context.Context) ([]netip.Prefix, err
 	cidrs = append(cidrs, data.IPv6Addresses...)
 
 	return parseCIDRs(cidrs)
+}
+
+func (p *FastlyProvider) Contains(addr netip.Addr) bool {
+	prefixes, err := p.Prefixes(context.Background())
+	if err != nil {
+		return false
+	}
+	for _, prefix := range prefixes {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
 }
