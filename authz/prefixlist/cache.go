@@ -25,6 +25,9 @@ type CacheConfig struct {
 	ExpiryHeader string
 }
 
+// FetchFunc is a custom function type for fetching data from an HTTP endpoint
+type FetchFunc[T any] func(ctx context.Context, url string) (T, error)
+
 // CacheResult indicates the status of cached data
 type CacheResult int
 
@@ -44,10 +47,11 @@ type FetchResult[T any] struct {
 	Error  error
 }
 
-// CachingFetcher is a generic caching JSON fetcher that handles HTTP requests with caching
+// CachingFetcher is a generic caching HTTP fetcher that handles HTTP requests with caching
 type CachingFetcher[T any] struct {
-	url    string
-	config CacheConfig
+	url       string
+	config    CacheConfig
+	fetchFunc FetchFunc[T] // custom fetch function, defaults to JSON fetching
 	
 	mu           sync.RWMutex
 	cachedData   *T
@@ -59,10 +63,24 @@ type CachingFetcher[T any] struct {
 }
 
 // NewCachingFetcher creates a new caching fetcher for the specified URL and type
+// Uses JSON unmarshaling by default
 func NewCachingFetcher[T any](url string, config CacheConfig) *CachingFetcher[T] {
 	f := &CachingFetcher[T]{
-		url:    url,
-		config: config,
+		url:       url,
+		config:    config,
+		fetchFunc: nil,
+	}
+	f.refreshCond = sync.NewCond(&f.mu)
+	return f
+}
+
+// NewCachingFetcherWithFunc creates a new caching fetcher with a custom fetch function
+// If fetchFunc is nil, defaults to JSON unmarshaling
+func NewCachingFetcherWithFunc[T any](url string, config CacheConfig, fetchFunc FetchFunc[T]) *CachingFetcher[T] {
+	f := &CachingFetcher[T]{
+		url:       url,
+		config:    config,
+		fetchFunc: fetchFunc,
 	}
 	f.refreshCond = sync.NewCond(&f.mu)
 	return f
@@ -120,7 +138,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	f.mu.Unlock()
 	
 	// Perform the fetch
-	data, err := f.fetch(ctx)
+	data, err := f.doFetch(ctx)
 	
 	f.mu.Lock()
 	f.refreshing = false
@@ -153,7 +171,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 
 // backgroundRefresh performs a refresh in the background
 func (f *CachingFetcher[T]) backgroundRefresh(ctx context.Context) {
-	data, err := f.fetch(ctx)
+	data, err := f.doFetch(ctx)
 	
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -170,8 +188,16 @@ func (f *CachingFetcher[T]) backgroundRefresh(ctx context.Context) {
 	f.refreshCond.Broadcast()
 }
 
-// fetch performs the actual HTTP request and JSON unmarshaling
-func (f *CachingFetcher[T]) fetch(ctx context.Context) (T, error) {
+// doFetch performs the actual fetch, using custom function if provided
+func (f *CachingFetcher[T]) doFetch(ctx context.Context) (T, error) {
+	if f.fetchFunc != nil {
+		return f.fetchFunc(ctx, f.url)
+	}
+	return f.fetchJSON(ctx)
+}
+
+// fetchJSON performs the actual HTTP request and JSON unmarshaling
+func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, error) {
 	var result T
 	
 	req, err := http.NewRequestWithContext(ctx, "GET", f.url, nil)

@@ -1,7 +1,6 @@
 package prefixlist
 
 import (
-	"context"
 	"fmt"
 	"net/netip"
 	"time"
@@ -9,8 +8,8 @@ import (
 
 // GitHubProvider fetches IP ranges from GitHub's meta API
 type GitHubProvider struct {
-	filter  string // "hooks", "git", "actions", "pages", "importer", "dependabot", or empty for all
-	fetcher *CachingFetcher[githubMeta]
+	*HTTPJSONProvider[githubMeta]
+	filter string
 }
 
 type githubMeta struct {
@@ -24,31 +23,29 @@ type githubMeta struct {
 
 // NewGitHubProvider creates a new GitHub prefix list provider
 func NewGitHubProvider(filter string) *GitHubProvider {
-	return &GitHubProvider{
+	name := "github"
+	if filter != "" {
+		name = fmt.Sprintf("github-%s", filter)
+	}
+	
+	p := &GitHubProvider{
 		filter: filter,
-		fetcher: NewCachingFetcher[githubMeta](
-			"https://api.github.com/meta",
-			CacheConfig{
-				StaticExpiry: 1 * time.Hour,
-				ReturnStale:  true,
-			},
-		),
 	}
+	
+	p.HTTPJSONProvider = NewHTTPJSONProvider[githubMeta](
+		name,
+		"https://api.github.com/meta",
+		CacheConfig{
+			StaticExpiry: 1 * time.Hour,
+			ReturnStale:  true,
+		},
+		p.transformGitHubMeta,
+	)
+	
+	return p
 }
 
-func (p *GitHubProvider) Name() string {
-	if p.filter != "" {
-		return fmt.Sprintf("github-%s", p.filter)
-	}
-	return "github"
-}
-
-func (p *GitHubProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
-	meta, _, err := p.fetcher.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-
+func (p *GitHubProvider) transformGitHubMeta(meta githubMeta) ([]netip.Prefix, error) {
 	// Collect CIDR ranges based on filter
 	var cidrs []string
 	switch p.filter {
@@ -75,17 +72,4 @@ func (p *GitHubProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	}
 
 	return parseCIDRs(cidrs)
-}
-
-func (p *GitHubProvider) Contains(addr netip.Addr) bool {
-	prefixes, err := p.Prefixes(context.Background())
-	if err != nil {
-		return false
-	}
-	for _, prefix := range prefixes {
-		if prefix.Contains(addr) {
-			return true
-		}
-	}
-	return false
 }

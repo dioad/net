@@ -4,12 +4,13 @@ The `prefixlist` package provides dynamic IP prefix list management for network 
 
 ## Features
 
-- **Multiple Provider Support**: Built-in support for GitHub, Cloudflare, Google Cloud, Atlassian, GitLab, and AWS
-- **Automatic Updates**: Periodically fetches and caches IP ranges from providers
+- **Multiple Provider Support**: Built-in support for GitHub, Cloudflare, Google Cloud, Atlassian, GitLab, AWS, Fastly, and Hetzner
+- **Self-contained Caching**: Each provider manages its own cache with stale-while-revalidate support
 - **Listener Pattern**: Easy integration using the familiar `net.Listener` interface
 - **YAML Configuration**: Simple configuration with YAML tags for easy integration
-- **Efficient Matching**: Smart CIDR-based IP matching
-- **Extensible**: Easy to add custom providers
+- **Modern IP Handling**: Uses `net/netip.Prefix` and `net/netip.Addr` for efficient IP operations
+- **Extensible Architecture**: Generic HTTP providers for JSON and text-based endpoints
+- **Idiomatic Go**: Clean, composable design following Go best practices
 
 ## Supported Providers
 
@@ -24,6 +25,22 @@ The `prefixlist` package provides dynamic IP prefix list management for network 
 | Fastly | Fastly CDN | 24 hours |
 | Hetzner | Hetzner Cloud (static ranges) | 7 days |
 
+## Architecture
+
+The package uses a clean, composable architecture:
+
+- **`Provider` interface**: All providers implement `Prefixes(ctx) ([]netip.Prefix, error)` and `Contains(netip.Addr) bool`
+- **`HTTPJSONProvider[T]`**: Generic provider for JSON-based HTTP endpoints with custom transform functions
+- **`HTTPTextProvider`**: Provider for plain text CIDR lists (e.g., Cloudflare)
+- **`CachingFetcher[T]`**: Generic caching layer with stale-while-revalidate support
+- **`MultiProvider`**: Combines multiple providers into one (also implements `Provider` interface)
+
+This design makes it easy to:
+- Add new providers by creating simple transform functions
+- Compose providers (MultiProvider accepts any Provider)
+- Use providers standalone or in combination
+- Support both JSON and text-based HTTP endpoints
+
 ## Usage
 
 ### Basic Usage with Code
@@ -35,25 +52,25 @@ import (
     "github.com/rs/zerolog"
 )
 
-// Create a manager with GitHub webhook IPs
+// Create a provider for GitHub webhook IPs
 logger := zerolog.New(os.Stdout)
 provider := prefixlist.NewGitHubProvider("hooks")
-manager := prefixlist.NewManager([]prefixlist.Provider{provider}, logger)
 
+// Use the provider to check IPs
 ctx := context.Background()
-if err := manager.Start(ctx); err != nil {
+prefixes, err := provider.Prefixes(ctx)
+if err != nil {
     log.Fatal(err)
 }
-defer manager.Stop()
 
-// Check if an IP is allowed
-ip := net.ParseIP("192.30.252.1")
-if manager.Contains(ip) {
+// Or check if an IP is allowed
+addr := netip.MustParseAddr("192.30.252.1")
+if provider.Contains(addr) {
     fmt.Println("Connection allowed")
 }
 ```
 
-### Using Configuration
+### Using MultiProvider with Configuration
 
 The map-based filter format provides clear, explicit filtering:
 
@@ -78,7 +95,7 @@ config := prefixlist.Config{
     },
 }
 
-manager, err := prefixlist.NewManagerFromConfig(config, logger)
+multiProvider, err := prefixlist.NewMultiProviderFromConfig(config, logger)
 if err != nil {
     log.Fatal(err)
 }
@@ -344,3 +361,90 @@ func (p *CustomProvider) FetchPrefixes(ctx context.Context) ([]*net.IPNet, error
 - If all providers fail on initial start, an error is returned
 - Connections are rejected during startup until at least one provider succeeds
 - All HTTP requests to providers have a 30-second timeout
+
+## Creating Custom Providers
+
+The package provides generic base types for easy provider creation:
+
+### JSON-based HTTP Provider
+
+For endpoints that return JSON:
+
+```go
+import (
+    "net/netip"
+    "time"
+    "github.com/dioad/net/authz/prefixlist"
+)
+
+type myServiceData struct {
+    IPRanges []string `json:"ip_ranges"`
+}
+
+func transformMyService(data myServiceData) ([]netip.Prefix, error) {
+    return prefixlist.ParseCIDRs(data.IPRanges)
+}
+
+provider := prefixlist.NewHTTPJSONProvider[myServiceData](
+    "myservice",
+    "https://api.myservice.com/ip-ranges",
+    prefixlist.CacheConfig{
+        StaticExpiry: 24 * time.Hour,
+        ReturnStale:  true,
+    },
+    transformMyService,
+)
+```
+
+### Text-based HTTP Provider
+
+For endpoints that return plain text CIDR lists:
+
+```go
+provider := prefixlist.NewHTTPTextProvider(
+    "myservice",
+    "https://myservice.com/ips.txt",
+    prefixlist.CacheConfig{
+        StaticExpiry: 24 * time.Hour,
+        ReturnStale:  true,
+    },
+)
+```
+
+### Static Provider
+
+For static IP lists:
+
+```go
+type StaticProvider struct {
+    name     string
+    prefixes []netip.Prefix
+}
+
+func NewStaticProvider(name string, cidrs []string) (*StaticProvider, error) {
+    prefixes, err := prefixlist.ParseCIDRs(cidrs)
+    if err != nil {
+        return nil, err
+    }
+    return &StaticProvider{name: name, prefixes: prefixes}, nil
+}
+
+func (p *StaticProvider) Name() string {
+    return p.name
+}
+
+func (p *StaticProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
+    return p.prefixes, nil
+}
+
+func (p *StaticProvider) Contains(addr netip.Addr) bool {
+    for _, prefix := range p.prefixes {
+        if prefix.Contains(addr) {
+            return true
+        }
+    }
+    return false
+}
+```
+
+All providers implement the same `Provider` interface and can be used with `MultiProvider` or `Listener`.

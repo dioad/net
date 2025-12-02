@@ -1,7 +1,6 @@
 package prefixlist
 
 import (
-	"context"
 	"net/netip"
 	"strings"
 	"time"
@@ -9,9 +8,9 @@ import (
 
 // GoogleProvider fetches IP ranges from Google Cloud
 type GoogleProvider struct {
+	*HTTPJSONProvider[googleIPRanges]
 	scopes   []string // optional filter for scopes (e.g., "us-central1", "europe-west1")
 	services []string // optional filter for services (e.g., "Google Cloud", "Google Cloud Storage")
-	fetcher  *CachingFetcher[googleIPRanges]
 }
 
 type googleIPRanges struct {
@@ -27,36 +26,33 @@ type googleIPRanges struct {
 // scopes: optional list of scopes to filter by (e.g., ["us-central1", "europe-west1"])
 // services: optional list of services to filter by (e.g., ["Google Cloud"])
 func NewGoogleProvider(scopes, services []string) *GoogleProvider {
-	return &GoogleProvider{
+	name := "google"
+	if len(services) > 0 {
+		name += "-" + strings.Join(services, ",")
+	}
+	if len(scopes) > 0 {
+		name += "-" + strings.Join(scopes, ",")
+	}
+	
+	p := &GoogleProvider{
 		scopes:   scopes,
 		services: services,
-		fetcher: NewCachingFetcher[googleIPRanges](
-			"https://www.gstatic.com/ipranges/cloud.json",
-			CacheConfig{
-				StaticExpiry: 24 * time.Hour,
-				ReturnStale:  true,
-			},
-		),
 	}
+	
+	p.HTTPJSONProvider = NewHTTPJSONProvider[googleIPRanges](
+		name,
+		"https://www.gstatic.com/ipranges/cloud.json",
+		CacheConfig{
+			StaticExpiry: 24 * time.Hour,
+			ReturnStale:  true,
+		},
+		p.transformGoogleRanges,
+	)
+	
+	return p
 }
 
-func (p *GoogleProvider) Name() string {
-	name := "google"
-	if len(p.services) > 0 {
-		name += "-" + strings.Join(p.services, ",")
-	}
-	if len(p.scopes) > 0 {
-		name += "-" + strings.Join(p.scopes, ",")
-	}
-	return name
-}
-
-func (p *GoogleProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
-	data, _, err := p.fetcher.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-
+func (p *GoogleProvider) transformGoogleRanges(data googleIPRanges) ([]netip.Prefix, error) {
 	var cidrs []string
 	for _, prefix := range data.Prefixes {
 		// Apply scope filter if specified
@@ -78,19 +74,6 @@ func (p *GoogleProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	}
 
 	return parseCIDRs(cidrs)
-}
-
-func (p *GoogleProvider) Contains(addr netip.Addr) bool {
-	prefixes, err := p.Prefixes(context.Background())
-	if err != nil {
-		return false
-	}
-	for _, prefix := range prefixes {
-		if prefix.Contains(addr) {
-			return true
-		}
-	}
-	return false
 }
 
 // contains checks if a slice contains a string (case-insensitive)

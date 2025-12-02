@@ -1,7 +1,6 @@
 package prefixlist
 
 import (
-	"context"
 	"net/netip"
 	"strings"
 	"time"
@@ -9,9 +8,9 @@ import (
 
 // AtlassianProvider fetches IP ranges from Atlassian
 type AtlassianProvider struct {
+	*HTTPJSONProvider[atlassianIPRanges]
 	regions  []string // optional filter for regions (e.g., ["us-east-1", "global"])
 	products []string // optional filter for products (e.g., ["jira", "confluence"])
-	fetcher  *CachingFetcher[atlassianIPRanges]
 }
 
 type atlassianIPRanges struct {
@@ -28,36 +27,33 @@ type atlassianIPRanges struct {
 // products: optional list of products to filter by (e.g., ["jira", "confluence"])
 // Only prefixes with "egress" direction are included
 func NewAtlassianProvider(regions, products []string) *AtlassianProvider {
-	return &AtlassianProvider{
+	name := "atlassian"
+	if len(products) > 0 {
+		name += "-" + strings.Join(products, ",")
+	}
+	if len(regions) > 0 {
+		name += "-" + strings.Join(regions, ",")
+	}
+	
+	p := &AtlassianProvider{
 		regions:  regions,
 		products: products,
-		fetcher: NewCachingFetcher[atlassianIPRanges](
-			"https://ip-ranges.atlassian.com/",
-			CacheConfig{
-				StaticExpiry: 24 * time.Hour,
-				ReturnStale:  true,
-			},
-		),
 	}
+	
+	p.HTTPJSONProvider = NewHTTPJSONProvider[atlassianIPRanges](
+		name,
+		"https://ip-ranges.atlassian.com/",
+		CacheConfig{
+			StaticExpiry: 24 * time.Hour,
+			ReturnStale:  true,
+		},
+		p.transformAtlassianRanges,
+	)
+	
+	return p
 }
 
-func (p *AtlassianProvider) Name() string {
-	name := "atlassian"
-	if len(p.products) > 0 {
-		name += "-" + strings.Join(p.products, ",")
-	}
-	if len(p.regions) > 0 {
-		name += "-" + strings.Join(p.regions, ",")
-	}
-	return name
-}
-
-func (p *AtlassianProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
-	data, _, err := p.fetcher.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-
+func (p *AtlassianProvider) transformAtlassianRanges(data atlassianIPRanges) ([]netip.Prefix, error) {
 	var cidrs []string
 	for _, item := range data.Items {
 		// Only include egress direction
@@ -79,19 +75,6 @@ func (p *AtlassianProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error
 	}
 
 	return parseCIDRs(cidrs)
-}
-
-func (p *AtlassianProvider) Contains(addr netip.Addr) bool {
-	prefixes, err := p.Prefixes(context.Background())
-	if err != nil {
-		return false
-	}
-	for _, prefix := range prefixes {
-		if prefix.Contains(addr) {
-			return true
-		}
-	}
-	return false
 }
 
 // containsAny checks if any item from needles exists in haystack (case-insensitive)

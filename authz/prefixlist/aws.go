@@ -1,16 +1,15 @@
 package prefixlist
 
 import (
-	"context"
 	"net/netip"
 	"time"
 )
 
 // AWSProvider fetches IP ranges from AWS
 type AWSProvider struct {
+	*HTTPJSONProvider[awsIPRanges]
 	service string // optional filter for specific service (e.g., "CLOUDFRONT", "EC2")
 	region  string // optional filter for specific region (e.g., "us-east-1")
-	fetcher *CachingFetcher[awsIPRanges]
 }
 
 type awsIPRanges struct {
@@ -28,36 +27,33 @@ type awsIPRanges struct {
 
 // NewAWSProvider creates a new AWS prefix list provider
 func NewAWSProvider(service, region string) *AWSProvider {
-	return &AWSProvider{
+	name := "aws"
+	if service != "" {
+		name += "-" + service
+	}
+	if region != "" {
+		name += "-" + region
+	}
+	
+	p := &AWSProvider{
 		service: service,
 		region:  region,
-		fetcher: NewCachingFetcher[awsIPRanges](
-			"https://ip-ranges.amazonaws.com/ip-ranges.json",
-			CacheConfig{
-				StaticExpiry: 24 * time.Hour,
-				ReturnStale:  true,
-			},
-		),
 	}
+	
+	p.HTTPJSONProvider = NewHTTPJSONProvider[awsIPRanges](
+		name,
+		"https://ip-ranges.amazonaws.com/ip-ranges.json",
+		CacheConfig{
+			StaticExpiry: 24 * time.Hour,
+			ReturnStale:  true,
+		},
+		p.transformAWSRanges,
+	)
+	
+	return p
 }
 
-func (p *AWSProvider) Name() string {
-	name := "aws"
-	if p.service != "" {
-		name += "-" + p.service
-	}
-	if p.region != "" {
-		name += "-" + p.region
-	}
-	return name
-}
-
-func (p *AWSProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
-	data, _, err := p.fetcher.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-
+func (p *AWSProvider) transformAWSRanges(data awsIPRanges) ([]netip.Prefix, error) {
 	var cidrs []string
 
 	// Filter IPv4 prefixes
@@ -75,19 +71,6 @@ func (p *AWSProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	}
 
 	return parseCIDRs(cidrs)
-}
-
-func (p *AWSProvider) Contains(addr netip.Addr) bool {
-	prefixes, err := p.Prefixes(context.Background())
-	if err != nil {
-		return false
-	}
-	for _, prefix := range prefixes {
-		if prefix.Contains(addr) {
-			return true
-		}
-	}
-	return false
 }
 
 func (p *AWSProvider) matchesFilter(service, region string) bool {

@@ -1,87 +1,31 @@
 package prefixlist
 
 import (
-	"bufio"
-	"context"
-	"fmt"
-	"io"
-	"net/http"
-	"net/netip"
-	"strings"
 	"time"
 )
 
 // CloudflareProvider fetches IP ranges from Cloudflare
 type CloudflareProvider struct {
-	ipv6 bool
+	*HTTPTextProvider
 }
 
 // NewCloudflareProvider creates a new Cloudflare prefix list provider
 func NewCloudflareProvider(ipv6 bool) *CloudflareProvider {
-	return &CloudflareProvider{
-		ipv6: ipv6,
-	}
-}
-
-func (p *CloudflareProvider) Name() string {
-	if p.ipv6 {
-		return "cloudflare-ipv6"
-	}
-	return "cloudflare-ipv4"
-}
-
-func (p *CloudflareProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
+	name := "cloudflare-ipv4"
 	url := "https://www.cloudflare.com/ips-v4/"
-	if p.ipv6 {
+	if ipv6 {
+		name = "cloudflare-ipv6"
 		url = "https://www.cloudflare.com/ips-v6/"
 	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
+	
+	return &CloudflareProvider{
+		HTTPTextProvider: NewHTTPTextProvider(
+			name,
+			url,
+			CacheConfig{
+				StaticExpiry: 24 * time.Hour,
+				ReturnStale:  true,
+			},
+		),
 	}
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	return parseTextPrefixes(resp.Body)
-}
-
-func (p *CloudflareProvider) Contains(addr netip.Addr) bool {
-	prefixes, err := p.Prefixes(context.Background())
-	if err != nil {
-		return false
-	}
-	for _, prefix := range prefixes {
-		if prefix.Contains(addr) {
-			return true
-		}
-	}
-	return false
-}
-
-// parseTextPrefixes parses plain text list of CIDR ranges (one per line)
-func parseTextPrefixes(r io.Reader) ([]netip.Prefix, error) {
-	var cidrs []string
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line != "" && !strings.HasPrefix(line, "#") {
-			cidrs = append(cidrs, line)
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	return parseCIDRs(cidrs)
 }
