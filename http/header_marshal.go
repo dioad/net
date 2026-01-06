@@ -23,7 +23,23 @@ func DefaultHeaderMarshalOptions() HeaderMarshalOptions {
 	}
 }
 
-// MarshalHeader encodes a struct into an http.Header using the provided options
+// MarshalHeader encodes a struct into an http.Header using the provided options.
+//
+// RFC 9110 Compliance:
+// For slice fields ([]string), each element is added as a separate header occurrence
+// using http.Header.Add(). This is compliant with RFC 9110 Section 5.5, which allows
+// multiple header field lines with the same name. Values containing commas, quotes,
+// or other special characters are preserved as-is in each occurrence.
+//
+// Example:
+//
+//	type Example struct {
+//	    Values []string
+//	}
+//	ex := Example{Values: []string{"val1", "val2,with,comma"}}
+//	// Produces:
+//	// X-Values: val1
+//	// X-Values: val2,with,comma
 func MarshalHeader(v interface{}, opts HeaderMarshalOptions) (http.Header, error) {
 	header := http.Header{}
 	
@@ -71,7 +87,25 @@ func MarshalHeader(v interface{}, opts HeaderMarshalOptions) (http.Header, error
 	return header, nil
 }
 
-// UnmarshalHeader decodes an http.Header into a struct using the provided options
+// UnmarshalHeader decodes an http.Header into a struct using the provided options.
+//
+// RFC 9110 Compliance:
+// Multiple header field occurrences with the same name are unmarshaled into slice
+// fields ([]string) using http.Header.Values(). This retrieves all values for the
+// header in the order they were added, preserving the semantics defined in RFC 9110
+// Section 5.5. Each value is kept as-is without parsing commas or other delimiters.
+//
+// Example:
+//
+//	// Given headers:
+//	// X-Values: val1
+//	// X-Values: val2,with,comma
+//	type Example struct {
+//	    Values []string
+//	}
+//	var ex Example
+//	UnmarshalHeader(headers, &ex, opts)
+//	// Results in: ex.Values = []string{"val1", "val2,with,comma"}
 func UnmarshalHeader(header http.Header, v interface{}, opts HeaderMarshalOptions) error {
 	if v == nil {
 		return fmt.Errorf("UnmarshalHeader: nil destination")

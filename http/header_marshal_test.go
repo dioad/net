@@ -452,3 +452,150 @@ func TestEmptySlice(t *testing.T) {
 		t.Errorf("Expected empty header, got %v", header)
 	}
 }
+
+// TestRFC9110MultipleHeaderOccurrences verifies RFC 9110 Section 5.5 compliance
+// Multiple header field occurrences should be unmarshaled into a slice
+func TestRFC9110MultipleHeaderOccurrences(t *testing.T) {
+	// Simulate receiving headers with multiple occurrences
+	// RFC 9110 allows: X-Field: value1
+	//                  X-Field: value2
+	header := http.Header{}
+	header.Add("X-Example-Field-Two", "value1")
+	header.Add("X-Example-Field-Two", "value2")
+	header.Add("X-Example-Field-Two", "value3")
+
+	opts := HeaderMarshalOptions{
+		Prefix:            "X",
+		IncludeStructName: true,
+	}
+
+	var example Example
+	err := UnmarshalHeader(header, &example, opts)
+	if err != nil {
+		t.Fatalf("UnmarshalHeader failed: %v", err)
+	}
+
+	want := []string{"value1", "value2", "value3"}
+	if diff := cmp.Diff(want, example.FieldTwo); diff != "" {
+		t.Errorf("Multiple header occurrences not unmarshaled correctly (-want +got):\n%s", diff)
+	}
+
+	// Verify marshaling creates multiple occurrences
+	header2, err := MarshalHeader(example, opts)
+	if err != nil {
+		t.Fatalf("MarshalHeader failed: %v", err)
+	}
+
+	values := header2.Values("X-Example-Field-Two")
+	if diff := cmp.Diff(want, values); diff != "" {
+		t.Errorf("Multiple values not marshaled correctly (-want +got):\n%s", diff)
+	}
+}
+
+// TestValuesWithCommas tests that values containing commas are preserved
+// RFC 9110 allows comma-separated lists, but when using multiple header occurrences,
+// each value is kept separate and commas within values are preserved
+func TestValuesWithCommas(t *testing.T) {
+	type CommaStruct struct {
+		Values []string
+	}
+
+	// Test marshaling values with commas
+	cs := CommaStruct{
+		Values: []string{"simple", "value,with,comma", "another,one", "normal"},
+	}
+
+	opts := DefaultHeaderMarshalOptions()
+
+	header, err := MarshalHeader(cs, opts)
+	if err != nil {
+		t.Fatalf("MarshalHeader failed: %v", err)
+	}
+
+	// Unmarshal and verify round-trip
+	var result CommaStruct
+	err = UnmarshalHeader(header, &result, opts)
+	if err != nil {
+		t.Fatalf("UnmarshalHeader failed: %v", err)
+	}
+
+	if diff := cmp.Diff(cs, result); diff != "" {
+		t.Errorf("Values with commas not preserved (-want +got):\n%s", diff)
+	}
+
+	// Verify each value is a separate header occurrence
+	values := header.Values("values")
+	if len(values) != 4 {
+		t.Errorf("Expected 4 separate header occurrences, got %d", len(values))
+	}
+
+	// Verify commas are preserved within each value
+	if values[1] != "value,with,comma" {
+		t.Errorf("Comma not preserved in value: got %q, want %q", values[1], "value,with,comma")
+	}
+}
+
+// TestValuesWithSpecialCharacters tests handling of quotes and other special characters
+func TestValuesWithSpecialCharacters(t *testing.T) {
+	type SpecialStruct struct {
+		Values []string
+	}
+
+	ss := SpecialStruct{
+		Values: []string{
+			"simple",
+			`value"with"quotes`,
+			"value with spaces",
+			"value\twith\ttabs",
+		},
+	}
+
+	opts := DefaultHeaderMarshalOptions()
+
+	header, err := MarshalHeader(ss, opts)
+	if err != nil {
+		t.Fatalf("MarshalHeader failed: %v", err)
+	}
+
+	var result SpecialStruct
+	err = UnmarshalHeader(header, &result, opts)
+	if err != nil {
+		t.Fatalf("UnmarshalHeader failed: %v", err)
+	}
+
+	if diff := cmp.Diff(ss, result); diff != "" {
+		t.Errorf("Special characters not preserved (-want +got):\n%s", diff)
+	}
+}
+
+// TestRFC9110OrderPreservation verifies that the order of values is preserved
+// per RFC 9110 requirements
+func TestRFC9110OrderPreservation(t *testing.T) {
+	type OrderStruct struct {
+		Ordered []string
+	}
+
+	os := OrderStruct{
+		Ordered: []string{"first", "second", "third", "fourth", "fifth"},
+	}
+
+	opts := DefaultHeaderMarshalOptions()
+
+	// Marshal
+	header, err := MarshalHeader(os, opts)
+	if err != nil {
+		t.Fatalf("MarshalHeader failed: %v", err)
+	}
+
+	// Unmarshal
+	var result OrderStruct
+	err = UnmarshalHeader(header, &result, opts)
+	if err != nil {
+		t.Fatalf("UnmarshalHeader failed: %v", err)
+	}
+
+	// Verify order is preserved
+	if diff := cmp.Diff(os.Ordered, result.Ordered); diff != "" {
+		t.Errorf("Order not preserved (-want +got):\n%s", diff)
+	}
+}

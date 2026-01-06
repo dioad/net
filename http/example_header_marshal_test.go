@@ -181,3 +181,47 @@ func ExampleUnmarshalHeader_middleware() {
 	// Output:
 	// Processing request for tenant: tenant-123, role: admin
 }
+
+// ExampleMarshalHeader_rfc9110Compliance demonstrates RFC 9110 compliance
+// for handling multiple header occurrences
+func ExampleMarshalHeader_rfc9110Compliance() {
+	type DataList struct {
+		Items []string
+	}
+
+	// Data with values containing commas
+	data := DataList{
+		Items: []string{"item1", "item2,with,comma", "item3"},
+	}
+
+	opts := dhttp.DefaultHeaderMarshalOptions()
+
+	// Marshal to headers
+	headers, _ := dhttp.MarshalHeader(data, opts)
+
+	// Show how multiple occurrences are created (RFC 9110 Section 5.5)
+	fmt.Println("Multiple header occurrences:")
+	for _, item := range headers.Values("items") {
+		fmt.Printf("  items: %s\n", item)
+	}
+
+	// Unmarshal back - values are preserved exactly
+	var result DataList
+	dhttp.UnmarshalHeader(headers, &result, opts)
+
+	fmt.Printf("\nUnmarshaled values:\n")
+	for i, item := range result.Items {
+		fmt.Printf("  [%d]: %s\n", i, item)
+	}
+
+	// Output:
+	// Multiple header occurrences:
+	//   items: item1
+	//   items: item2,with,comma
+	//   items: item3
+	//
+	// Unmarshaled values:
+	//   [0]: item1
+	//   [1]: item2,with,comma
+	//   [2]: item3
+}
