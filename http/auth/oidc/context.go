@@ -19,3 +19,19 @@ func OIDCUserInfoFromContext(ctx context.Context) *goth.User {
 	}
 	return nil
 }
+
+type authTokenContext struct{}
+
+func ContextWithAccessToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, authTokenContext{}, token)
+}
+
+func AccessTokenFromContext(ctx context.Context) string {
+	val := ctx.Value(authTokenContext{})
+	if val != nil {
+		if token, ok := val.(string); ok {
+			return token
+		}
+	}
+	return ""
+}

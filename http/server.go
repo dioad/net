@@ -414,7 +414,6 @@ func (s *Server) Serve(ln net.Listener) error {
 	addrString := "missing"
 	if addr != nil {
 		addrString = addr.String()
-		s.Logger.Warn().Msg("listener address is nil, using default")
 	}
 
 	s.Logger.Info().

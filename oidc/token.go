@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
 	"github.com/dioad/net/oidc/flyio"
@@ -80,25 +81,35 @@ type waitingTokenSource struct {
 }
 
 func waitForToken(ctx context.Context, tokenSource oauth2.TokenSource, interval time.Duration, maxTime time.Duration) (oauth2.TokenSource, error) {
+	attempt := 0
+
+	logger := zerolog.Ctx(ctx)
 	token, err := tokenSource.Token()
 	if err == nil && token.Valid() {
+		logger.Trace().Msgf("token valid")
 		return tokenSource, nil
 	}
 
 	t := time.NewTicker(interval)
 
 	for {
+		attempt++
+		attemptLogger := logger.With().Dur("interval", interval).Int("attempt", attempt).Logger()
 		var err error
 		select {
 		case <-t.C:
 			token, err := tokenSource.Token()
 			if err == nil && token.Valid() {
+				attemptLogger.Trace().Msgf("token valid")
 				return tokenSource, nil
 			}
+			attemptLogger.Trace().Err(err).Msgf("token invalid")
 		case <-time.After(maxTime):
 			if err != nil {
+				attemptLogger.Trace().Err(err).Dur("timeout", maxTime).Msgf("token timeout")
 				return nil, fmt.Errorf("timed out waiting for identity token after %v: %w", maxTime, err)
 			}
+			attemptLogger.Trace().Dur("timeout", maxTime).Msgf("token timeout")
 			return nil, fmt.Errorf("timed out waiting for identity token after %v", maxTime)
 		case <-ctx.Done():
 			return nil, fmt.Errorf("context cancelled while waiting for identity token")

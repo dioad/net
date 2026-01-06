@@ -80,6 +80,11 @@ func FindInterfaceForIP(ip net.IP) (string, error) {
 	return "", fmt.Errorf("could not find interface for %v", ip)
 }
 
+// AddrPortDetailsFromString takes a string representation of an address:port combination
+// and returns the parsed netip.AddrPort, the network interface name that contains this address,
+// and any error encountered during parsing or interface lookup.
+// The input string should be in the format "IP:port" (e.g., "192.168.1.1:8080" or "[::1]:80").
+// Returns an empty AddrPort and empty string if an error occurs.
 func AddrPortDetailsFromString(addrPort string) (netip.AddrPort, string, error) {
 	listenAddr, err := netip.ParseAddrPort(addrPort)
 	if err != nil {
