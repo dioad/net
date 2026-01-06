@@ -205,12 +205,6 @@ func NewServer(config Config, opts ...ServerOption) *Server {
 	return server
 }
 
-// NewServerWithLogger creates a new HTTP server with the given configuration and logger
-// Deprecated: Use NewServer with WithLogger instead
-func NewServerWithLogger(config Config, logger zerolog.Logger) *Server {
-	return NewServer(config, WithLogger(logger))
-}
-
 // WithTelemetryInstrument returns a ServerOption that configures the server to use the given
 // telemetry instrument for metrics collection
 func WithTelemetryInstrument(i middleware.Instrument) ServerOption {
