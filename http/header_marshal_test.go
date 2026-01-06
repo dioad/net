@@ -324,6 +324,7 @@ func TestKebabCase(t *testing.T) {
 		{"HTTPHeader", "h-t-t-p-header"},
 		{"Example", "example"},
 		{"APIKey", "a-p-i-key"},
+		{"UserID", "user-i-d"},
 		{"", ""},
 		{"lowercase", "lowercase"},
 	}

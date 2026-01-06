@@ -153,6 +153,8 @@ func buildHeaderName(fieldName string, structName string, opts HeaderMarshalOpti
 }
 
 // toKebabCase converts CamelCase to kebab-case
+// It inserts a hyphen before each uppercase letter (except the first)
+// Examples: "FieldOne" -> "field-one", "UserID" -> "user-i-d", "HTTPServer" -> "h-t-t-p-server"
 func toKebabCase(s string) string {
 	if s == "" {
 		return ""
