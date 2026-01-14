@@ -204,6 +204,9 @@ func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
 		if config.URL != "" {
 			return NewEndpoint(config.URL, WithCustomClaims(&IntrospectionResponse{}))
 		}
+		if config.Type == "" {
+			return nil, fmt.Errorf("config type cannot be empty")
+		}
 		return nil, fmt.Errorf("config type %s not supported", config.Type)
 	}
 }
