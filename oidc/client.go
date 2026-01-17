@@ -16,6 +16,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/dioad/net/oidc/flyio"
+	"github.com/dioad/net/oidc/githubactions"
 )
 
 var (
@@ -61,28 +62,7 @@ type IntrospectionResponse struct {
 	Website           string   `json:"website"`
 	Organisation      []string `json:"org"`
 	flyio.Claims
-	// GitHub Actions OIDC specific claims
-	Actor             string `json:"actor"`
-	ActorID           string `json:"actor_id"`
-	BaseRef           string `json:"base_ref"`
-	Environment       string `json:"environment"`
-	EventName         string `json:"event_name"`
-	HeadRef           string `json:"head_ref"`
-	JobWorkflowRef    string `json:"job_workflow_ref"`
-	Ref               string `json:"ref"`
-	RefType           string `json:"ref_type"`
-	Repository        string `json:"repository"`
-	RepositoryID      string `json:"repository_id"`
-	RepositoryOwner   string `json:"repository_owner"`
-	RepositoryOwnerID string `json:"repository_owner_id"`
-	RunAttempt        string `json:"run_attempt"`
-	RunID             string `json:"run_id"`
-	RunNumber         string `json:"run_number"`
-	RunnerEnvironment string `json:"runner_environment"`
-	SHA               string `json:"sha"`
-	Workflow          string `json:"workflow"`
-	WorkflowRef       string `json:"workflow_ref"`
-	WorkflowSHA       string `json:"workflow_sha"`
+	githubactions.Claims
 }
 
 func (c *IntrospectionResponse) Validate(_ context.Context) error {
