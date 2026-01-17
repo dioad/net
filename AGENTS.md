@@ -77,4 +77,41 @@ Generated code should adhere to the following principles to maintain consistency
     *   All commands, shell scripts, and parameters inserted into workflow files *must* be compatible with Linux (GNU/Linux).
     *   Avoid macOS-specific CLI flags or behaviors (e.g., `sed`, `grep`, `find`). Always prefer the GNU/Linux syntax for GitHub Actions.
 
+## Documentation
+
+### README.md Maintenance
+
+The `README.md` file provides an overview of the library's capabilities and serves as the primary entry point for users. Any changes that affect the public API, add new features, or modify existing behavior **must** include corresponding updates to `README.md`.
+
+**Documentation Updates are Required When:**
+- Adding new packages or major features
+- Changing the public API of exported types or functions
+- Adding new authentication or authorization methods
+- Modifying server behavior or configuration options
+- Adding integration examples (Fly.io, GitHub Actions, etc.)
+- Removing deprecated features
+
+**Documentation Updates Should Include:**
+- Summary of the change or new feature
+- Quick start example if applicable
+- Links to relevant package documentation
+- Any new package structure updates
+- Updated requirements if dependencies changed
+
+**Process:**
+1. Update code with the feature or fix
+2. Update `README.md` with corresponding documentation
+3. Ensure examples are accurate and tested
+4. Run `go build .` and `go test -race ./...` to verify changes compile and tests pass
+5. Commit code and documentation together
+
+### Documentation Style
+
+- Use clear, concise language
+- Provide practical examples over theoretical explanations
+- Organize features by user benefit (e.g., "🔐 Authentication & Authorization")
+- Link to related packages and features
+- Keep the Quick Start section up-to-date and tested
+- Document breaking changes prominently
+
 Following these guidelines ensures that generated code is maintainable, understandable, and integrates seamlessly with the rest of the Go project.
