@@ -17,34 +17,34 @@ import (
 
 // Claims represents the custom claims in a GitHub Actions OIDC token
 type Claims struct {
-	Aud              string `json:"aud"`
-	Exp              int    `json:"exp"`
-	Iat              int    `json:"iat"`
-	Iss              string `json:"iss"`
-	Jti              string `json:"jti"`
-	Nbf              int    `json:"nbf"`
-	Sub              string `json:"sub"`
-	Actor            string `json:"actor"`
-	ActorID          string `json:"actor_id"`
-	BaseRef          string `json:"base_ref"`
-	Environment      string `json:"environment"`
-	EventName        string `json:"event_name"`
-	HeadRef          string `json:"head_ref"`
-	JobWorkflowRef   string `json:"job_workflow_ref"`
-	Ref              string `json:"ref"`
-	RefType          string `json:"ref_type"`
-	Repository       string `json:"repository"`
-	RepositoryID     string `json:"repository_id"`
-	RepositoryOwner  string `json:"repository_owner"`
+	Aud               string `json:"aud"`
+	Exp               int    `json:"exp"`
+	Iat               int    `json:"iat"`
+	Iss               string `json:"iss"`
+	Jti               string `json:"jti"`
+	Nbf               int    `json:"nbf"`
+	Sub               string `json:"sub"`
+	Actor             string `json:"actor"`
+	ActorID           string `json:"actor_id"`
+	BaseRef           string `json:"base_ref"`
+	Environment       string `json:"environment"`
+	EventName         string `json:"event_name"`
+	HeadRef           string `json:"head_ref"`
+	JobWorkflowRef    string `json:"job_workflow_ref"`
+	Ref               string `json:"ref"`
+	RefType           string `json:"ref_type"`
+	Repository        string `json:"repository"`
+	RepositoryID      string `json:"repository_id"`
+	RepositoryOwner   string `json:"repository_owner"`
 	RepositoryOwnerID string `json:"repository_owner_id"`
-	RunAttempt       string `json:"run_attempt"`
-	RunID            string `json:"run_id"`
-	RunNumber        string `json:"run_number"`
+	RunAttempt        string `json:"run_attempt"`
+	RunID             string `json:"run_id"`
+	RunNumber         string `json:"run_number"`
 	RunnerEnvironment string `json:"runner_environment"`
-	SHA              string `json:"sha"`
-	Workflow         string `json:"workflow"`
-	WorkflowRef      string `json:"workflow_ref"`
-	WorkflowSHA      string `json:"workflow_sha"`
+	SHA               string `json:"sha"`
+	Workflow          string `json:"workflow"`
+	WorkflowRef       string `json:"workflow_ref"`
+	WorkflowSHA       string `json:"workflow_sha"`
 }
 
 // Validate implements the CustomClaims interface
