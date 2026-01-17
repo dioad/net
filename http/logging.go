@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 )
 
+// HandlerWrapper is a function type that wraps an HTTP handler.
 type HandlerWrapper func(next http.Handler) http.Handler
 
 // DefaultCombinedLogHandler returns a HandlerWrapper that logs HTTP requests using the combined log format.
@@ -20,6 +21,7 @@ func DefaultCombinedLogHandler(logWriter io.Writer) HandlerWrapper {
 	}
 }
 
+// StructuredLoggerFormatter is a function type that formats HTTP request logs in a structured format.
 type StructuredLoggerFormatter func(r *http.Request, status, size int, duration time.Duration) *zerolog.Logger
 
 // StandardLogger creates a zerolog.Logger with standard fields for HTTP access logging.

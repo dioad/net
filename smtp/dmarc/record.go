@@ -24,10 +24,13 @@ const (
 	AlignmentPolicyRelaxed AlignmentPolicy = "r"
 )
 
+// Policy represents a DMARC policy (none, quarantine, reject).
 type Policy string
 
+// AlignmentPolicy represents a DMARC alignment policy (strict, relaxed).
 type AlignmentPolicy string
 
+// Record represents a DMARC DNS record.
 type Record struct {
 	Version             string          `mapstructure:"version"`
 	Policy              Policy          `mapstructure:"policy"`

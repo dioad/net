@@ -1,3 +1,4 @@
+// Package dkim provides utilities for working with DKIM (DomainKeys Identified Mail) records.
 package dkim
 
 import (
@@ -8,6 +9,7 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+// KeyType represents the DKIM key type (e.g., "rsa").
 type KeyType string
 
 // k=
@@ -15,24 +17,29 @@ const (
 	KeyTypeRSA KeyType = "rsa"
 )
 
+// Record represents a DKIM DNS record.
 type Record struct {
 	Version   string `mapstructure:"version"`
 	KeyType   string `mapstructure:"key-type"`
 	PublicKey string `mapstructure:"public-key"`
 }
 
+// RecordPrefix returns the default DNS prefix for DKIM records.
 func (r *Record) RecordPrefix() string {
 	return "default._domainkey."
 }
 
+// RecordType returns the DNS record type for DKIM records.
 func (r *Record) RecordType() string {
 	return "TXT"
 }
 
+// RecordValue returns the formatted DKIM record value.
 func (r *Record) RecordValue() string {
 	return fmt.Sprintf("\\\"%v\\\"", r.String())
 }
 
+// String returns the string representation of the DKIM record.
 func (r *Record) String() string {
 	parts := make([]string, 0)
 
@@ -53,6 +60,7 @@ func (r *Record) String() string {
 	return strings.Join(parts, "; ")
 }
 
+// FromRecordFile parses a DKIM record from a file.
 func FromRecordFile(r io.Reader) (*Record, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {

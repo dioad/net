@@ -11,11 +11,13 @@ import (
 	"github.com/dioad/net/http/auth/hmac"
 )
 
+// Handler describes an HTTP authentication handler.
 type Handler struct {
 	Config     ServerConfig
 	middleware Middleware
 }
 
+// NewHandler creates a new authentication handler from the provided configuration.
 func NewHandler(cfg *ServerConfig) (*Handler, error) {
 	mw, err := resolveAuthHandler(cfg)
 	if err != nil {
@@ -39,6 +41,7 @@ func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {
 	return nil, nil
 }
 
+// Wrap wraps an HTTP handler with authentication middleware.
 func (h *Handler) Wrap(handler http.Handler) http.Handler {
 	if h.middleware == nil {
 		return handler
@@ -47,6 +50,7 @@ func (h *Handler) Wrap(handler http.Handler) http.Handler {
 	return h.middleware.Wrap(handler)
 }
 
+// HandlerFunc creates an authentication-wrapped HTTP handler function from the provided configuration.
 func HandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) (http.HandlerFunc, error) {
 	h, err := NewHandler(cfg)
 	if err != nil {
@@ -55,12 +59,14 @@ func HandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) (http.HandlerF
 	return h.Wrap(origHandler).ServeHTTP, nil
 }
 
+// NullHandler is a handler that passes through to the next handler without authentication.
 func NullHandler(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, r)
 	}
 }
 
+// MultiAuthnHandlerFunc creates a handler function that supports multiple authentication providers.
 func MultiAuthnHandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h := origHandler

@@ -1,3 +1,4 @@
+// Package authz provides network-based and principal-based access control utilities.
 package authz
 
 import (
@@ -8,6 +9,7 @@ import (
 	"github.com/dioad/generics"
 )
 
+// NetworkACL describes network-based access control rules.
 type NetworkACL struct {
 	AllowByDefault bool
 
@@ -15,6 +17,7 @@ type NetworkACL struct {
 	denyNetworks  []*net.IPNet
 }
 
+// NewNetworkACL creates a new NetworkACL from the provided configuration.
 func NewNetworkACL(cfg NetworkACLConfig) (*NetworkACL, error) {
 	allowNetworks, err := generics.Map(parseTCPNet, cfg.AllowedNets)
 	if err != nil {
@@ -35,6 +38,7 @@ func NewNetworkACL(cfg NetworkACLConfig) (*NetworkACL, error) {
 	return a, err
 }
 
+// AllowFromString parses a network string and adds it to the allow list.
 func (a *NetworkACL) AllowFromString(n string) error {
 	tcpNet, err := parseTCPNet(n)
 	if err != nil {
@@ -44,10 +48,12 @@ func (a *NetworkACL) AllowFromString(n string) error {
 	return nil
 }
 
+// Allow adds a network to the allow list.
 func (a *NetworkACL) Allow(n *net.IPNet) {
 	a.allowNetworks = append(a.allowNetworks, n)
 }
 
+// DenyFromString parses a network string and adds it to the deny list.
 func (a *NetworkACL) DenyFromString(n string) error {
 	tcpNet, err := parseTCPNet(n)
 	if err != nil {
@@ -57,14 +63,17 @@ func (a *NetworkACL) DenyFromString(n string) error {
 	return nil
 }
 
+// Deny adds a network to the deny list.
 func (a *NetworkACL) Deny(net *net.IPNet) {
 	a.denyNetworks = append(a.denyNetworks, net)
 }
 
+// AuthoriseConn checks if the provided connection is authorised.
 func (a *NetworkACL) AuthoriseConn(c net.Conn) (bool, error) {
 	return a.AuthoriseFromString(c.RemoteAddr().String())
 }
 
+// AuthoriseFromString checks if the provided address string is authorised.
 func (a *NetworkACL) AuthoriseFromString(addr string) (bool, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
@@ -73,11 +82,10 @@ func (a *NetworkACL) AuthoriseFromString(addr string) (bool, error) {
 	return a.Authorise(tcpAddr), nil
 }
 
-// Authorise
-// if both
-// allow is checked first, if empty
-// if ip is in allow but also matches deny, authorisation is denied
-// this is to allow people to deny subsets of allowed CIDR ranges.
+// Authorise checks if the provided TCP address is authorised.
+// If both allow and deny lists are present, allow is checked first.
+// If an IP is in the allow list but also matches a deny rule, authorisation is denied.
+// This allows denying subsets of allowed CIDR ranges.
 func (a *NetworkACL) Authorise(addr *net.TCPAddr) bool {
 	inAllow := containsAddress(a.allowNetworks, addr.IP)
 	inDeny := containsAddress(a.denyNetworks, addr.IP)

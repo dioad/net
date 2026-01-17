@@ -2,6 +2,7 @@ package http
 
 import "net/http"
 
+// EnforceTLSHandler wraps an HTTP handler to enforce TLS connections.
 type EnforceTLSHandler struct {
 	EnforceTLS bool
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/dioad/generics"
 )
 
+// ClientConfig specifies TLS client configuration.
 type ClientConfig struct {
 	RootCAFile         string `mapstructure:"root-ca-file" json:",omitempty"`
 	Certificate        string `mapstructure:"cert" json:",omitempty"`
@@ -14,6 +15,7 @@ type ClientConfig struct {
 	InsecureSkipVerify bool   `mapstructure:"insecure-skip-verify"`
 }
 
+// NewClientTLSConfig creates a TLS configuration for a client from the given config.
 func NewClientTLSConfig(c ClientConfig) (*tls.Config, error) {
 	if generics.IsZeroValue(c) {
 		return nil, nil

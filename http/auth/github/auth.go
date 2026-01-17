@@ -10,15 +10,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Authenticator handles GitHub token validation using the GitHub API.
 type Authenticator struct {
 	Config ServerConfig
 	Client *github.Client
 }
 
+// TokenSource implements the oauth2.TokenSource interface for a static GitHub token.
 type TokenSource struct {
 	AccessToken string
 }
 
+// Token returns the static token.
 func (t *TokenSource) Token() (*oauth2.Token, error) {
 	token := &oauth2.Token{
 		AccessToken: t.AccessToken,
@@ -26,6 +29,8 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
+// AuthenticateToken verifies the provided GitHub access token against the GitHub API.
+// It also fetches additional user information if the token is valid.
 func (a *Authenticator) AuthenticateToken(accessToken string) (*UserInfo, error) {
 	_, response, err := a.Client.Authorizations.Check(context.Background(), a.Config.ClientID, accessToken)
 	if err != nil {
@@ -45,6 +50,7 @@ func (a *Authenticator) AuthenticateToken(accessToken string) (*UserInfo, error)
 	return u, nil
 }
 
+// NewGitHubAuthenticator creates a new GitHub Authenticator with the provided configuration.
 func NewGitHubAuthenticator(cfg ServerConfig) *Authenticator {
 	basicAuthTransport := github.BasicAuthTransport{
 		Username: cfg.ClientID,

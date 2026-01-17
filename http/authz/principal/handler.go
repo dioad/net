@@ -1,3 +1,4 @@
+// Package principal provides principal-based authorization middleware.
 package principal
 
 import (
@@ -9,19 +10,23 @@ import (
 	"github.com/dioad/net/http/auth/context"
 )
 
+// HandlerFunc creates a principal-based authorization-wrapped HTTP handler function.
 func HandlerFunc(cfg authz.PrincipalACLConfig, next http.Handler) http.HandlerFunc {
 	h := NewHandler(cfg)
 	return h.Wrap(next).ServeHTTP
 }
 
+// Handler implements principal-based authorization for HTTP servers.
 type Handler struct {
 	Config authz.PrincipalACLConfig
 }
 
+// NewHandler creates a new principal-based authorization handler.
 func NewHandler(cfg authz.PrincipalACLConfig) *Handler {
 	return &Handler{Config: cfg}
 }
 
+// AuthRequest checks if the authenticated principal in the request context is authorized.
 func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	principal := context.AuthenticatedPrincipalFromContext(r.Context())
 

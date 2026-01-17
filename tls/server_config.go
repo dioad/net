@@ -12,11 +12,13 @@ import (
 	"github.com/dioad/util"
 )
 
+// SANConfig specifies Subject Alternative Names for a certificate (DNS names and IP addresses).
 type SANConfig struct {
 	DNSNames    []string `mapstructure:"dns-names" json:"dns_names,omitempty"`
 	IPAddresses []string `mapstructure:"ip-addresses" json:"ip_addresses,omitempty"`
 }
 
+// CertificateSubject defines X.509 certificate subject information.
 type CertificateSubject struct {
 	Country            []string `mapstructure:"c" json:"country,omitempty"`
 	Organization       []string `mapstructure:"o" json:"organization,omitempty"`
@@ -29,6 +31,7 @@ type CertificateSubject struct {
 	CommonName         string   `mapstructure:"cn" json:"common_name,omitempty"`
 }
 
+// SelfSignedConfig specifies parameters for generating a self-signed certificate.
 type SelfSignedConfig struct {
 	Subject        CertificateSubject `mapstructure:"subject" json:"subject,omitempty"`
 	SANConfig      SANConfig          `mapstructure:"san-config" json:"san_config,omitempty"`
@@ -39,6 +42,7 @@ type SelfSignedConfig struct {
 	Alias          string             `mapstructure:"alias" json:"alias,omitempty"`
 }
 
+// LocalConfig specifies local certificate and key file locations.
 type LocalConfig struct {
 	SinglePEMFile  string         `mapstructure:"single-pem-file" json:",omitempty"`
 	Certificate    string         `mapstructure:"cert" json:",omitempty"`
@@ -46,11 +50,13 @@ type LocalConfig struct {
 	FileWaitConfig FileWaitConfig `mapstructure:"file-wait-config,squash" json:",omitempty,squash"`
 }
 
+// FileWaitConfig specifies wait parameters for loading certificate files.
 type FileWaitConfig struct {
 	WaitInterval uint `mapstructure:"file-wait-interval" json:",omitempty"`
 	WaitMax      uint `mapstructure:"file-wait-max" json:",omitempty"`
 }
 
+// ServerConfig specifies TLS configuration for a server.
 type ServerConfig struct {
 	ServerName string `mapstructure:"server-name"`
 
@@ -69,6 +75,7 @@ type ServerConfig struct {
 	TLSMinVersion string   `mapstructure:"tls-min-version"`
 }
 
+// ConfigFunc is a function type that returns a TLS configuration.
 type ConfigFunc func() (*tls.Config, error)
 
 func configFuncFromConfig(ctx context.Context, c ServerConfig) ConfigFunc {
@@ -82,6 +89,7 @@ func configFuncFromConfig(ctx context.Context, c ServerConfig) ConfigFunc {
 	return nil
 }
 
+// NewServerTLSConfig creates a TLS configuration for a server from the given config.
 func NewServerTLSConfig(ctx context.Context, c ServerConfig) (*tls.Config, error) {
 	configFunc := configFuncFromConfig(ctx, c)
 	if configFunc == nil {
@@ -127,10 +135,12 @@ func NewServerTLSConfig(ctx context.Context, c ServerConfig) (*tls.Config, error
 	return tlsConfig, nil
 }
 
+// NewLocalTLSConfigFunc creates a ConfigFunc for loading certificates from local files.
 func NewLocalTLSConfigFunc(ctx context.Context, c LocalConfig) ConfigFunc {
 	return func() (*tls.Config, error) { return NewLocalTLSConfig(ctx, c) }
 }
 
+// NewLocalTLSConfig creates a TLS configuration from local certificate and key files.
 func NewLocalTLSConfig(ctx context.Context, config LocalConfig) (*tls.Config, error) {
 	if generics.IsZeroValue(config) {
 		return nil, nil
@@ -164,10 +174,12 @@ func NewLocalTLSConfig(ctx context.Context, config LocalConfig) (*tls.Config, er
 	}, nil
 }
 
+// NewSelfSignedTLSConfigFunc creates a ConfigFunc for self-signed certificate configuration.
 func NewSelfSignedTLSConfigFunc(c SelfSignedConfig) ConfigFunc {
 	return func() (*tls.Config, error) { return NewSelfSignedTLSConfig(c) }
 }
 
+// NewSelfSignedTLSConfig creates a TLS configuration with a self-signed certificate.
 func NewSelfSignedTLSConfig(config SelfSignedConfig) (*tls.Config, error) {
 	if generics.IsZeroValue(config) {
 		return nil, nil
@@ -196,6 +208,7 @@ func NewSelfSignedTLSConfig(config SelfSignedConfig) (*tls.Config, error) {
 	}, nil
 }
 
+// CertificatesFromSinglePEMFile loads certificate and key from a single PEM file.
 func CertificatesFromSinglePEMFile(ctx context.Context, singlePEMFile string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
 	interval := time.Duration(waitConfig.WaitInterval) * time.Second
 
@@ -209,6 +222,7 @@ func CertificatesFromSinglePEMFile(ctx context.Context, singlePEMFile string, wa
 	return []tls.Certificate{*cert}, nil
 }
 
+// CertificateFromKeyAndCertificateFiles loads certificate and key from separate files.
 func CertificateFromKeyAndCertificateFiles(ctx context.Context, key, cert string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
 
 	interval := time.Duration(waitConfig.WaitInterval) * time.Second

@@ -2,7 +2,6 @@ package http
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 
@@ -12,10 +11,12 @@ import (
 	"github.com/dioad/net/http/auth/basic"
 )
 
+// Client describes an HTTP client for making requests to a base URL.
 type Client struct {
 	Config *ClientConfig
 }
 
+// ClientConfig describes the configuration for an HTTP client.
 type ClientConfig struct {
 	BaseURL    *url.URL
 	Client     *http.Client
@@ -40,6 +41,7 @@ func (c *Client) checkConfig() error {
 	return nil
 }
 
+// Request performs an HTTP request with client configuration and authentication.
 func (c *Client) Request(req *http.Request) (*http.Response, error) {
 	if err := c.checkConfig(); err != nil {
 		return nil, err
@@ -56,7 +58,7 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 	req.Header.Set("Content-Type", "application/json")
 
 	if !generics.IsZeroValue(c.Config.AuthConfig) {
-		ac := auth.AuthClient(c.Config.AuthConfig)
+		ac := auth.NewClientAuth(c.Config.AuthConfig)
 
 		err := ac.AddAuth(req)
 		if err != nil {
@@ -70,6 +72,7 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 	return c.Config.Client.Do(req)
 }
 
+// ResolveRelativeRequestPath resolves a relative request path against the client's base URL.
 func (c *Client) ResolveRelativeRequestPath(requestPath string) (*url.URL, error) {
 	if err := c.checkConfig(); err != nil {
 		return nil, err
@@ -83,6 +86,7 @@ func (c *Client) ResolveRelativeRequestPath(requestPath string) (*url.URL, error
 	return c.Config.BaseURL.ResolveReference(relativePathURL), nil
 }
 
+// NewDefaultClient creates a new HTTP client with default configuration.
 func NewDefaultClient() *Client {
 	return NewClient(&ClientConfig{
 		Client:    &http.Client{},
@@ -90,8 +94,8 @@ func NewDefaultClient() *Client {
 	})
 }
 
+// NewClient creates a new HTTP client with the provided configuration.
 func NewClient(config *ClientConfig) *Client {
-	log.Printf("%v", config)
 	return &Client{
 		Config: config,
 	}

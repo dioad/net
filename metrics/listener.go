@@ -1,3 +1,4 @@
+// Package metrics provides utilities for tracking network connection and listener metrics.
 package metrics
 
 import (
@@ -11,6 +12,7 @@ type ListenerMetrics interface {
 	ResetMetrics()
 }
 
+// Listener wraps a net.Listener and tracks accepted connection metrics.
 type Listener struct {
 	ln            net.Listener
 	acceptedCount int
@@ -52,12 +54,14 @@ func (l *Listener) Addr() net.Addr {
 	return l.ln.Addr()
 }
 
+// NewListener creates a new Listener wrapping the provided net.Listener.
 func NewListener(l net.Listener) *Listener {
 	return &Listener{
 		ln: l,
 	}
 }
 
+// NewListenerWithLogger creates a new Listener wrapping the provided net.Listener and logs metrics using the provided logger.
 func NewListenerWithLogger(l net.Listener, logger zerolog.Logger) *Listener {
 	return &Listener{
 		ln:        l,

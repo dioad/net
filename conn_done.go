@@ -1,3 +1,4 @@
+// Package net provides production-ready networking utilities, authentication, authorization, and security features.
 package net
 
 import (
@@ -6,6 +7,7 @@ import (
 	"time"
 )
 
+// DoneConn is a connection wrapper that provides a channel that is closed when the connection is closed.
 type DoneConn interface {
 	net.Conn
 	RawConn
@@ -13,6 +15,7 @@ type DoneConn interface {
 	Closed() bool
 }
 
+// FindTCPConn recursively finds and returns the underlying *net.TCPConn from a RawConn.
 func FindTCPConn(c RawConn) *net.TCPConn {
 	tcpConn, ok := c.NetConn().(*net.TCPConn)
 	if ok {
@@ -89,6 +92,7 @@ func (d *doneConn) NetConn() net.Conn {
 	return d.c
 }
 
+// NewDoneConn creates a new DoneConn wrapping the provided net.Conn.
 func NewDoneConn(c net.Conn) DoneConn {
 	return &doneConn{
 		c:         c,

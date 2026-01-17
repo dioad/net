@@ -1,3 +1,4 @@
+// Package tls provides utilities for working with TLS certificates and configurations.
 package tls
 
 import (
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 )
 
+// LoadX509CertFromFile loads an X.509 certificate from a PEM file.
 func LoadX509CertFromFile(certPath string) (*x509.Certificate, error) {
 	certPathClean := filepath.Clean(certPath)
 	certPEM, err := os.ReadFile(certPathClean)
@@ -33,6 +35,7 @@ func LoadX509CertFromFile(certPath string) (*x509.Certificate, error) {
 	return cert, nil
 }
 
+// LoadKeyPairFromFiles loads a TLS certificate and key pair from PEM files.
 func LoadKeyPairFromFiles(certPath, keyPath string) (*tls.Certificate, error) {
 	certPathClean := filepath.Clean(certPath)
 	certPEM, err := os.ReadFile(certPathClean)
@@ -52,6 +55,7 @@ func LoadKeyPairFromFiles(certPath, keyPath string) (*tls.Certificate, error) {
 	return &cert, nil
 }
 
+// LoadCertPoolFromFile loads a certificate pool from a PEM file.
 func LoadCertPoolFromFile(certPoolPath string) (*x509.CertPool, error) {
 	certPoolPathClean := filepath.Clean(certPoolPath)
 	certPoolPEM, err := os.ReadFile(certPoolPathClean)

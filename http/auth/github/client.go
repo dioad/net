@@ -8,11 +8,13 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// ClientAuth implements authentication for a GitHub client.
 type ClientAuth struct {
 	Config      ClientConfig
 	accessToken string
 }
 
+// AddAuth adds the GitHub access token to the request's Authorization header.
 func (a ClientAuth) AddAuth(req *http.Request) error {
 	if a.accessToken == "" {
 		var err error
@@ -28,6 +30,7 @@ func (a ClientAuth) AddAuth(req *http.Request) error {
 	return nil
 }
 
+// Token implements the oauth2.TokenSource interface.
 func (a ClientAuth) Token() (*oauth2.Token, error) {
 	if a.accessToken == "" {
 		var err error
@@ -43,6 +46,7 @@ func (a ClientAuth) Token() (*oauth2.Token, error) {
 	}, nil
 }
 
+// HTTPClient returns an http.Client that automatically adds the GitHub token to requests.
 func (a ClientAuth) HTTPClient() (*http.Client, error) {
 	return &http.Client{
 		Transport: &TokenRoundTripper{
@@ -51,11 +55,13 @@ func (a ClientAuth) HTTPClient() (*http.Client, error) {
 	}, nil
 }
 
+// TokenRoundTripper is an http.RoundTripper that adds an OAuth2 token to requests.
 type TokenRoundTripper struct {
 	Source oauth2.TokenSource
 	Base   http.RoundTripper
 }
 
+// RoundTrip executes a single HTTP transaction, adding the token to the request.
 func (t *TokenRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.Source != nil {
 

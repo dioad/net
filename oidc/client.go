@@ -1,3 +1,4 @@
+// Package oidc provides an OpenID Connect (OIDC) client and utilities for token validation and management.
 package oidc
 
 import (
@@ -125,6 +126,7 @@ func WithDeviceCodeUI(ui DeviceCodeUI) ClientOpt {
 	}
 }
 
+// Client represents an OIDC client.
 type Client struct {
 	endpoint                     Endpoint
 	jwksProvider                 *jwks.CachingProvider
@@ -135,8 +137,7 @@ type Client struct {
 	deviceUI                     DeviceCodeUI
 }
 
-// NewHTTPClientFromConfig
-
+// NewClientFromConfig creates a new OIDC client from the provided configuration.
 func NewClientFromConfig(config *ClientConfig) (*Client, error) {
 	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
 	if err != nil {
@@ -145,6 +146,7 @@ func NewClientFromConfig(config *ClientConfig) (*Client, error) {
 	return NewClient(endpoint, WithClientIDAndSecret(config.ClientID, config.ClientSecret.UnmaskedString())), nil
 }
 
+// NewClient creates a new OIDC client with the provided endpoint and options.
 func NewClient(endpoint Endpoint, opts ...ClientOpt) *Client {
 	client := &Client{
 		endpoint:    endpoint,

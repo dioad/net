@@ -7,6 +7,7 @@ import (
 	"github.com/dioad/generics"
 )
 
+// Record represents a TLSRPT (TLS Reporting) DNS TXT record.
 type Record struct {
 	Version            string   `mapstructure:"version"`
 	ReportURIAggregate []string `mapstructure:"report-uri-aggregate"`
