@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -15,8 +14,6 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
-
 	// Get the audience from environment or use default
 	audience := os.Getenv("OIDC_AUDIENCE")
 	if audience == "" {
