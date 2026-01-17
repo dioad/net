@@ -18,6 +18,6 @@ func NewUnixSocketClient(path string) *http.Client {
 	}
 }
 
-func NewHTTPClient(context context.Context, opts ...Opt) *http.Client {
+func NewHTTPClient(ctx context.Context, opts ...Opt) *http.Client {
 	return oauth2.NewClient(context, NewTokenSource(opts...))
 }
