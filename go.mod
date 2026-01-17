@@ -34,7 +34,7 @@ require (
 	github.com/dioad/filter v0.5.0
 	github.com/dioad/generics v0.0.7
 	github.com/dioad/util v0.7.0
-	github.com/emersion/go-msgauth v0.6.8
+	github.com/emersion/go-msgauth v0.7.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
