@@ -10,6 +10,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/dioad/net/oidc/flyio"
+	"github.com/dioad/net/oidc/githubactions"
 )
 
 type clientConfigTokenSource struct {
@@ -22,6 +23,10 @@ type clientConfigTokenSource struct {
 func (c *clientConfigTokenSource) resolveTokenSource() (oauth2.TokenSource, error) {
 	if c.clientConfig.Type == "flyio" {
 		return flyio.NewTokenSource(flyio.WithAudience(c.clientConfig.Audience)), nil
+	}
+
+	if c.clientConfig.Type == "githubactions" {
+		return githubactions.NewTokenSource(githubactions.WithAudience(c.clientConfig.Audience)), nil
 	}
 
 	oidcClient, err := NewClientFromConfig(&c.clientConfig)

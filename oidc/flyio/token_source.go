@@ -12,27 +12,28 @@ import (
 	"strings"
 	"time"
 
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
 	"golang.org/x/oauth2"
 )
 
-type Claims struct {
+// CustomClaims represents the custom claims in a Fly.io OIDC token
+type CustomClaims struct {
+	// Fly.io specific claims
 	AppId          string `json:"app_id"`
 	AppName        string `json:"app_name"`
-	Aud            string `json:"aud"`
-	Exp            int    `json:"exp"`
-	Iat            int    `json:"iat"`
 	Image          string `json:"image"`
 	ImageDigest    string `json:"image_digest"`
-	Iss            string `json:"iss"`
-	Jti            string `json:"jti"`
 	MachineId      string `json:"machine_id"`
 	MachineName    string `json:"machine_name"`
 	MachineVersion string `json:"machine_version"`
-	Nbf            int    `json:"nbf"`
 	OrgId          string `json:"org_id"`
 	OrgName        string `json:"org_name"`
 	Region         string `json:"region"`
-	Sub            string `json:"sub"`
+}
+
+type Claims struct {
+	jwtvalidator.RegisteredClaims
+	CustomClaims
 }
 
 func (c *Claims) Validate(_ context.Context) error {
@@ -131,7 +132,7 @@ func decodeToken(accessToken string) (*oauth2.Token, error) {
 	}
 
 	return &oauth2.Token{
-		AccessToken: strings.TrimSuffix(accessToken, "\n"),
+		AccessToken: strings.TrimSpace(accessToken),
 		Expiry:      time.Unix(int64(expiry), 0),
 		TokenType:   "bearer",
 	}, nil

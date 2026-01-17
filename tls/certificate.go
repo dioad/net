@@ -21,6 +21,9 @@ func LoadX509CertFromFile(certPath string) (*x509.Certificate, error) {
 	}
 
 	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block from %s", certPath)
+	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {

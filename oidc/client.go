@@ -16,6 +16,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/dioad/net/oidc/flyio"
+	"github.com/dioad/net/oidc/githubactions"
 )
 
 var (
@@ -23,6 +24,9 @@ var (
 	ErrTokenValidation = errors.New("token validation failed")
 	ErrInvalidClaims   = errors.New("invalid claims format")
 )
+
+type githubActionsCustomClaims = githubactions.CustomClaims
+type flyIOCustomClaims = flyio.CustomClaims
 
 type IntrospectionResponse struct {
 	ExpiresAt                           int      `json:"exp"`
@@ -60,7 +64,8 @@ type IntrospectionResponse struct {
 	Active            bool     `json:"active"`
 	Website           string   `json:"website"`
 	Organisation      []string `json:"org"`
-	flyio.Claims
+	flyIOCustomClaims
+	githubActionsCustomClaims
 }
 
 func (c *IntrospectionResponse) Validate(_ context.Context) error {

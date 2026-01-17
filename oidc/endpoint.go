@@ -195,6 +195,8 @@ func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
 	switch config.Type {
 	case "github":
 		return NewGitHubEndpoint(config.URL)
+	case "githubactions":
+		return NewGitHubActionsEndpoint(config.URL)
 	case "keycloak":
 		return NewKeycloakRealmEndpoint(config.URL, config.KeycloakRealm, WithCustomClaims(&IntrospectionResponse{}))
 	// TODO: make this work
@@ -272,4 +274,67 @@ func NewGitHubEndpoint(baseURL string) (Endpoint, error) {
 	u, _ := url.Parse(baseURL)
 
 	return &GitHubEndpoint{url: u}, nil
+}
+
+// GitHubActionsEndpoint represents the GitHub Actions OIDC endpoint
+type GitHubActionsEndpoint struct {
+	url *url.URL
+}
+
+// URL returns the base URL for the GitHub Actions OIDC endpoint
+func (e *GitHubActionsEndpoint) URL() *url.URL {
+	return e.url
+}
+
+// DiscoveryEndpoint returns the OIDC discovery endpoint URL
+func (e *GitHubActionsEndpoint) DiscoveryEndpoint() (*url.URL, error) {
+	return e.url.JoinPath(".well-known", "openid-configuration"), nil
+}
+
+// DiscoveredConfiguration returns the OIDC configuration by fetching the discovery endpoint
+func (e *GitHubActionsEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
+	discoveryEndpoint, err := e.DiscoveryEndpoint()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get discovery endpoint: %w", err)
+	}
+	response, err := http.Get(discoveryEndpoint.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get discovery URL %v: %w", discoveryEndpoint, err)
+	}
+	discoveredConfiguration := OpenIDConfiguration{}
+
+	jsonDecoder := json.NewDecoder(response.Body)
+	err = jsonDecoder.Decode(&discoveredConfiguration)
+	if closeErr := response.Body.Close(); closeErr != nil && err == nil {
+		err = closeErr
+	}
+	return &discoveredConfiguration, err
+}
+
+// OAuth2Endpoint returns the OAuth2 endpoint configuration
+func (e *GitHubActionsEndpoint) OAuth2Endpoint() (oauth2.Endpoint, error) {
+	discoveredConfiguration, err := e.DiscoveredConfiguration()
+	if err != nil {
+		return oauth2.Endpoint{}, err
+	}
+
+	return oauth2.Endpoint{
+		AuthURL:       discoveredConfiguration.AuthorizationEndpoint,
+		TokenURL:      discoveredConfiguration.TokenEndpoint,
+		DeviceAuthURL: discoveredConfiguration.DeviceAuthorizationEndpoint,
+	}, nil
+}
+
+// NewGitHubActionsEndpoint creates a new GitHub Actions OIDC endpoint
+func NewGitHubActionsEndpoint(baseURL string) (Endpoint, error) {
+	if baseURL == "" {
+		baseURL = "https://token.actions.githubusercontent.com"
+	}
+
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	return &GitHubActionsEndpoint{url: u}, nil
 }
