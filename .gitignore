@@ -1,2 +1,60 @@
+# Go artifacts
+bin/
+dist/
+*.so
+*.dylib
+*.exe
+*.dll
+*.test
+*.out
+/vendor/
+
+# Test coverage
+*.coverprofile
+coverage.out
+coverage.html
+
+# IDEs and Editors
 .idea/
+.vscode/
+*.swp
+*.swo
+*~
 .DS_Store
+.env.local
+.env.*.local
+
+# Private keys and certificates
+*.key
+*.pem
+*.pfx
+*.p12
+*.crt
+*.cert
+*.cer
+
+# Sensitive data files
+.env
+.env.local
+.env.*.local
+secrets.json
+secrets.yaml
+credentials.json
+config.local.*
+
+# OS files
+.DS_Store
+Thumbs.db
+.Thumbs.db
+
+# Build output
+/bin/
+/dist/
+
+# IDE-specific
+*.iml
+.gradle
+local.properties
+
+# Tools
+.envrc
