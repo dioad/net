@@ -16,8 +16,9 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// CustomClaims represents the custom claims in a Fly.io OIDC token
 type CustomClaims struct {
-	// fly.io specific claims
+	// Fly.io specific claims
 	AppId          string `json:"app_id"`
 	AppName        string `json:"app_name"`
 	Image          string `json:"image"`

@@ -16,9 +16,9 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// Claims represents the custom claims in a GitHub Actions OIDC token
+// CustomClaims represents the custom claims in a GitHub Actions OIDC token
 type CustomClaims struct {
-	// github actions specific
+	// GitHub actions specific
 	Actor             string `json:"actor"`
 	ActorID           string `json:"actor_id"`
 	BaseRef           string `json:"base_ref"`

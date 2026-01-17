@@ -8,7 +8,6 @@ This example demonstrates how to use GitHub Actions OIDC for authentication.
 package main
 
 import (
-    "context"
     "fmt"
     "os"
     
@@ -16,8 +15,6 @@ import (
 )
 
 func main() {
-    ctx := context.Background()
-    
     // Create a token source with optional audience
     tokenSource := githubactions.NewTokenSource(
         githubactions.WithAudience("https://github.com/dioad"),
