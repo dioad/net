@@ -12,18 +12,13 @@ import (
 	"strings"
 	"time"
 
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
 	"golang.org/x/oauth2"
 )
 
 // Claims represents the custom claims in a GitHub Actions OIDC token
-type Claims struct {
-	Aud               string `json:"aud"`
-	Exp               int    `json:"exp"`
-	Iat               int    `json:"iat"`
-	Iss               string `json:"iss"`
-	Jti               string `json:"jti"`
-	Nbf               int    `json:"nbf"`
-	Sub               string `json:"sub"`
+type CustomClaims struct {
+	// github actions specific
 	Actor             string `json:"actor"`
 	ActorID           string `json:"actor_id"`
 	BaseRef           string `json:"base_ref"`
@@ -45,6 +40,11 @@ type Claims struct {
 	Workflow          string `json:"workflow"`
 	WorkflowRef       string `json:"workflow_ref"`
 	WorkflowSHA       string `json:"workflow_sha"`
+}
+
+type Claims struct {
+	jwtvalidator.RegisteredClaims
+	CustomClaims
 }
 
 // Validate implements the CustomClaims interface
