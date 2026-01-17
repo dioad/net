@@ -18,6 +18,10 @@ Before a task is marked as complete, the following Go commands *must* execute su
     *   **Purpose:** This command runs the tests for the specified packages and enables the data race detector. The race detector helps identify concurrency bugs where multiple goroutines access the same variable concurrently without proper synchronization, and at least one of the accesses is a write.
     *   **Requirement:** All tests must pass, and the race detector must report no data races. This is crucial for robust concurrent applications.
 
+4.  **`shellcheck -o all <script.sh>`**
+    *   **Purpose:** `shellcheck` is a static analysis tool for shell scripts that identifies bugs, potential issues, and style improvements. Enabling all checks with `-o all` ensures maximum script quality and robustness.
+    *   **Requirement:** All shell scripts (e.g., in `test-scripts/`) must be linted using `shellcheck -o all` and all identified issues must be addressed.
+
 ## Idiomatic Go Generated Code Rules
 
 Generated code should adhere to the following principles to maintain consistency, readability, and Go best practices. The goal is for generated code to be indistinguishable from hand-written idiomatic Go code.
@@ -65,5 +69,12 @@ Generated code should adhere to the following principles to maintain consistency
 
 10. **Security:**
     *   Generated code should follow secure coding practices, including input validation, avoiding hardcoded credentials, and using secure defaults for configurations (e.g., TLS).
+
+## GitHub Actions Guidelines
+
+1.  **Linux-Based Commands:**
+    *   GitHub Actions workflows in this project run on Linux runners.
+    *   All commands, shell scripts, and parameters inserted into workflow files *must* be compatible with Linux (GNU/Linux).
+    *   Avoid macOS-specific CLI flags or behaviors (e.g., `sed`, `grep`, `find`). Always prefer the GNU/Linux syntax for GitHub Actions.
 
 Following these guidelines ensures that generated code is maintainable, understandable, and integrates seamlessly with the rest of the Go project.
