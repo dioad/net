@@ -305,7 +305,9 @@ func (e *GitHubActionsEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration,
 
 	jsonDecoder := json.NewDecoder(response.Body)
 	err = jsonDecoder.Decode(&discoveredConfiguration)
-	_ = response.Body.Close()
+	if closeErr := response.Body.Close(); closeErr != nil && err == nil {
+		err = closeErr
+	}
 	return &discoveredConfiguration, err
 }
 

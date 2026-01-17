@@ -134,7 +134,10 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return nil, fmt.Errorf("failed to get token: status=%d (could not read response body: %w)", resp.StatusCode, readErr)
+		}
 		return nil, fmt.Errorf("failed to get token: status=%d, body=%s", resp.StatusCode, string(body))
 	}
 
@@ -176,8 +179,10 @@ func decodeToken(accessToken string) (*oauth2.Token, error) {
 		return nil, fmt.Errorf("failed to extract expiry from token")
 	}
 
+	// Trim any trailing whitespace from the token (including newlines)
+	// This ensures the token is clean for use in Authorization headers
 	return &oauth2.Token{
-		AccessToken: strings.TrimSuffix(accessToken, "\n"),
+		AccessToken: strings.TrimSpace(accessToken),
 		Expiry:      time.Unix(int64(expiry), 0),
 		TokenType:   "bearer",
 	}, nil
