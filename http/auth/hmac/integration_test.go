@@ -214,7 +214,11 @@ func TestPrincipalSpoofing(t *testing.T) {
 	req2.Header.Set("Authorization", spoofedAuthHeader)
 	req2.Header.Set(DefaultTimestampHeader, req1.Header.Get(DefaultTimestampHeader))
 
-	resp2, _ := http.DefaultClient.Do(req2)
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp2.Body.Close()
 	if resp2.StatusCode != http.StatusUnauthorized {
 		t.Errorf("Expected status 401 for spoofed principal, got %d", resp2.StatusCode)
 	}
