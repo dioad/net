@@ -20,10 +20,6 @@ type CacheConfig struct {
 	// If true, returns stale data immediately and refreshes in background
 	// If false, blocks until fresh data is fetched
 	ReturnStale bool
-
-	// ExpiryHeader specifies the HTTP header to check for expiry (e.g., "Expires", "Cache-Control")
-	// If set, this takes precedence over StaticExpiry
-	ExpiryHeader string
 }
 
 // FetchFunc is a custom function type for fetching data from an HTTP endpoint
