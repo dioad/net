@@ -284,14 +284,21 @@ func (f *CachingFetcher[T]) parseCacheControl(cacheControl string, now time.Time
 	return now.Add(1 * time.Hour)
 }
 
-// parseExpires parses the HTTP Expires header (RFC 1123 format)
+// parseExpires parses the HTTP Expires header.
+// According to RFC 7231, this may be in RFC 1123, RFC 850, or ANSI C's asctime format.
 func (f *CachingFetcher[T]) parseExpires(expiresStr string, now time.Time) time.Time {
-	// Try to parse as RFC 1123 format
-	expiresTime, err := time.Parse(time.RFC1123, expiresStr)
-	if err == nil {
-		return expiresTime
+	// Try multiple standard HTTP date formats
+	layouts := []string{
+		time.RFC1123,
+		time.RFC850,
+		time.ANSIC,
 	}
 
+	for _, layout := range layouts {
+		if expiresTime, err := time.Parse(layout, expiresStr); err == nil {
+			return expiresTime
+		}
+	}
 	// Fall back to static expiry
 	if f.config.StaticExpiry > 0 {
 		return now.Add(f.config.StaticExpiry)
