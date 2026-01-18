@@ -77,12 +77,12 @@ Examples are an essential part of API documentation and should be created as exe
 ### Example Approach
 
 **Small Examples (Simple API Interactions):**
-- Small examples demonstrating basic type interactions or single function calls are acceptable in `README.md` or package-level documentation
-- Keep these focused on a single concept and no more than 10-15 lines of code
+- Small examples demonstrating basic type interactions or single function calls are acceptable in `README.md` or package-level documentation.
+- Keep these focused on a single concept and no more than 10-15 lines of code.
 
 **Larger Examples (Multiple Concepts):**
-- Create dedicated `_test.go` files in the `examples/` directory for comprehensive examples
-- These examples must follow Go's `Example` naming convention and be executable
+- Create dedicated `_test.go` files in the `examples/` directory for comprehensive examples.
+- These examples must follow Go's `Example` naming convention and be executable.
 
 ### Example Function Naming Convention
 
