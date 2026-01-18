@@ -66,6 +66,105 @@ func Example() {
 	//   Tags: [tag1 tag2 tag3]
 }
 
+// ExampleMarshalHeader demonstrates basic marshaling of a struct to headers
+func ExampleMarshalHeader() {
+	type UserInfo struct {
+		Name  string   `header:"X-User-Name"`
+		Roles []string `header:"X-User-Roles"`
+		ID    int      `header:"X-User-ID"`
+	}
+
+	user := UserInfo{
+		Name:  "Jane Doe",
+		Roles: []string{"admin", "editor"},
+		ID:    12345,
+	}
+
+	// Use DefaultHeaderMarshalOptions which doesn't add any prefix or struct name.
+	// Field names will be determined by the `header` tag if present,
+	// or automatically converted to kebab-case.
+	header, err := dhttp.MarshalHeader(user, dhttp.DefaultHeaderMarshalOptions())
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	fmt.Printf("X-User-Name: %s\n", header.Get("X-User-Name"))
+	fmt.Printf("X-User-Roles: %v\n", header.Values("X-User-Roles"))
+	fmt.Printf("X-User-ID: %s\n", header.Get("X-User-ID"))
+
+	// Output:
+	// X-User-Name: Jane Doe
+	// X-User-Roles: [admin editor]
+	// X-User-ID: 12345
+}
+
+// ExampleUnmarshalHeader demonstrates basic unmarshaling from headers to a struct
+func ExampleUnmarshalHeader() {
+	type UserInfo struct {
+		Name  string   `header:"X-User-Name"`
+		Roles []string `header:"X-User-Roles"`
+		ID    int      `header:"X-User-ID"`
+	}
+
+	header := http.Header{}
+	header.Set("X-User-Name", "John Doe")
+	header.Add("X-User-Roles", "viewer")
+	header.Add("X-User-Roles", "support")
+	header.Set("X-User-ID", "67890")
+
+	var user UserInfo
+	err := dhttp.UnmarshalHeader(header, &user, dhttp.DefaultHeaderMarshalOptions())
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Name: %s\n", user.Name)
+	fmt.Printf("Roles: %v\n", user.Roles)
+	fmt.Printf("ID: %d\n", user.ID)
+
+	// Output:
+	// Name: John Doe
+	// Roles: [viewer support]
+	// ID: 67890
+}
+
+// ExampleMarshalHeader_options demonstrates usage of HeaderMarshalOptions to customize header names
+func ExampleMarshalHeader_options() {
+	type AppConfig struct {
+		Enabled bool
+		Timeout int
+	}
+
+	cfg := AppConfig{
+		Enabled: true,
+		Timeout: 30,
+	}
+
+	// Using options to add a prefix and include struct name in header names.
+	// Field names are automatically converted to kebab-case.
+	opts := dhttp.HeaderMarshalOptions{
+		Prefix:            "X-App",
+		IncludeStructName: true,
+	}
+
+	header, err := dhttp.MarshalHeader(cfg, opts)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	// Header names are generated as Prefix-StructName-FieldName (in kebab-case)
+	// and canonicalized by http.Header.
+	fmt.Printf("X-App-App-Config-Enabled: %s\n", header.Get("X-App-App-Config-Enabled"))
+	fmt.Printf("X-App-App-Config-Timeout: %s\n", header.Get("X-App-App-Config-Timeout"))
+
+	// Output:
+	// X-App-App-Config-Enabled: true
+	// X-App-App-Config-Timeout: 30
+}
+
 // ExampleMarshalHeader_withoutStructName demonstrates encoding without the struct name in headers
 func ExampleMarshalHeader_withoutStructName() {
 	type Config struct {
@@ -174,7 +273,7 @@ func ExampleUnmarshalHeader_middleware() {
 
 	// Create a response recorder
 	w := httptest.NewRecorder()
-	
+
 	// Process the request
 	wrappedHandler.ServeHTTP(w, req)
 
