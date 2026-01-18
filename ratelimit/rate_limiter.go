@@ -133,7 +133,7 @@ func (rl *RateLimiter) Allow(principal string) bool {
 		entry.lastAllow = allowed
 	}
 	// Also check if cleanup is needed while we have the lock
-	needsCleanup := time.Since(rl.LastCleanup) > rl.CleanupInterval
+	needsCleanup := time.Since(rl.lastCleanup) > rl.CleanupInterval
 	if needsCleanup {
 		rl.cleanupExpiredLimiters()
 	}
