@@ -167,7 +167,7 @@ func TestTimestampExpiry(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatalf("failed to make request: %v", err)
+		t.Fatalf("request failed: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
@@ -204,7 +204,7 @@ func TestWrongPathOrMethod(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatalf("failed to make request: %v", err)
+		t.Fatalf("request failed: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
