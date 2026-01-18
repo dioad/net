@@ -99,7 +99,10 @@ func ExampleClientAuth_AddAuth() {
 			Principal: userID,
 		},
 	}
-	clientAuth.AddAuth(req)
+	if err := clientAuth.AddAuth(req); err != nil {
+		fmt.Printf("Error adding auth: %v\n", err)
+		return
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -144,7 +147,10 @@ func ExampleClientAuth_requestBinding() {
 			Principal: "client-app",
 		},
 	}
-	clientAuth.AddAuth(req)
+	if err := clientAuth.AddAuth(req); err != nil {
+		fmt.Printf("Error adding auth: %v\n", err)
+		return
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
