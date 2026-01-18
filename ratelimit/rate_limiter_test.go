@@ -42,7 +42,7 @@ func TestRateLimiter_Cleanup(t *testing.T) {
 	// Actually easier to just wait for both.
 	time.Sleep(30 * time.Millisecond)
 
-	// This call should trigger cleanup because enough time passed since LastCleanup (initialized to time.Now())
+	// This call should trigger cleanup because enough time passed since lastCleanup (initialized to time.Now())
 	// and enough time passed since user1/user2 were last used.
 	rl.Allow("user3")
 

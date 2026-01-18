@@ -47,7 +47,7 @@ type RateLimiter struct {
 	RequestsPerSecond float64
 	Burst             int
 	CleanupInterval   time.Duration
-	LastCleanup       time.Time
+	lastCleanup       time.Time
 	StaleTTL          time.Duration
 
 	// LimitSource provides dynamic rate limits per principal.
@@ -64,7 +64,7 @@ func NewRateLimiter(requestsPerSecond float64, burst int, logger zerolog.Logger)
 		RequestsPerSecond: requestsPerSecond,
 		Burst:             burst,
 		CleanupInterval:   5 * time.Minute, // Cleanup every 5 minutes
-		LastCleanup:       time.Now(),
+		lastCleanup:       time.Now(),
 		StaleTTL:          30 * time.Minute, // Remove limiters unused for 30 minutes
 	}
 }
@@ -76,7 +76,7 @@ func NewRateLimiterWithSource(source RateLimitSource, logger zerolog.Logger) *Ra
 		logger:          logger,
 		LimitSource:     source,
 		CleanupInterval: 5 * time.Minute,
-		LastCleanup:     time.Now(),
+		lastCleanup:     time.Now(),
 		StaleTTL:        30 * time.Minute,
 	}
 }
@@ -126,7 +126,7 @@ func (rl *RateLimiter) Allow(principal string) bool {
 	}
 
 	// Cleanup old limiters periodically
-	if time.Since(rl.LastCleanup) > rl.CleanupInterval {
+	if time.Since(rl.lastCleanup) > rl.CleanupInterval {
 		rl.cleanupExpiredLimiters()
 	}
 
@@ -153,5 +153,5 @@ func (rl *RateLimiter) cleanupExpiredLimiters() {
 			Msg("cleaned up stale rate limiters")
 	}
 
-	rl.LastCleanup = now
+	rl.lastCleanup = now
 }
