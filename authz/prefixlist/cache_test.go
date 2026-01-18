@@ -553,8 +553,9 @@ func TestCachingFetcher_HTTPCacheHeaders(t *testing.T) {
 		ctx := context.Background()
 
 		// First call
-		data1, _, err1 := fetcher.Get(ctx)
+		data1, result1, err1 := fetcher.Get(ctx)
 		require.NoError(t, err1)
+		assert.Equal(t, CacheResultFresh, result1)
 		assert.Equal(t, 1, data1.Count)
 
 		// Second call should use cache
@@ -571,6 +572,7 @@ func TestCachingFetcher_HTTPCacheHeaders(t *testing.T) {
 		require.NoError(t, err3)
 		assert.Equal(t, CacheResultFresh, result3)
 		assert.Equal(t, 2, data3.Count)
+		assert.Equal(t, int32(2), callCount.Load())
 	})
 
 func TestCachingFetcher_CacheControl_NoStore(t *testing.T) {
