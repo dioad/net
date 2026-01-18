@@ -39,36 +39,36 @@ func TestIntegrationProviders(t *testing.T) {
 		// Uncomment these to test against real APIs
 		// They are commented by default to avoid rate limits and external dependencies
 		/*
-		{
-			name:                "github",
-			provider:            NewGitHubProvider(""),
-			expectedMinPrefixes: 10,
-		},
-		{
-			name:                "github-hooks",
-			provider:            NewGitHubProvider("hooks"),
-			expectedMinPrefixes: 1,
-		},
-		{
-			name:                "cloudflare-ipv4",
-			provider:            NewCloudflareProvider(false),
-			expectedMinPrefixes: 10,
-		},
-		{
-			name:                "google",
-			provider:            NewGoogleProvider(),
-			expectedMinPrefixes: 100,
-		},
-		{
-			name:                "atlassian",
-			provider:            NewAtlassianProvider(),
-			expectedMinPrefixes: 10,
-		},
-		{
-			name:                "aws",
-			provider:            NewAWSProvider("", ""),
-			expectedMinPrefixes: 100,
-		},
+			{
+				name:                "github",
+				provider:            NewGitHubProvider(""),
+				expectedMinPrefixes: 10,
+			},
+			{
+				name:                "github-hooks",
+				provider:            NewGitHubProvider("hooks"),
+				expectedMinPrefixes: 1,
+			},
+			{
+				name:                "cloudflare-ipv4",
+				provider:            NewCloudflareProvider(false),
+				expectedMinPrefixes: 10,
+			},
+			{
+				name:                "google",
+				provider:            NewGoogleProvider(),
+				expectedMinPrefixes: 100,
+			},
+			{
+				name:                "atlassian",
+				provider:            NewAtlassianProvider(),
+				expectedMinPrefixes: 10,
+			},
+			{
+				name:                "aws",
+				provider:            NewAWSProvider("", ""),
+				expectedMinPrefixes: 100,
+			},
 		*/
 	}
 
@@ -93,33 +93,33 @@ func TestIntegrationProviders(t *testing.T) {
 // TestProviderResponseFormat tests that providers return valid CIDR ranges
 func TestProviderResponseFormat(t *testing.T) {
 	tests := []struct {
-		name         string
-		provider     Provider
-		testIP       string
+		name          string
+		provider      Provider
+		testIP        string
 		shouldContain bool
 	}{
 		{
-			name:         "gitlab webhook IP in range",
-			provider:     NewGitLabProvider(),
-			testIP:       "34.74.90.65",
+			name:          "gitlab webhook IP in range",
+			provider:      NewGitLabProvider(),
+			testIP:        "34.74.90.65",
 			shouldContain: true,
 		},
 		{
-			name:         "gitlab webhook IP not in range",
-			provider:     NewGitLabProvider(),
-			testIP:       "1.2.3.4",
+			name:          "gitlab webhook IP not in range",
+			provider:      NewGitLabProvider(),
+			testIP:        "1.2.3.4",
 			shouldContain: false,
 		},
 		{
-			name:         "hetzner IP in range",
-			provider:     NewHetznerProvider(),
-			testIP:       "5.9.1.1",
+			name:          "hetzner IP in range",
+			provider:      NewHetznerProvider(),
+			testIP:        "5.9.1.1",
 			shouldContain: true,
 		},
 		{
-			name:         "hetzner IP not in range",
-			provider:     NewHetznerProvider(),
-			testIP:       "1.2.3.4",
+			name:          "hetzner IP not in range",
+			provider:      NewHetznerProvider(),
+			testIP:        "1.2.3.4",
 			shouldContain: false,
 		},
 	}

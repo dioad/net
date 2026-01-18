@@ -34,12 +34,12 @@ func NewAWSProvider(service, region string) *AWSProvider {
 	if region != "" {
 		name += "-" + region
 	}
-	
+
 	p := &AWSProvider{
 		service: service,
 		region:  region,
 	}
-	
+
 	p.HTTPJSONProvider = NewHTTPJSONProvider[awsIPRanges](
 		name,
 		"https://ip-ranges.amazonaws.com/ip-ranges.json",
@@ -49,7 +49,7 @@ func NewAWSProvider(service, region string) *AWSProvider {
 		},
 		p.transformAWSRanges,
 	)
-	
+
 	return p
 }
 

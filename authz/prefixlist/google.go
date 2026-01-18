@@ -33,12 +33,12 @@ func NewGoogleProvider(scopes, services []string) *GoogleProvider {
 	if len(scopes) > 0 {
 		name += "-" + strings.Join(scopes, ",")
 	}
-	
+
 	p := &GoogleProvider{
 		scopes:   scopes,
 		services: services,
 	}
-	
+
 	p.HTTPJSONProvider = NewHTTPJSONProvider[googleIPRanges](
 		name,
 		"https://www.gstatic.com/ipranges/cloud.json",
@@ -48,7 +48,7 @@ func NewGoogleProvider(scopes, services []string) *GoogleProvider {
 		},
 		p.transformGoogleRanges,
 	)
-	
+
 	return p
 }
 

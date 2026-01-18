@@ -18,7 +18,7 @@ type fastlyIPRanges struct {
 // NewFastlyProvider creates a new Fastly prefix list provider
 func NewFastlyProvider() *FastlyProvider {
 	p := &FastlyProvider{}
-	
+
 	p.HTTPJSONProvider = NewHTTPJSONProvider[fastlyIPRanges](
 		"fastly",
 		"https://api.fastly.com/public-ip-list",
@@ -28,7 +28,7 @@ func NewFastlyProvider() *FastlyProvider {
 		},
 		transformFastlyRanges,
 	)
-	
+
 	return p
 }
 

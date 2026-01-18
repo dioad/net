@@ -115,5 +115,3 @@ func TestProviderNames(t *testing.T) {
 		})
 	}
 }
-
-

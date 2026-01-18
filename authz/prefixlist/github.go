@@ -27,11 +27,11 @@ func NewGitHubProvider(filter string) *GitHubProvider {
 	if filter != "" {
 		name = fmt.Sprintf("github-%s", filter)
 	}
-	
+
 	p := &GitHubProvider{
 		filter: filter,
 	}
-	
+
 	p.HTTPJSONProvider = NewHTTPJSONProvider[githubMeta](
 		name,
 		"https://api.github.com/meta",
@@ -41,7 +41,7 @@ func NewGitHubProvider(filter string) *GitHubProvider {
 		},
 		p.transformGitHubMeta,
 	)
-	
+
 	return p
 }
 

@@ -48,7 +48,7 @@ func NewHetznerProvider() *HetznerProvider {
 		"195.201.0.0/16",
 		"213.133.96.0/19",
 		"213.239.192.0/18",
-		
+
 		// Hetzner Cloud IPv6
 		"2a01:4f8::/32",
 		"2a01:4f9::/32",
