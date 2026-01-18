@@ -19,42 +19,57 @@ func TestHeaderCaseNormalization(t *testing.T) {
 		name                 string
 		clientHeaders        []string
 		serverHeaders        []string
-		headerValue          string
+		headerValues         map[string]string
 		shouldAuthenticate   bool
 	}{
 		{
-			name:               "Same case - uppercase",
-			clientHeaders:      []string{"Content-Type", "X-Api-Key"},
-			serverHeaders:      []string{"Content-Type", "X-Api-Key"},
-			headerValue:        "application/json",
+			name:          "Same case - uppercase",
+			clientHeaders: []string{"Content-Type", "X-Api-Key"},
+			serverHeaders: []string{"Content-Type", "X-Api-Key"},
+			headerValues: map[string]string{
+				"Content-Type": "application/json",
+				"X-Api-Key":    "secret123",
+			},
 			shouldAuthenticate: true,
 		},
 		{
-			name:               "Same case - lowercase",
-			clientHeaders:      []string{"content-type", "x-api-key"},
-			serverHeaders:      []string{"content-type", "x-api-key"},
-			headerValue:        "application/json",
+			name:          "Same case - lowercase",
+			clientHeaders: []string{"content-type", "x-api-key"},
+			serverHeaders: []string{"content-type", "x-api-key"},
+			headerValues: map[string]string{
+				"content-type": "application/json",
+				"x-api-key":    "secret123",
+			},
 			shouldAuthenticate: true,
 		},
 		{
-			name:               "Different case - client uppercase, server lowercase",
-			clientHeaders:      []string{"Content-Type", "X-Api-Key"},
-			serverHeaders:      []string{"content-type", "x-api-key"},
-			headerValue:        "application/json",
+			name:          "Different case - client uppercase, server lowercase",
+			clientHeaders: []string{"Content-Type", "X-Api-Key"},
+			serverHeaders: []string{"content-type", "x-api-key"},
+			headerValues: map[string]string{
+				"Content-Type": "application/json",
+				"X-Api-Key":    "secret123",
+			},
 			shouldAuthenticate: true,
 		},
 		{
-			name:               "Different case - client lowercase, server uppercase",
-			clientHeaders:      []string{"content-type", "x-api-key"},
-			serverHeaders:      []string{"Content-Type", "X-Api-Key"},
-			headerValue:        "application/json",
+			name:          "Different case - client lowercase, server uppercase",
+			clientHeaders: []string{"content-type", "x-api-key"},
+			serverHeaders: []string{"Content-Type", "X-Api-Key"},
+			headerValues: map[string]string{
+				"content-type": "application/json",
+				"x-api-key":    "secret123",
+			},
 			shouldAuthenticate: true,
 		},
 		{
-			name:               "Mixed case combinations",
-			clientHeaders:      []string{"CONTENT-TYPE", "x-API-key"},
-			serverHeaders:      []string{"content-type", "X-Api-Key"},
-			headerValue:        "application/json",
+			name:          "Mixed case combinations",
+			clientHeaders: []string{"CONTENT-TYPE", "x-API-key"},
+			serverHeaders: []string{"content-type", "X-Api-Key"},
+			headerValues: map[string]string{
+				"CONTENT-TYPE": "application/json",
+				"x-API-key":    "secret123",
+			},
 			shouldAuthenticate: true,
 		},
 	}
@@ -93,9 +108,11 @@ func TestHeaderCaseNormalization(t *testing.T) {
 				t.Fatalf("failed to create request: %v", err)
 			}
 
-			// Set header values using client's header names
+			// Set header values using client's header names and distinct values
 			for _, headerName := range tc.clientHeaders {
-				req.Header.Set(headerName, tc.headerValue)
+				if val, ok := tc.headerValues[headerName]; ok {
+					req.Header.Set(headerName, val)
+				}
 			}
 
 			// Add authentication
