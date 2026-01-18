@@ -20,10 +20,6 @@ type CacheConfig struct {
 	// If true, returns stale data immediately and refreshes in background
 	// If false, blocks until fresh data is fetched
 	ReturnStale bool
-
-	// ExpiryHeader specifies the HTTP header to check for expiry (e.g., "Expires", "Cache-Control")
-	// If set, this takes precedence over StaticExpiry
-	ExpiryHeader string
 }
 
 // FetchFunc is a custom function type for fetching data from an HTTP endpoint
@@ -239,14 +235,16 @@ func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, error) {
 func (f *CachingFetcher[T]) calculateExpiry(headers http.Header) time.Time {
 	now := time.Now()
 
-	// Check Cache-Control header first (takes precedence)
-	if cacheControl := headers.Get("Cache-Control"); cacheControl != "" {
-		return f.parseCacheControl(cacheControl, now)
-	}
+	if headers != nil {
+		// Check Cache-Control header first (takes precedence)
+		if cacheControl := headers.Get("Cache-Control"); cacheControl != "" {
+			return f.parseCacheControl(cacheControl, now)
+		}
 
-	// Fall back to Expires header
-	if expires := headers.Get("Expires"); expires != "" {
-		return f.parseExpires(expires, now)
+		// Fall back to Expires header
+		if expires := headers.Get("Expires"); expires != "" {
+			return f.parseExpires(expires, now)
+		}
 	}
 
 	// Use static expiry if configured
@@ -258,20 +256,64 @@ func (f *CachingFetcher[T]) calculateExpiry(headers http.Header) time.Time {
 	return now.Add(1 * time.Hour)
 }
 
-// parseCacheControl extracts max-age from Cache-Control header
+// parseCacheControl extracts max-age from Cache-Control header and handles caching directives
 func (f *CachingFetcher[T]) parseCacheControl(cacheControl string, now time.Time) time.Time {
 	// Parse comma-separated directives
 	directives := strings.Split(cacheControl, ",")
+	
+	var maxAge time.Duration
+	var hasMaxAge bool
+	var noStore, noCache bool
+	
 	for _, directive := range directives {
 		directive = strings.TrimSpace(directive)
+		
+		// Check for no-store directive - response should not be cached
+		if directive == "no-store" {
+			noStore = true
+			continue
+		}
+		
+		// Check for no-cache directive - response can be cached but must be revalidated
+		if directive == "no-cache" {
+			noCache = true
+			continue
+		}
+		
+		// Check for must-revalidate directive - handled implicitly by our expiry logic
+		// (we don't serve stale content beyond expiry without revalidation)
+		if directive == "must-revalidate" {
+			// This directive is implicitly handled by our existing expiry logic
+			continue
+		}
+		
+		// Extract max-age value
 		if strings.HasPrefix(directive, "max-age=") {
 			maxAgeStr := strings.TrimPrefix(directive, "max-age=")
 			// Handle quoted values
 			maxAgeStr = strings.Trim(maxAgeStr, "\"")
-			if maxAge, err := time.ParseDuration(maxAgeStr + "s"); err == nil {
-				return now.Add(maxAge)
+			if duration, err := time.ParseDuration(maxAgeStr + "s"); err == nil {
+				maxAge = duration
+				hasMaxAge = true
 			}
 		}
+	}
+	
+	// Handle no-store: don't cache (use immediate expiry)
+	if noStore {
+		return now
+	}
+	
+	// Handle no-cache: cache but with very short expiry to force revalidation
+	if noCache {
+		// Use a very short expiry (1 second) to effectively force revalidation
+		// while still allowing brief caching to prevent request storms
+		return now.Add(1 * time.Second)
+	}
+	
+	// Use max-age if found
+	if hasMaxAge {
+		return now.Add(maxAge)
 	}
 
 	// If no max-age found, use static expiry
@@ -282,14 +324,21 @@ func (f *CachingFetcher[T]) parseCacheControl(cacheControl string, now time.Time
 	return now.Add(1 * time.Hour)
 }
 
-// parseExpires parses the HTTP Expires header (RFC 1123 format)
+// parseExpires parses the HTTP Expires header.
+// According to RFC 7231, this may be in RFC 1123, RFC 850, or ANSI C's asctime format.
 func (f *CachingFetcher[T]) parseExpires(expiresStr string, now time.Time) time.Time {
-	// Try to parse as RFC 1123 format
-	expiresTime, err := time.Parse(time.RFC1123, expiresStr)
-	if err == nil {
-		return expiresTime
+	// Try multiple standard HTTP date formats
+	layouts := []string{
+		time.RFC1123,
+		time.RFC850,
+		time.ANSIC,
 	}
 
+	for _, layout := range layouts {
+		if expiresTime, err := time.Parse(layout, expiresStr); err == nil {
+			return expiresTime
+		}
+	}
 	// Fall back to static expiry
 	if f.config.StaticExpiry > 0 {
 		return now.Add(f.config.StaticExpiry)
