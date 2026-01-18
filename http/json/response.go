@@ -165,7 +165,7 @@ func (r *Response) CreatedWithURI(uri string) {
 // CreatedWithURIAndMessage sends a 201 Created response with a Location header and custom message.
 func (r *Response) CreatedWithURIAndMessage(uri string, message string) {
 	r.Writer.Header().Set("Location", uri)
-	r.Data(http.StatusCreated, map[string]interface{}{"uri": uri, "message": message})
+	r.Data(http.StatusCreated, map[string]string{"uri": uri, "message": message})
 }
 
 // NoContent sends a 204 No Content response.
