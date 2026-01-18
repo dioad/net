@@ -239,14 +239,16 @@ func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, error) {
 func (f *CachingFetcher[T]) calculateExpiry(headers http.Header) time.Time {
 	now := time.Now()
 
-	// Check Cache-Control header first (takes precedence)
-	if cacheControl := headers.Get("Cache-Control"); cacheControl != "" {
-		return f.parseCacheControl(cacheControl, now)
-	}
+	if headers != nil {
+		// Check Cache-Control header first (takes precedence)
+		if cacheControl := headers.Get("Cache-Control"); cacheControl != "" {
+			return f.parseCacheControl(cacheControl, now)
+		}
 
-	// Fall back to Expires header
-	if expires := headers.Get("Expires"); expires != "" {
-		return f.parseExpires(expires, now)
+		// Fall back to Expires header
+		if expires := headers.Get("Expires"); expires != "" {
+			return f.parseExpires(expires, now)
+		}
 	}
 
 	// Use static expiry if configured
