@@ -156,6 +156,33 @@ func (rl *RateLimiter) Allow(principal string) bool {
 	return allowed
 }
 
+// RetryAfter returns the duration until the next request would be allowed for the given principal.
+// This can be used to set the Retry-After header in HTTP responses.
+// If the principal has no limiter entry (first request), it returns 0.
+// Note: This method uses RLock because it only reads from the limiters map. The Reserve/Cancel
+// calls on the underlying rate.Limiter are thread-safe due to rate.Limiter's internal mutex.
+// This method is typically called immediately after Allow() returns false, so the limiter entry
+// will exist. If rate limits change between calls, the returned duration reflects the current
+// limits at the time of the Reserve() call, which is acceptable for advisory Retry-After headers.
+func (rl *RateLimiter) RetryAfter(principal string) time.Duration {
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
+
+	entry, exists := rl.limiters[principal]
+	if !exists {
+		return 0
+	}
+
+	// Reserve a token to check when the next one would be available.
+	// The rate.Limiter.Reserve() and Cancel() methods are thread-safe.
+	r := entry.limiter.Reserve()
+	delay := r.Delay()
+	// Cancel the reservation so we don't actually consume a token
+	r.Cancel()
+
+	return delay
+}
+
 // cleanupExpiredLimiters removes limiters that haven't been used recently.
 // This prevents unbounded memory growth from unique principals.
 func (rl *RateLimiter) cleanupExpiredLimiters() {
