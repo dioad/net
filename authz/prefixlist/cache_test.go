@@ -574,6 +574,7 @@ func TestCachingFetcher_HTTPCacheHeaders(t *testing.T) {
 		assert.Equal(t, 2, data3.Count)
 		assert.Equal(t, int32(2), callCount.Load())
 	})
+}
 
 func TestCachingFetcher_CacheControl_NoStore(t *testing.T) {
 	callCount := atomic.Int32{}
