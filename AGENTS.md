@@ -115,7 +115,7 @@ func ExampleString_second()       // multiple examples use underscore + lowercas
 For complex examples requiring supporting types or context:
 
 1. Create a file ending in `_test.go` with:
-   - Exactly one `Example*` function
+   - One or more `Example*` functions
    - Supporting types, interfaces, or helper functions as needed
    - No other test or benchmark functions
 2. Include an `// Output:` comment for verification
