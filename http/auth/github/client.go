@@ -46,13 +46,12 @@ func (a ClientAuth) Token() (*oauth2.Token, error) {
 	}, nil
 }
 
-// HTTPClient returns an http.Client that automatically adds the GitHub token to requests.
-func (a ClientAuth) HTTPClient() (*http.Client, error) {
+func (a ClientAuth) HTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &TokenRoundTripper{
 			Source: &a,
 		},
-	}, nil
+	}
 }
 
 // TokenRoundTripper is an http.RoundTripper that adds an OAuth2 token to requests.

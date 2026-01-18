@@ -59,12 +59,12 @@ func (a ClientAuth) AddAuth(req *http.Request) error {
 }
 
 // HTTPClient returns an http.Client that automatically adds the HMAC token to requests.
-func (a ClientAuth) HTTPClient() (*http.Client, error) {
+func (a ClientAuth) HTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &HMACRoundTripper{
 			Config: a.Config,
 		},
-	}, nil
+	}
 }
 
 // HMACRoundTripper is an http.RoundTripper that adds HMAC authentication.
