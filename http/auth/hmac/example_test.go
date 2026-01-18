@@ -116,8 +116,8 @@ func ExampleClientAuth_AddAuth() {
 	// 200
 }
 
-// ExampleClientAuth_requestBinding demonstrates using HMAC to bind to an existing token.
-func ExampleClientAuth_requestBinding() {
+// ExampleClientAuth_AddAuth_requestBinding demonstrates using HMAC to bind to an existing token.
+func ExampleClientAuth_AddAuth_requestBinding() {
 	const sharedSecret = "secret"
 	const jwtToken = "eyXXX.YYY.ZZZ"
 
