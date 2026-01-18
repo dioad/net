@@ -50,7 +50,10 @@ func Example() {
 		fmt.Printf("Error creating request: %v\n", err)
 		return
 	}
-	clientAuth.AddAuth(req)
+	if err := clientAuth.AddAuth(req); err != nil {
+		fmt.Printf("Error adding auth: %v\n", err)
+		return
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
