@@ -154,8 +154,13 @@ func TestTimestampExpiry(t *testing.T) {
 		},
 	}
 
-	req, _ := http.NewRequest("GET", testServer.URL, nil)
-	clientAuth.AddAuth(req)
+	req, err := http.NewRequest("GET", testServer.URL, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	if err := clientAuth.AddAuth(req); err != nil {
+		t.Fatalf("failed to add auth: %v", err)
+	}
 
 	// Wait for expiry
 	time.Sleep(2 * time.Second)
@@ -186,8 +191,13 @@ func TestWrongPathOrMethod(t *testing.T) {
 		},
 	}
 
-	req, _ := http.NewRequest("GET", testServer.URL+"/valid", nil)
-	clientAuth.AddAuth(req)
+	req, err := http.NewRequest("GET", testServer.URL+"/valid", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	if err := clientAuth.AddAuth(req); err != nil {
+		t.Fatalf("failed to add auth: %v", err)
+	}
 
 	// Change path manually
 	req.URL.Path = "/invalid"
@@ -219,8 +229,13 @@ func TestPrincipalSpoofing(t *testing.T) {
 		Principal:    userPrincipal,
 	}}
 
-	req1, _ := http.NewRequest("POST", testServer.URL, bytes.NewBufferString("body"))
-	clientAuth.AddAuth(req1)
+	req1, err := http.NewRequest("POST", testServer.URL, bytes.NewBufferString("body"))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	if err := clientAuth.AddAuth(req1); err != nil {
+		t.Fatalf("failed to add auth: %v", err)
+	}
 
 	// Capture the valid token for userPrincipal
 	authHeader := req1.Header.Get("Authorization")
@@ -232,7 +247,10 @@ func TestPrincipalSpoofing(t *testing.T) {
 	signature := strings.Split(creds, ":")[1]
 	spoofedAuthHeader := fmt.Sprintf("HMAC %s:%s", adminPrincipal, signature)
 
-	req2, _ := http.NewRequest("POST", testServer.URL, bytes.NewBufferString("body"))
+	req2, err := http.NewRequest("POST", testServer.URL, bytes.NewBufferString("body"))
+	if err != nil {
+		t.Fatalf("failed to create spoofed request: %v", err)
+	}
 	req2.Header.Set("Authorization", spoofedAuthHeader)
 	req2.Header.Set(DefaultTimestampHeader, req1.Header.Get(DefaultTimestampHeader))
 
