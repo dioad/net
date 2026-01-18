@@ -18,6 +18,10 @@ type CommonConfig struct {
 	TimestampHeader string `mapstructure:"timestamp-header"`
 	// Maximum allowed time difference for the timestamp (default: 5m)
 	MaxTimestampDiff time.Duration `mapstructure:"max-timestamp-diff"`
+	// Maximum allowed time difference for future timestamps (default: 30s)
+	// This should be smaller than MaxTimestampDiff to prevent pre-signed replay attacks.
+	// A smaller value is appropriate since it only needs to account for clock skew.
+	MaxFutureTimestampDiff time.Duration `mapstructure:"max-future-timestamp-diff"`
 }
 
 // ClientConfig contains configuration for an HMAC authentication client.
