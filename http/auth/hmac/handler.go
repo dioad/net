@@ -79,6 +79,21 @@ func (a *Handler) AuthRequest(r *http.Request) (stdcontext.Context, error) {
 	if signedHeadersStr != "" {
 		signedHeaders = strings.Split(signedHeadersStr, ",")
 	}
+	// Validate signed headers against server configuration, if configured.
+	if len(a.cfg.SignedHeaders) > 0 {
+		if len(signedHeaders) == 0 {
+			return r.Context(), errors.New("missing signed headers")
+		}
+		if len(signedHeaders) != len(a.cfg.SignedHeaders) {
+			return r.Context(), errors.New("signed headers do not match server configuration")
+		}
+		for i, requiredHeader := range a.cfg.SignedHeaders {
+			clientHeader := signedHeaders[i]
+			if strings.ToLower(strings.TrimSpace(requiredHeader)) != strings.ToLower(strings.TrimSpace(clientHeader)) {
+				return r.Context(), errors.New("signed headers do not match server configuration")
+			}
+		}
+	}
 
 	// Read the request body for HMAC verification
 	bodyBytes := []byte{}
