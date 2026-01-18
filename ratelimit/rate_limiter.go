@@ -161,6 +161,9 @@ func (rl *RateLimiter) Allow(principal string) bool {
 // If the principal has no limiter entry (first request), it returns 0.
 // Note: This method uses RLock because it only reads from the limiters map. The Reserve/Cancel
 // calls on the underlying rate.Limiter are thread-safe due to rate.Limiter's internal mutex.
+// This method is typically called immediately after Allow() returns false, so the limiter entry
+// will exist. If rate limits change between calls, the returned duration reflects the current
+// limits at the time of the Reserve() call, which is acceptable for advisory Retry-After headers.
 func (rl *RateLimiter) RetryAfter(principal string) time.Duration {
 	rl.mu.RLock()
 	defer rl.mu.RUnlock()
