@@ -3,7 +3,7 @@
 // This implementation follows the principles of HTTP Message Signatures (RFC 9421),
 // providing a robust way to authenticate requests using a shared secret.
 // It includes protection against:
-// - Tampering: The HTTP method, path, timestamp, principal, and selected headers are signed.
+// - Tampering: The HTTP method, path, query parameters, timestamp, principal, and selected headers are signed.
 // - Replay Attacks: A mandatory timestamp is included in the signature and verified by the server.
 // - Principal Spoofing: The principal ID is included in the signature.
 // - Request Binding: Arbitrary headers (like access tokens) can be included in the signature.
@@ -31,7 +31,7 @@ const (
 // CanonicalData generates the string to be signed based on the request.
 // It follows a strict format to ensure both client and server produce the same string:
 // 1. HTTP Method (e.g., POST)
-// 2. HTTP Path (e.g., /api/data)
+// 2. HTTP Path with query parameters (e.g., /api/data?id=123)
 // 3. Timestamp (decimal string)
 // 4. Principal ID
 // 5. Comma-separated list of signed header names
@@ -40,7 +40,7 @@ const (
 func CanonicalData(r *http.Request, principal string, timestamp string, signedHeaders []string, body []byte) string {
 	var b strings.Builder
 
-	// Method and Path
+	// Method and Path with query parameters
 	b.WriteString(r.Method)
 	b.WriteString("\n")
 	path := r.URL.Path
@@ -48,6 +48,11 @@ func CanonicalData(r *http.Request, principal string, timestamp string, signedHe
 		path = "/"
 	}
 	b.WriteString(path)
+	// Include query parameters in the signature to prevent tampering
+	if r.URL.RawQuery != "" {
+		b.WriteString("?")
+		b.WriteString(r.URL.RawQuery)
+	}
 	b.WriteString("\n")
 
 	// Timestamp
