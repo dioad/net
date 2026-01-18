@@ -45,6 +45,7 @@ It provides implementations of common networking patterns, authentication mechan
 ### 🛡️ Network Authorization
 - **IP-based ACLs**: Network access control lists with allow/deny rules
 - **Principal-based Authorization**: User and role-based access control
+- **Rate Limiting**: Per-principal rate limiting for network and HTTP services
 - **Prefix Lists**: Support for cloud provider IP ranges (AWS, Google Cloud, Azure, Fastly, Cloudflare, Atlassian, GitLab, Hetzner)
 - **Automatic Updates**: Background refresh of cloud provider prefix lists
 
@@ -121,6 +122,63 @@ if authorised, _ := acl.AuthoriseFromString(clientIP); authorised {
 }
 ```
 
+### Rate Limiting (HTTP)
+```go
+import (
+	"github.com/dioad/net/http"
+	"github.com/rs/zerolog/log"
+)
+
+// Create rate limiter (1 request per second, burst of 5)
+limiter := http.NewRateLimiter(1.0, 5, log.Logger)
+
+// Use as middleware for a specific principal
+handler := limiter.Middleware("user1")(myHandler)
+
+// Or use middleware that extracts principal from context
+// contextHandler := limiter.MiddlewareFromContext(authContextKey)(myHandler)
+```
+
+### Rate Limiting (Dynamic)
+```go
+import (
+	"github.com/dioad/net/ratelimit"
+	"github.com/dioad/net/http"
+	"github.com/rs/zerolog/log"
+)
+
+// Implement RateLimitSource
+type mySource struct{}
+func (s *mySource) GetLimit(principal string) (float64, int, bool) {
+	if principal == "premium" {
+		return 100.0, 100, true
+	}
+	return 1.0, 5, true
+}
+
+// Create rate limiter with custom source
+limiter := http.NewRateLimiterWithSource(&mySource{}, log.Logger)
+```
+
+### Rate Limiting (Network)
+```go
+import (
+	"net"
+	"github.com/dioad/net/ratelimit"
+	"github.com/rs/zerolog/log"
+)
+
+// Create a generic rate limiter (10 connections per second, burst of 20)
+rl := ratelimit.NewRateLimiter(10.0, 20, log.Logger)
+
+// Wrap an existing listener with rate limiting (by source IP)
+ln, _ := net.Listen("tcp", ":8080")
+rlListener := ratelimit.NewListener(ln, rl, log.Logger)
+
+// Use the rate-limited listener
+// http.Serve(rlListener, myHandler)
+```
+
 ### TLS Configuration
 ```go
 import (
@@ -152,6 +210,7 @@ server := http.NewServer(config)
   - **`auth/`** - Authentication handlers (Basic, HMAC, GitHub, OIDC)
   - **`authz/`** - Authorization middleware (IP-based, JWT-based, Principal-based)
   - **`resource/`** - Resource-based request handlers
+- **`ratelimit/`** - Generic per-principal rate limiting logic
 - **`metrics/`** - Prometheus metrics collection
 - **`oidc/`** - OpenID Connect client library and validation
   - **`flyio/`** - Fly.io identity integration
