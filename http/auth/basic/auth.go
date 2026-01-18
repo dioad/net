@@ -35,13 +35,13 @@ type ClientAuth struct {
 	password string
 }
 
-func (a ClientAuth) HTTPClient() (*http.Client, error) {
+func (a ClientAuth) HTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &RoundTripper{
 			Username: a.user,
 			Password: a.password,
 		},
-	}, nil
+	}
 }
 
 func (a ClientAuth) AddAuth(req *http.Request) error {

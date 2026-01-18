@@ -43,12 +43,12 @@ func (a ClientAuth) Token() (*oauth2.Token, error) {
 	}, nil
 }
 
-func (a ClientAuth) HTTPClient() (*http.Client, error) {
+func (a ClientAuth) HTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &TokenRoundTripper{
 			Source: &a,
 		},
-	}, nil
+	}
 }
 
 type TokenRoundTripper struct {
