@@ -121,7 +121,7 @@ For complex examples requiring supporting types or context:
 2. Include an `// Output:` comment for verification
 3. Godoc will display the entire file, providing essential context
 
-Example: demonstrating an interface implementation requires the types, methods, and then the `Example*` function.
+For example, demonstrating an interface implementation requires the types, methods, and then the `Example*` function.
 
 ### Testing Examples
 
