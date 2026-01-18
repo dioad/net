@@ -37,6 +37,10 @@ func (rl *RateLimiter) Middleware(principal string) func(http.Handler) http.Hand
 			if !rl.Allow(principal) {
 				retryAfter := rl.RetryAfter(principal)
 				retryAfterSeconds := int(math.Ceil(retryAfter.Seconds()))
+				// Ensure a minimum of 1 second for Retry-After
+				if retryAfterSeconds < 1 {
+					retryAfterSeconds = 1
+				}
 				w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
 				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 				return
@@ -59,6 +63,10 @@ func (rl *RateLimiter) MiddlewareFromContext(contextKey interface{}) func(http.H
 			if !rl.Allow(principal) {
 				retryAfter := rl.RetryAfter(principal)
 				retryAfterSeconds := int(math.Ceil(retryAfter.Seconds()))
+				// Ensure a minimum of 1 second for Retry-After
+				if retryAfterSeconds < 1 {
+					retryAfterSeconds = 1
+				}
 				w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
 				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 				return
