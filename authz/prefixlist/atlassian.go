@@ -34,12 +34,12 @@ func NewAtlassianProvider(regions, products []string) *AtlassianProvider {
 	if len(regions) > 0 {
 		name += "-" + strings.Join(regions, ",")
 	}
-	
+
 	p := &AtlassianProvider{
 		regions:  regions,
 		products: products,
 	}
-	
+
 	p.HTTPJSONProvider = NewHTTPJSONProvider[atlassianIPRanges](
 		name,
 		"https://ip-ranges.atlassian.com/",
@@ -49,7 +49,7 @@ func NewAtlassianProvider(regions, products []string) *AtlassianProvider {
 		},
 		p.transformAtlassianRanges,
 	)
-	
+
 	return p
 }
 

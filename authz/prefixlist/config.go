@@ -10,10 +10,10 @@ type Config struct {
 type ProviderConfig struct {
 	// Name is the provider name (github, cloudflare, google, atlassian, gitlab, aws)
 	Name string `mapstructure:"name" yaml:"name"`
-	
+
 	// Enabled controls whether this provider is active
 	Enabled bool `mapstructure:"enabled" yaml:"enabled"`
-	
+
 	// Filter optionally filters prefixes using a map of key-value pairs
 	// Examples:
 	//   GitHub: {"service": "hooks"} or {"service": "actions"}

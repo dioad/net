@@ -38,7 +38,7 @@ func (p *HTTPJSONProvider[T]) Prefixes(ctx context.Context) ([]netip.Prefix, err
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return p.transform(data)
 }
 
@@ -83,7 +83,7 @@ func (p *HTTPTextProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return parseCIDRs(cidrs)
 }
 

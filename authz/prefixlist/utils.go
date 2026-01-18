@@ -33,25 +33,26 @@ func parseCIDRs(cidrs []string) ([]netip.Prefix, error) {
 	return result, nil
 }
 
-// FetchTextLines is a fetch function that retrieves plain text lines from an HTTP endpoint
-// Returns a slice of non-empty, non-comment lines
+// FetchTextLines is a fetch function that retrieves plain text lines from an HTTP endpoint.
+// It returns a slice of non-empty, non-comment lines. Lines starting with '#' are
+// treated as comments and ignored.
 func FetchTextLines(ctx context.Context, url string) ([]string, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
-	
+
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("http request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
-	
+
 	return parseTextLines(resp.Body)
 }
 
@@ -65,10 +66,10 @@ func parseTextLines(r io.Reader) ([]string, error) {
 			lines = append(lines, line)
 		}
 	}
-	
+
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-	
+
 	return lines, nil
 }

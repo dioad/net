@@ -17,7 +17,7 @@ func NewCloudflareProvider(ipv6 bool) *CloudflareProvider {
 		name = "cloudflare-ipv6"
 		url = "https://www.cloudflare.com/ips-v6/"
 	}
-	
+
 	return &CloudflareProvider{
 		HTTPTextProvider: NewHTTPTextProvider(
 			name,

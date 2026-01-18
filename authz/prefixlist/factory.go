@@ -55,7 +55,7 @@ func parseCommaSeparated(value string) []string {
 	if value == "" {
 		return nil
 	}
-	
+
 	parts := strings.Split(value, ",")
 	result := make([]string, 0, len(parts))
 	for _, part := range parts {
@@ -64,7 +64,7 @@ func parseCommaSeparated(value string) []string {
 			result = append(result, trimmed)
 		}
 	}
-	
+
 	if len(result) == 0 {
 		return nil
 	}

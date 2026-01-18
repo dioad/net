@@ -47,7 +47,7 @@ func TestCachingFetcher_Basic(t *testing.T) {
 	require.NoError(t, err2)
 	assert.Equal(t, CacheResultCached, result2)
 	assert.Equal(t, "hello", data2.Message)
-	assert.Equal(t, 1, data2.Count) // Same as before
+	assert.Equal(t, 1, data2.Count)             // Same as before
 	assert.Equal(t, int32(1), callCount.Load()) // No new call
 
 	// Wait for expiry
@@ -65,7 +65,7 @@ func TestCachingFetcher_Basic(t *testing.T) {
 func TestCachingFetcher_ReturnStale(t *testing.T) {
 	callCount := atomic.Int32{}
 	shouldFail := atomic.Bool{}
-	
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount.Add(1)
 		if shouldFail.Load() {
@@ -100,7 +100,7 @@ func TestCachingFetcher_ReturnStale(t *testing.T) {
 	data2, result2, err2 := fetcher.Get(ctx)
 	assert.Equal(t, CacheResultStale, result2)
 	assert.Equal(t, 1, data2.Count) // Stale data
-	assert.NoError(t, err2) // No error returned with stale data
+	assert.NoError(t, err2)         // No error returned with stale data
 
 	// Wait for background refresh to complete
 	time.Sleep(200 * time.Millisecond)
@@ -114,7 +114,7 @@ func TestCachingFetcher_ReturnStale(t *testing.T) {
 func TestCachingFetcher_NoReturnStale_BlocksOnExpiry(t *testing.T) {
 	callCount := atomic.Int32{}
 	shouldDelay := atomic.Bool{}
-	
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount.Add(1)
 		if shouldDelay.Load() {
@@ -147,7 +147,7 @@ func TestCachingFetcher_NoReturnStale_BlocksOnExpiry(t *testing.T) {
 	start := time.Now()
 	data2, result2, err2 := fetcher.Get(ctx)
 	duration := time.Since(start)
-	
+
 	require.NoError(t, err2)
 	assert.Equal(t, CacheResultFresh, result2)
 	assert.Equal(t, 2, data2.Count)
@@ -195,7 +195,7 @@ func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
 	// Launch multiple concurrent requests
 	const goroutines = 10
 	results := make(chan testData, goroutines)
-	
+
 	for i := 0; i < goroutines; i++ {
 		go func() {
 			data, _, err := fetcher.Get(ctx)
@@ -268,7 +268,7 @@ func TestCachingFetcher_GetCacheInfo(t *testing.T) {
 	assert.True(t, cachedAt.After(beforeFetch) || cachedAt.Equal(beforeFetch))
 	assert.True(t, cachedAt.Before(afterFetch) || cachedAt.Equal(afterFetch))
 	assert.True(t, expiresAt.After(cachedAt))
-	
+
 	// Expiry should be approximately StaticExpiry from now
 	expectedExpiry := time.Now().Add(expiry)
 	assert.InDelta(t, expectedExpiry.Unix(), expiresAt.Unix(), 2) // Within 2 seconds
