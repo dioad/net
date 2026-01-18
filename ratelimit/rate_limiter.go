@@ -8,10 +8,13 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// limiterEntry tracks a rate limiter and when it was last used.
+// limiterEntry tracks a rate limiter, when it was last used, and the outcome of the last allow check.
 type limiterEntry struct {
-	limiter   *rate.Limiter
-	lastUsed  time.Time
+	limiter  *rate.Limiter
+	lastUsed time.Time
+	// lastAllow records whether the most recent request for this entry was allowed.
+	// This field is intentionally retained for observability and potential future logic
+	// (e.g., metrics, debugging, or external consumers) even if not currently read here.
 	lastAllow bool
 }
 
