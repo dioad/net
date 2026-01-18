@@ -30,18 +30,23 @@ func NewRateLimiterWithSource(source ratelimit.RateLimitSource, logger zerolog.L
 	}
 }
 
+// setRetryAfterHeader calculates and sets the Retry-After header based on the rate limiter state.
+func (rl *RateLimiter) setRetryAfterHeader(w http.ResponseWriter, principal string) {
+	retryAfter := rl.RetryAfter(principal)
+	retryAfterSeconds := int(math.Ceil(retryAfter.Seconds()))
+	// Ensure a minimum of 1 second for Retry-After
+	if retryAfterSeconds < 1 {
+		retryAfterSeconds = 1
+	}
+	w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
+}
+
 // Middleware returns an HTTP middleware for rate limiting.
 func (rl *RateLimiter) Middleware(principal string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !rl.Allow(principal) {
-				retryAfter := rl.RetryAfter(principal)
-				retryAfterSeconds := int(math.Ceil(retryAfter.Seconds()))
-				// Ensure a minimum of 1 second for Retry-After
-				if retryAfterSeconds < 1 {
-					retryAfterSeconds = 1
-				}
-				w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
+				rl.setRetryAfterHeader(w, principal)
 				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 				return
 			}
@@ -61,13 +66,7 @@ func (rl *RateLimiter) MiddlewareFromContext(contextKey interface{}) func(http.H
 			}
 
 			if !rl.Allow(principal) {
-				retryAfter := rl.RetryAfter(principal)
-				retryAfterSeconds := int(math.Ceil(retryAfter.Seconds()))
-				// Ensure a minimum of 1 second for Retry-After
-				if retryAfterSeconds < 1 {
-					retryAfterSeconds = 1
-				}
-				w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
+				rl.setRetryAfterHeader(w, principal)
 				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 				return
 			}
