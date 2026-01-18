@@ -174,8 +174,8 @@ func (r *Response) NoContent() {
 }
 
 // AcceptedWithMessage sends a 202 Accepted response.
-func (r *Response) AcceptedWithMessage(s string) {
-	r.Data(http.StatusAccepted, map[string]string{"message": s})
+func (r *Response) AcceptedWithMessage(message string) {
+	r.Data(http.StatusAccepted, map[string]string{"message": message})
 }
 
 // ReadBody reads and decodes the JSON request body into the specified type.
