@@ -458,7 +458,7 @@ func TestCachingFetcher_CalculateExpiry(t *testing.T) {
 				"Expires":       []string{time.Now().Add(15 * time.Minute).Format(time.RFC1123)},
 			},
 			staticExpiry:  10 * time.Minute,
-			expectedDelta: 10 * time.Minute, // Falls back to static when Cache-Control has no max-age (Expires is ignored)
+			expectedDelta: 10 * time.Minute, // Falls back to static because Cache-Control is present without max-age; per HTTP semantics Expires is only used when Cache-Control is absent
 		},
 		{
 			name: "Invalid Expires falls back to static",
