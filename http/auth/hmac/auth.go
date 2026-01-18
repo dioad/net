@@ -64,7 +64,7 @@ func CanonicalData(r *http.Request, principal string, timestamp string, signedHe
 
 	// Signed Header values
 	for _, h := range signedHeaders {
-		val := r.Header.Get(h)
+		val := strings.TrimSpace(r.Header.Get(h))
 		b.WriteString(strings.ToLower(h))
 		b.WriteString(":")
 		b.WriteString(val)
