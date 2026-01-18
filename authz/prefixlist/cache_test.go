@@ -558,7 +558,8 @@ func TestCachingFetcher_HTTPCacheHeaders(t *testing.T) {
 		assert.Equal(t, 1, data1.Count)
 
 		// Second call should use cache
-		data2, result2, _ := fetcher.Get(ctx)
+		data2, result2, err2 := fetcher.Get(ctx)
+		require.NoError(t, err2)
 		assert.Equal(t, CacheResultCached, result2)
 		assert.Equal(t, 1, data2.Count)
 
