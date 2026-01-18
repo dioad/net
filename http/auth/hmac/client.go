@@ -29,7 +29,13 @@ func (a ClientAuth) AddAuth(req *http.Request) error {
 		}
 		// Restore the request body for subsequent use
 		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-		req.ContentLength = int64(len(bodyBytes))
+		// If GetBody is not set, configure it so that the request can be retried.
+		if req.GetBody == nil {
+			bodyCopy := append([]byte(nil), bodyBytes...)
+			req.GetBody = func() (io.ReadCloser, error) {
+				return io.NopCloser(bytes.NewReader(bodyCopy)), nil
+			}
+		}
 	}
 
 	timestampHeader := a.Config.TimestampHeader
