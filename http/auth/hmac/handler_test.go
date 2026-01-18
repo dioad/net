@@ -3,6 +3,7 @@ package hmac
 import (
 	"fmt"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -157,7 +158,7 @@ func TestTimestampValidation_FutureTimestamps(t *testing.T) {
 				if err == nil {
 					t.Error("expected request to be rejected, but it was accepted")
 				} else if tt.wantErrorContains != "" {
-					if !contains(err.Error(), tt.wantErrorContains) {
+					if !strings.Contains(err.Error(), tt.wantErrorContains) {
 						t.Errorf("expected error containing %q, got %q", tt.wantErrorContains, err.Error())
 					}
 				}
@@ -233,22 +234,7 @@ func TestTimestampValidation_PreSignedReplayAttackPrevention(t *testing.T) {
 	if err == nil {
 		t.Error("expected pre-signed request with far-future timestamp to be rejected")
 	}
-	if !contains(err.Error(), "too far in the future") {
+	if !strings.Contains(err.Error(), "too far in the future") {
 		t.Errorf("expected error about future timestamp, got: %v", err)
 	}
-}
-
-// contains is a helper function to check if a string contains a substring.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
-		(len(s) > 0 && len(substr) > 0 && stringContains(s, substr)))
-}
-
-func stringContains(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
