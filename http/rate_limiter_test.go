@@ -29,7 +29,8 @@ func TestRateLimiter_Middleware(t *testing.T) {
 	rr = httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusTooManyRequests, rr.Code)
-	assert.Equal(t, "60", rr.Header().Get("Retry-After"))
+	// For 1 request per second, retry after should be ~1 second (rounded up)
+	assert.Equal(t, "1", rr.Header().Get("Retry-After"))
 }
 
 func TestRateLimiter_MiddlewareFromContext(t *testing.T) {
@@ -77,4 +78,6 @@ func TestRateLimiter_MiddlewareFromContext(t *testing.T) {
 	rr = httptest.NewRecorder()
 	handler2.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusTooManyRequests, rr.Code)
+	// For 1 request per second, retry after should be ~1 second (rounded up)
+	assert.Equal(t, "1", rr.Header().Get("Retry-After"))
 }

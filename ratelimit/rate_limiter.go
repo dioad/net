@@ -130,6 +130,31 @@ func (rl *RateLimiter) Allow(principal string) bool {
 	return allowed
 }
 
+// RetryAfter returns the duration until the next request will be allowed for the given principal.
+// It returns 0 if the request would be allowed immediately.
+// This method uses Reserve() to peek at when the next token will be available without consuming it.
+func (rl *RateLimiter) RetryAfter(principal string) time.Duration {
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
+
+	entry, exists := rl.limiters[principal]
+	if !exists {
+		// No limiter exists yet, so request would be allowed immediately
+		return 0
+	}
+
+	// Use Reserve to peek at when the next token would be available
+	r := entry.limiter.Reserve()
+	if !r.OK() {
+		// Reservation failed, return a reasonable default (1 second)
+		return time.Second
+	}
+	delay := r.Delay()
+	r.Cancel() // Cancel the reservation since we're just peeking
+
+	return delay
+}
+
 // cleanupExpiredLimiters removes limiters that haven't been used recently.
 // This prevents unbounded memory growth from unique principals.
 func (rl *RateLimiter) cleanupExpiredLimiters() {
