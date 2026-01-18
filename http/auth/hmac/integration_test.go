@@ -109,6 +109,7 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to make request: %v", err)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -128,6 +129,7 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to make tampered request: %v", err)
 	}
+	defer resp2.Body.Close()
 	if resp2.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 for tampered header, got %d", resp2.StatusCode)
 	}
