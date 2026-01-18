@@ -139,7 +139,7 @@ Examples must pass the project's build and test requirements:
 - **Error Handling:** Include error handling where applicable to show proper API usage
 - **Comments:** Add explanatory comments for non-obvious behavior; the example itself should be mostly self-documenting
 - **Deterministic Output:** Ensure output is deterministic and doesn't depend on timing, randomness, or system state
-- **Package Imports:** Place examples in `_test.go` files that import the package being documented, using `package_test` where needed
+- **Package Imports:** Place examples in `_test.go` files that import the package being documented, using `package_test` where needed.
 
 ## GitHub Actions Guidelines
 
