@@ -297,6 +297,83 @@ func TestHMACRoundTripper(t *testing.T) {
 	}
 }
 
+func TestHeaderWhitespaceHandling(t *testing.T) {
+	const sharedKey = "secret"
+	const principalID = "user"
+	const customHeader = "X-Custom-Value"
+	const customValue = "test-value"
+
+	serverHandler := NewHandler(ServerConfig{
+		CommonConfig: CommonConfig{
+			SharedKey:     sharedKey,
+			SignedHeaders: []string{customHeader},
+		},
+	})
+
+	testServer := httptest.NewServer(
+		serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})),
+	)
+	defer testServer.Close()
+
+	clientAuth := ClientAuth{
+		Config: ClientConfig{
+			CommonConfig: CommonConfig{
+				SharedKey:     sharedKey,
+				SignedHeaders: []string{customHeader},
+			},
+			Principal: principalID,
+		},
+	}
+
+	// Test 1: Client sets header with leading/trailing whitespace
+	req1, err := http.NewRequest("GET", testServer.URL, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	// Manually set header with whitespace before calling AddAuth
+	req1.Header.Set(customHeader, "  "+customValue+"  ")
+
+	if err := clientAuth.AddAuth(req1); err != nil {
+		t.Fatalf("AddAuth failed: %v", err)
+	}
+
+	resp1, err := http.DefaultClient.Do(req1)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp1.Body.Close()
+	if resp1.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 for header with whitespace, got %d", resp1.StatusCode)
+	}
+
+	// Test 2: Verify that server normalizes whitespace for signature verification
+	// Create a request with the same header value but different whitespace
+	req2, err := http.NewRequest("GET", testServer.URL, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req2.Header.Set(customHeader, customValue) // No whitespace
+
+	if err := clientAuth.AddAuth(req2); err != nil {
+		t.Fatalf("AddAuth failed: %v", err)
+	}
+
+	// Manually add trailing whitespace to the header after signing
+	req2.Header.Set(customHeader, customValue+"   ")
+
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp2.Body.Close()
+	// This should succeed because the server trims whitespace
+	if resp2.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 for header with added whitespace, got %d", resp2.StatusCode)
+	}
+}
+
 func BenchmarkClientAddAuth(b *testing.B) {
 	clientAuth := ClientAuth{
 		Config: ClientConfig{
