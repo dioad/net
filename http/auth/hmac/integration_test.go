@@ -427,8 +427,13 @@ func TestQueryParametersInSignature(t *testing.T) {
 	}
 
 	// Verify signatures are different
-	sig1 := strings.Split(req1.Header.Get("Authorization"), ":")[1]
-	sig2 := strings.Split(req2.Header.Get("Authorization"), ":")[1]
+	authParts1 := strings.Split(req1.Header.Get("Authorization"), ":")
+	authParts2 := strings.Split(req2.Header.Get("Authorization"), ":")
+	if len(authParts1) < 2 || len(authParts2) < 2 {
+		t.Fatal("invalid Authorization header format")
+	}
+	sig1 := authParts1[1]
+	sig2 := authParts2[1]
 	if sig1 == sig2 {
 		t.Error("different query parameters should produce different signatures")
 	}
