@@ -452,13 +452,13 @@ func TestCachingFetcher_CalculateExpiry(t *testing.T) {
 			expectedDelta: 1 * time.Hour,
 		},
 		{
-			name: "Invalid Cache-Control falls back to Expires",
+			name: "Cache-Control without max-age falls back to static",
 			headers: http.Header{
 				"Cache-Control": []string{"public, must-revalidate"},
 				"Expires":       []string{time.Now().Add(15 * time.Minute).Format(time.RFC1123)},
 			},
 			staticExpiry:  10 * time.Minute,
-			expectedDelta: 10 * time.Minute, // Falls back to static when no max-age
+			expectedDelta: 10 * time.Minute, // Falls back to static when Cache-Control has no max-age (Expires is ignored)
 		},
 		{
 			name: "Invalid Expires falls back to static",
