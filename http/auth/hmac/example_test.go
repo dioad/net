@@ -45,7 +45,11 @@ func Example() {
 		},
 	}
 
-	req, _ := http.NewRequest("POST", server.URL+"/api", bytes.NewBufferString(requestBody))
+	req, err := http.NewRequest("POST", server.URL+"/api", bytes.NewBufferString(requestBody))
+	if err != nil {
+		fmt.Printf("Error creating request: %v\n", err)
+		return
+	}
 	clientAuth.AddAuth(req)
 
 	resp, err := http.DefaultClient.Do(req)
