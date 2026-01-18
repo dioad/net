@@ -139,8 +139,24 @@ func (rl *RateLimiter) RetryAfter(principal string) time.Duration {
 
 	entry, exists := rl.limiters[principal]
 	if !exists {
-		// No limiter exists yet, so request would be allowed immediately
-		return 0
+		// No limiter exists yet. Check if a request would be allowed immediately
+		// by considering the configured limits.
+		rps := rl.RequestsPerSecond
+		burst := rl.Burst
+
+		if rl.LimitSource != nil {
+			if sRps, sBurst, ok := rl.LimitSource.GetLimit(principal); ok {
+				rps = sRps
+				burst = sBurst
+			}
+		}
+
+		// If limits are configured (rps > 0 and burst > 0), the first request would be allowed
+		if rps > 0 && burst > 0 {
+			return 0
+		}
+		// Otherwise, return a default delay
+		return time.Second
 	}
 
 	// Use Reserve to peek at when the next token would be available
