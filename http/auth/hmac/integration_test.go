@@ -315,6 +315,7 @@ func TestHeaderWhitespaceHandling(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})),
 	)
+
 	defer testServer.Close()
 
 	clientAuth := ClientAuth{
@@ -371,6 +372,125 @@ func TestHeaderWhitespaceHandling(t *testing.T) {
 	// This should succeed because the server trims whitespace
 	if resp2.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for header with added whitespace, got %d", resp2.StatusCode)
+	}
+}
+
+func TestQueryParametersInSignature(t *testing.T) {
+	const sharedKey = "secret"
+	const principalID = "user"
+
+	serverHandler := NewHandler(ServerConfig{
+		CommonConfig: CommonConfig{SharedKey: sharedKey},
+	})
+
+	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})))
+
+	defer testServer.Close()
+
+	clientAuth := ClientAuth{
+		Config: ClientConfig{
+
+			CommonConfig: CommonConfig{SharedKey: sharedKey},
+			Principal:    principalID,
+		},
+	}
+
+	// Test 1: Valid request with query parameters
+	req1, err := http.NewRequest("GET", testServer.URL+"/api/users?id=123&name=alice", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	if err := clientAuth.AddAuth(req1); err != nil {
+		t.Fatalf("failed to add auth: %v", err)
+
+	}
+
+	resp1, err := http.DefaultClient.Do(req1)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp1.Body.Close()
+	if resp1.StatusCode != http.StatusOK {
+
+		t.Errorf("expected 200 for valid query params, got %d", resp1.StatusCode)
+	}
+
+	// Test 2: Different query parameters should produce different signatures
+	req2, err := http.NewRequest("GET", testServer.URL+"/api/users?id=456&name=bob", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	if err := clientAuth.AddAuth(req2); err != nil {
+		t.Fatalf("failed to add auth: %v", err)
+	}
+
+	// Verify signatures are different
+	sig1 := strings.Split(req1.Header.Get("Authorization"), ":")[1]
+	sig2 := strings.Split(req2.Header.Get("Authorization"), ":")[1]
+	if sig1 == sig2 {
+		t.Error("different query parameters should produce different signatures")
+	}
+
+	// Test 3: Tampering with query parameters should fail verification
+	req3, err := http.NewRequest("GET", testServer.URL+"/api/users?id=123&name=alice", nil)
+	if err != nil {
+		t.Fatalf("failed to create tampered request: %v", err)
+	}
+	if err := clientAuth.AddAuth(req3); err != nil {
+		t.Fatalf("failed to add auth: %v", err)
+	}
+
+	// Change query parameters after signing
+	req3.URL.RawQuery = "id=999&name=eve"
+
+	resp3, err := http.DefaultClient.Do(req3)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp3.Body.Close()
+	if resp3.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected 401 for tampered query params, got %d", resp3.StatusCode)
+	}
+}
+
+func TestNoQueryParameters(t *testing.T) {
+	const sharedKey = "secret"
+	const principalID = "user"
+
+	serverHandler := NewHandler(ServerConfig{
+		CommonConfig: CommonConfig{SharedKey: sharedKey},
+	})
+
+	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})))
+	defer testServer.Close()
+
+	clientAuth := ClientAuth{
+		Config: ClientConfig{
+			CommonConfig: CommonConfig{SharedKey: sharedKey},
+			Principal:    principalID,
+		},
+	}
+
+	// Test request without query parameters still works
+	req, err := http.NewRequest("GET", testServer.URL+"/api/users", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	if err := clientAuth.AddAuth(req); err != nil {
+		t.Fatalf("failed to add auth: %v", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 for request without query params, got %d", resp.StatusCode)
 	}
 }
 
