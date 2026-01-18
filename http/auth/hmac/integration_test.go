@@ -307,12 +307,14 @@ func BenchmarkClientAddAuth(b *testing.B) {
 			Principal: "bench-user",
 		},
 	}
-	req, _ := http.NewRequest("POST", "http://example.com/api", bytes.NewBufferString(`{"data": true}`))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Custom", "value")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		req, _ := http.NewRequest("POST", "http://example.com/api", bytes.NewBufferString(`{"data": true}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Custom", "value")
+		b.StartTimer()
 		_ = clientAuth.AddAuth(req)
 	}
 }
