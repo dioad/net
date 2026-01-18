@@ -35,7 +35,7 @@ const (
 // 3. Timestamp (decimal string)
 // 4. Principal ID
 // 5. Comma-separated list of signed header names
-// 6. Each signed header as "name:value"
+// 6. Each signed header as "name:value" (header values are trimmed of leading/trailing whitespace)
 // 7. Request body
 func CanonicalData(r *http.Request, principal string, timestamp string, signedHeaders []string, body []byte) string {
 	var b strings.Builder
@@ -64,7 +64,7 @@ func CanonicalData(r *http.Request, principal string, timestamp string, signedHe
 
 	// Signed Header values
 	for _, h := range signedHeaders {
-		val := r.Header.Get(h)
+		val := strings.TrimSpace(r.Header.Get(h))
 		b.WriteString(strings.ToLower(h))
 		b.WriteString(":")
 		b.WriteString(val)
