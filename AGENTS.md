@@ -106,7 +106,7 @@ func ExampleString_second()       // multiple examples use underscore + lowercas
    }
    ```
 
-2. **No Test Functions:** Example files must contain **only** one `Example*` function and no `Test*` or `Benchmark*` functions. Supporting code (types, helper functions) may be included.
+2. **No Test Functions:** Example files must contain **only** `Example*` functions and no `Test*` or `Benchmark*` functions. Supporting code (types, helper functions) may be included.
 
 3. **Multiple Small Examples:** Create several focused examples (`ExampleFoo`, `ExampleFoo_second`, `ExampleFoo_third`) rather than one large example. Each should demonstrate a specific behavior or use case.
 
@@ -115,7 +115,7 @@ func ExampleString_second()       // multiple examples use underscore + lowercas
 For complex examples requiring supporting types or context:
 
 1. Create a file ending in `_test.go` with:
-   - Exactly one `Example*` function
+   - One or more `Example*` functions
    - Supporting types, interfaces, or helper functions as needed
    - No other test or benchmark functions
 2. Include an `// Output:` comment for verification
