@@ -148,11 +148,6 @@ func (rl *RateLimiter) Allow(principal string) bool {
 			Msg("rate limit exceeded for principal")
 	}
 
-	// Cleanup old limiters periodically
-	if time.Since(rl.lastCleanup) > rl.CleanupInterval {
-		rl.cleanupExpiredLimiters()
-	}
-
 	return allowed
 }
 
