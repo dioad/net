@@ -1,3 +1,4 @@
+// Package oidc provides HTTP authentication using OpenID Connect.
 package oidc
 
 import (
@@ -17,6 +18,7 @@ import (
 	"github.com/dioad/net/http/auth/context"
 )
 
+// Handler implements OIDC-based authentication using the gothic library.
 type Handler struct {
 	CookieStore             sessions.Store
 	LoginPath               string
@@ -25,6 +27,7 @@ type Handler struct {
 	HomePath                string
 }
 
+// SessionData represents the data stored in the session cookie.
 type SessionData struct {
 	ID        uuid.UUID
 	Principal string
@@ -38,6 +41,7 @@ func init() {
 	gob.Register(goth.User{})
 }
 
+// AuthRequest authenticates an HTTP request by checking for a valid OIDC session cookie.
 func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	session, err := h.CookieStore.Get(r, SessionCookieName)
 	if err != nil {
@@ -73,10 +77,13 @@ func (h *Handler) handleAuth(w http.ResponseWriter, req *http.Request) (*Session
 	return &data, nil
 }
 
+// Middleware returns an HTTP middleware for OIDC authentication.
 func (h *Handler) Middleware(next http.Handler) http.Handler {
 	return h.AuthWrapper(next.ServeHTTP)
 }
 
+// AuthWrapper wraps an HTTP handler function with OIDC authentication.
+// If the user is not authenticated, they are redirected to the login path.
 func (h *Handler) AuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		sessionData, err := h.handleAuth(w, req)
@@ -99,6 +106,7 @@ func (h *Handler) AuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// AuthStart returns an HTTP handler function that starts the OIDC authentication flow.
 func (h *Handler) AuthStart() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		gothic.BeginAuthHandler(w, req)
