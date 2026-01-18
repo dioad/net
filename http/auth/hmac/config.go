@@ -9,7 +9,9 @@ type CommonConfig struct {
 	SharedKey string `mapstructure:"shared-key"`
 	// Path to read shared key from
 	SharedKeyPath string `mapstructure:"shared-key-path"`
-	Data          string `mapstructure:"data"`
+	// Deprecated: Data is unused in the current HMAC implementation and is
+	// retained only for backward compatibility with older configurations.
+	Data string `mapstructure:"data"`
 	// HTTP Headers to include in the HMAC calculation.
 	SignedHeaders []string `mapstructure:"signed-headers"`
 	// HTTP Header to use for the timestamp (default: X-Timestamp)
