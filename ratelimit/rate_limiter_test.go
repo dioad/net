@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -152,4 +153,42 @@ func TestStaticRateLimitSource(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, 10.0, rps)
 	assert.Equal(t, 20, burst)
+}
+
+func BenchmarkRateLimiter_Allow_Sequential(b *testing.B) {
+	logger := zerolog.Nop()
+	rl := NewRateLimiter(1000000, 1000000, logger) // High limits to focus on lock contention
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		rl.Allow("user1")
+	}
+}
+
+func BenchmarkRateLimiter_Allow_Parallel(b *testing.B) {
+	logger := zerolog.Nop()
+	rl := NewRateLimiter(1000000, 1000000, logger) // High limits to focus on lock contention
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			rl.Allow("user1")
+		}
+	})
+}
+
+func BenchmarkRateLimiter_Allow_ParallelMultiPrincipal(b *testing.B) {
+	logger := zerolog.Nop()
+	rl := NewRateLimiter(1000000, 1000000, logger) // High limits to focus on lock contention
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		i := 0
+		for pb.Next() {
+			// Simulate multiple principals to test map access patterns
+			principal := "user" + strconv.Itoa(i%10)
+			rl.Allow(principal)
+			i++
+		}
+	})
 }

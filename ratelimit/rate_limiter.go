@@ -83,9 +83,7 @@ func NewRateLimiterWithSource(source RateLimitSource, logger zerolog.Logger) *Ra
 
 // Allow checks if a request from the given principal is allowed.
 func (rl *RateLimiter) Allow(principal string) bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
+	// Get rate limits (potentially from external source) before acquiring any locks
 	rps := rl.RequestsPerSecond
 	burst := rl.Burst
 
@@ -96,27 +94,52 @@ func (rl *RateLimiter) Allow(principal string) bool {
 		}
 	}
 
+	// Try to get existing entry with read lock first
+	rl.mu.RLock()
 	entry, exists := rl.limiters[principal]
+	rl.mu.RUnlock()
+
+	// If entry doesn't exist, acquire write lock to create it
 	if !exists {
-		entry = &limiterEntry{
-			limiter:  rate.NewLimiter(rate.Limit(rps), burst),
-			lastUsed: time.Now(),
+		rl.mu.Lock()
+		// Double-check that another goroutine didn't create it while we were waiting
+		entry, exists = rl.limiters[principal]
+		if !exists {
+			entry = &limiterEntry{
+				limiter:  rate.NewLimiter(rate.Limit(rps), burst),
+				lastUsed: time.Now(),
+			}
+			rl.limiters[principal] = entry
 		}
-		rl.limiters[principal] = entry
-	} else {
-		// Update limits if they have changed
-		if entry.limiter.Limit() != rate.Limit(rps) {
-			entry.limiter.SetLimit(rate.Limit(rps))
-		}
-		if entry.limiter.Burst() != burst {
-			entry.limiter.SetBurst(burst)
-		}
+		rl.mu.Unlock()
 	}
 
-	entry.lastUsed = time.Now()
-	allowed := entry.limiter.Allow()
-	entry.lastAllow = allowed
+	// Update limits if they have changed (rate.Limiter methods are thread-safe)
+	if entry.limiter.Limit() != rate.Limit(rps) {
+		entry.limiter.SetLimit(rate.Limit(rps))
+	}
+	if entry.limiter.Burst() != burst {
+		entry.limiter.SetBurst(burst)
+	}
 
+	// Check if allowed (rate.Limiter.Allow is thread-safe)
+	allowed := entry.limiter.Allow()
+
+	// Update entry metadata with a brief write lock
+	// Re-verify the entry still exists and is the same entry
+	rl.mu.Lock()
+	if currentEntry, stillExists := rl.limiters[principal]; stillExists && currentEntry == entry {
+		entry.lastUsed = time.Now()
+		entry.lastAllow = allowed
+	}
+	// Also check if cleanup is needed while we have the lock
+	needsCleanup := time.Since(rl.LastCleanup) > rl.CleanupInterval
+	if needsCleanup {
+		rl.cleanupExpiredLimiters()
+	}
+	rl.mu.Unlock()
+
+	// Log rate limit exceeded outside of any locks
 	if !allowed {
 		rl.logger.Warn().
 			Str("principal", principal).
