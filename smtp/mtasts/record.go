@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// Record represents an MTA-STS DNS TXT record.
 type Record struct {
 	Version string `mapstructure:"version"`
 	ID      string `mapstructure:"id"`

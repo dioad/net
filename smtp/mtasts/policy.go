@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// Mode represents an MTA-STS mode (none, testing, enforce).
 type Mode string
 
 const (
@@ -13,6 +14,7 @@ const (
 	ModeEnforce Mode = "enforce"
 )
 
+// Policy represents an MTA-STS policy.
 type Policy struct {
 	Version string
 	Mode    Mode

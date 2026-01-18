@@ -9,11 +9,13 @@ import (
 	"github.com/miekg/dns"
 )
 
+// DOHClient describes a DNS over HTTPS client.
 type DOHClient struct {
 	Client *http.Client
 	URL    *url.URL
 }
 
+// Exchange performs a DNS query using DNS over HTTPS.
 func (c *DOHClient) Exchange(msg *dns.Msg) (*dns.Msg, error) {
 	// pass Hostname() rather than String() to NewRequest as
 	// there's something in there that is acting weird.
@@ -41,6 +43,7 @@ func (c *DOHClient) Exchange(msg *dns.Msg) (*dns.Msg, error) {
 	return msgAnswer, resp.Body.Close()
 }
 
+// NewDOHClient creates a new DNS over HTTPS client with the provided URL.
 func NewDOHClient(url *url.URL) *DOHClient {
 	return &DOHClient{
 		Client: &http.Client{

@@ -12,8 +12,7 @@ import (
 	net2 "github.com/dioad/net"
 )
 
-// ReadWriteCounter is an interface that exposes the number of bytes read and
-// written.
+// ReadWriteCounter is an interface that exposes the number of bytes read and written.
 type ReadWriteCounter interface {
 	BytesRead()
 	BytesWritten()
@@ -39,8 +38,6 @@ type ConnMetrics interface {
 	EndTime() time.Time
 }
 
-// NewConnWithLogger returns a new net.Conn that wraps the given net.Conn and
-// logs connection stats when the connection is closed.
 type connMetrics struct {
 	bytesRead    uint64
 	bytesWritten uint64
@@ -72,7 +69,6 @@ func (m *connMetrics) updateTime() {
 	m.timeMutex.Lock()
 	defer m.timeMutex.Unlock()
 	now := time.Now()
-	// TODO: replace this with a sync.Once
 	if m.startTime.IsZero() {
 		m.startTime = now
 	}

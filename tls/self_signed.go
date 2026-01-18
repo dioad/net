@@ -16,6 +16,7 @@ import (
 	"github.com/dioad/generics"
 )
 
+// CreateAndSaveSelfSignedKeyPair creates and saves a self-signed key pair to files.
 func CreateAndSaveSelfSignedKeyPair(config SelfSignedConfig, certPath, keyPath string) (*tls.Certificate, *x509.CertPool, error) {
 	cert, certPool, err := CreateSelfSignedKeyPair(config)
 	if err != nil {
@@ -76,6 +77,7 @@ func convertConfigToX509CertificateTemplate(config SelfSignedConfig) (*x509.Cert
 	}, nil
 }
 
+// CreateSelfSignedKeyPair creates a self-signed key pair in memory.
 // pulled from inet.af/tcpproxy
 func CreateSelfSignedKeyPair(config SelfSignedConfig) (*tls.Certificate, *x509.CertPool, error) {
 	pkey, err := rsa.GenerateKey(rand.Reader, config.Bits)

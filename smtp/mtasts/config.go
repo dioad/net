@@ -1,5 +1,6 @@
 package mtasts
 
+// Config represents MTA-STS configuration used to create a policy.
 type Config struct {
 	Mode   Mode     `mapstructure:"mode"`
 	MX     []string `mapstructure:"mx"`

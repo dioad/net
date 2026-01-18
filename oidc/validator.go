@@ -13,16 +13,19 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// ValidatorDebugger wraps a TokenValidator with debug logging capabilities.
 type ValidatorDebugger struct {
 	logger          zerolog.Logger
 	parentValidator TokenValidator
 }
 
+// PredicateValidator wraps a TokenValidator and applies additional claim predicate validation.
 type PredicateValidator struct {
 	parentValidator TokenValidator
 	predicate       ClaimPredicate
 }
 
+// TokenValidator defines the interface for validating tokens.
 type TokenValidator interface {
 	ValidateToken(ctx context.Context, tokenString string) (interface{}, error)
 	String() string
@@ -40,6 +43,7 @@ func WithLabel(key, value string) func(*ValidatorDebugger) {
 	}
 }
 
+// ValidatorDebugOpts is a functional option for configuring a ValidatorDebugger.
 type ValidatorDebugOpts func(*ValidatorDebugger)
 
 func NewPredicateValidator(validator TokenValidator, predicate ClaimPredicate) *PredicateValidator {
@@ -136,6 +140,7 @@ func (v *ValidatorDebugger) String() string {
 	return fmt.Sprintf("ValidatorDebugger(%v)", v.parentValidator)
 }
 
+// MultiValidator attempts to validate tokens using multiple validators in sequence.
 type MultiValidator struct {
 	validators []TokenValidator
 }

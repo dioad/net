@@ -1,3 +1,4 @@
+// Package http provides an HTTP server and client with built-in support for metrics, authentication, and structured logging.
 package http
 
 import (
@@ -111,6 +112,7 @@ func WithLogger(l zerolog.Logger) ServerOption {
 	}
 }
 
+// OAuth2ValidatorHandler returns a middleware that validates OAuth2 tokens using the provided configurations.
 func OAuth2ValidatorHandler(v []oidc.ValidatorConfig) (mux.MiddlewareFunc, error) {
 	validator, err := oidc.NewMultiValidatorFromConfig(v)
 	if err != nil {
@@ -121,6 +123,7 @@ func OAuth2ValidatorHandler(v []oidc.ValidatorConfig) (mux.MiddlewareFunc, error
 	return authHandler.Wrap, nil
 }
 
+// CORSHandler returns a middleware that handles Cross-Origin Resource Sharing (CORS).
 func CORSHandler(options cors.Options) (mux.MiddlewareFunc, error) {
 	corsMiddleware := cors.New(options)
 	return corsMiddleware.Handler, nil
@@ -156,6 +159,7 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 // 	}
 // }
 
+// CORSAllowLocalhostOrigin returns true if the given origin is a localhost origin.
 func CORSAllowLocalhostOrigin(origin string) bool {
 	u, err := url.Parse(origin)
 	if err != nil {
@@ -166,6 +170,7 @@ func CORSAllowLocalhostOrigin(origin string) bool {
 	return host == "localhost"
 }
 
+// WithCORS returns a ServerOption that configures the server with the given CORS options.
 func WithCORS(options cors.Options) ServerOption {
 	return func(s *Server) {
 		if options.Logger == nil {

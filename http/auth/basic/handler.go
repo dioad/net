@@ -1,3 +1,4 @@
+// Package basic provides HTTP Basic authentication middleware and utilities.
 package basic
 
 import (
@@ -8,11 +9,13 @@ import (
 	"github.com/dioad/net/http/auth/context"
 )
 
+// Handler implements basic authentication for HTTP servers.
 type Handler struct {
 	authMap AuthMap
 	config  ServerConfig
 }
 
+// AuthRequest authenticates an HTTP request using Basic authentication.
 func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	reqUser, reqPass, _ := r.BasicAuth()
 
@@ -33,6 +36,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	return r.Context(), fmt.Errorf("authentication failed")
 }
 
+// Wrap wraps an HTTP handler with Basic authentication middleware.
 func (h *Handler) Wrap(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx, err := h.AuthRequest(r)
@@ -52,6 +56,7 @@ func (h *Handler) Wrap(handler http.Handler) http.Handler {
 	})
 }
 
+// NewHandler creates a new Basic authentication handler from the provided configuration.
 func NewHandler(cfg ServerConfig) (*Handler, error) {
 	// TODO: reload from file every x seconds
 	// and figure out a way to handle the err
@@ -65,6 +70,7 @@ func NewHandler(cfg ServerConfig) (*Handler, error) {
 	return h, err
 }
 
+// NewHandlerWithMap creates a new Basic authentication handler using the provided AuthMap.
 func NewHandlerWithMap(authMap AuthMap) (*Handler, error) {
 	h := &Handler{
 		authMap: authMap,

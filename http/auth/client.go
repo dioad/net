@@ -8,8 +8,8 @@ import (
 	"github.com/dioad/net/http/auth/hmac"
 )
 
-// TODO: Choose a better name
-func AuthClient(authConfig ClientConfig) ClientAuth {
+// NewClientAuth returns a ClientAuth implementation based on the provided configuration.
+func NewClientAuth(authConfig ClientConfig) ClientAuth {
 	if !generics.IsZeroValue(authConfig.GitHubAuthConfig) {
 		return github.ClientAuth{Config: authConfig.GitHubAuthConfig}
 	}

@@ -99,6 +99,7 @@ type OpenIDConfiguration struct {
 	AuthorizationResponseIssParameterSupported bool `json:"authorization_response_iss_parameter_supported"`
 }
 
+// Endpoint defines the interface for an OpenID Connect provider endpoint.
 type Endpoint interface {
 	URL() *url.URL
 	DiscoveryEndpoint() (*url.URL, error)
@@ -106,6 +107,7 @@ type Endpoint interface {
 	OAuth2Endpoint() (oauth2.Endpoint, error)
 }
 
+// GothEndpoint defines the interface for endpoints that support Goth provider creation.
 type GothEndpoint interface {
 	GothProvider(clientID, clientSecret string, callbackURL *url.URL, scopes ...string) (goth.Provider, error)
 }
@@ -181,6 +183,7 @@ func NewEndpoint(baseURL string, opts ...EndpointOption) (Endpoint, error) {
 	return e, nil
 }
 
+// EndpointOption is a functional option for configuring an Endpoint.
 type EndpointOption func(e Endpoint)
 
 func WithCustomClaims[T jwtvalidator.CustomClaims](t T) func(e Endpoint) {
@@ -213,6 +216,7 @@ func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
 	}
 }
 
+// KeycloakEndpoint represents a Keycloak OpenID Connect server endpoint.
 type KeycloakEndpoint struct {
 	url *url.URL
 }
@@ -238,6 +242,7 @@ func NewKeycloakRealmEndpoint(baseURLStr, realm string, opts ...EndpointOption) 
 	return keycloakEndpoint.RealmEndpoint(realm, opts...)
 }
 
+// GitHubEndpoint represents the GitHub OAuth endpoint.
 type GitHubEndpoint struct {
 	url *url.URL
 }

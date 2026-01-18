@@ -9,6 +9,7 @@ import (
 	"github.com/dioad/generics"
 )
 
+// AutoCertConfig specifies automatic certificate configuration using ACME.
 type AutoCertConfig struct {
 	CacheDirectory string   `mapstructure:"cache-directory" json:",omitempty"`
 	Email          string   `mapstructure:"email" json:",omitempty"`
@@ -16,10 +17,12 @@ type AutoCertConfig struct {
 	DirectoryURL   string   `mapstructure:"directory-url" json:",omitempty"`
 }
 
+// NewAutocertTLSConfigFunc creates a ConfigFunc for automatic certificate configuration.
 func NewAutocertTLSConfigFunc(c AutoCertConfig) ConfigFunc {
 	return func() (*tls.Config, error) { return NewAutocertTLSConfig(c) }
 }
 
+// NewAutocertTLSConfig creates a TLS configuration with automatic certificate management.
 func NewAutocertTLSConfig(c AutoCertConfig) (*tls.Config, error) {
 	autoCertManager := NewAutocertManagerFromConfig(c)
 	if autoCertManager == nil {
@@ -28,6 +31,7 @@ func NewAutocertTLSConfig(c AutoCertConfig) (*tls.Config, error) {
 	return autoCertManager.TLSConfig(), nil
 }
 
+// NewAutocertManagerFromConfig creates an ACME autocert manager from the given config.
 func NewAutocertManagerFromConfig(c AutoCertConfig) *autocert.Manager {
 	if generics.IsZeroValue(c) {
 		return nil

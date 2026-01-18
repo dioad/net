@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// CookieConfig describes the configuration for HTTP cookies.
 type CookieConfig struct {
 	Base64AuthenticationKey string `mapstructure:"base64-authentication-key"`
 	Base64EncryptionKey     string `mapstructure:"base64-encryption-key"`
@@ -16,6 +17,7 @@ type CookieConfig struct {
 	Domain                  string `mapstructure:"domain"`
 }
 
+// NewPersistentCookieStore creates a persistent cookie store from the provided configuration.
 func NewPersistentCookieStore(config CookieConfig) (*sessions.CookieStore, error) {
 	store, err := NewSessionCookieStore(config)
 	if err != nil {
@@ -26,6 +28,7 @@ func NewPersistentCookieStore(config CookieConfig) (*sessions.CookieStore, error
 	return store, nil
 }
 
+// NewSessionCookieStore creates a session cookie store from the provided configuration.
 func NewSessionCookieStore(config CookieConfig) (*sessions.CookieStore, error) {
 	authKey, err := base64.StdEncoding.DecodeString(config.Base64AuthenticationKey)
 	if err != nil {

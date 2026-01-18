@@ -1,5 +1,6 @@
 package authz
 
+// IsPrincipalAuthorised checks if a user is authorised based on allow and deny lists.
 func IsPrincipalAuthorised(user string, allowList []string, denyList []string) bool {
 	principalAuthorised := true
 	if len(allowList) > 0 {

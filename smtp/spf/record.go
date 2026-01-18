@@ -18,8 +18,10 @@ const (
 	QualifierNeutral  Qualifier = "?"
 )
 
+// Qualifier represents an SPF mechanism qualifier (e.g., "+", "-", "~", "?").
 type Qualifier string
 
+// Mechanism represents an SPF mechanism in a DNS record.
 type Mechanism struct {
 	Qualifier  Qualifier           `mapstructure:"qualifier"`
 	Name       string              `mapstructure:"name"`
@@ -70,8 +72,10 @@ func IncludeMechanism(values ...string) Mechanism {
 	return Mechanism{Name: "include", Values: values}
 }
 
+// MechanismValuesFunc is a function type that returns mechanism values.
 type MechanismValuesFunc func() []string
 
+// Record represents an SPF DNS record.
 type Record struct {
 	Version    string      `mapstructure:"version"`
 	Mechanisms []Mechanism `mapstructure:"mechanisms"`

@@ -35,26 +35,31 @@ import (
 // 	return nil
 // }
 
+// LogLevelResource is an HTTP resource that allows getting and setting the global log level.
 type LogLevelResource struct {
 	LogSetter dnh.LogLevelSetter
 	Logger    zerolog.Logger
 }
 
+// LogLevelPost represents the request body for setting a new log level.
 type LogLevelPost struct {
 	Level    string `json:"level"`
 	Duration string `json:"duration"`
 }
 
+// LogLevelGet represents the response body for getting the current log level.
 type LogLevelGet struct {
 	DefaultLevel string `json:"default_level,omitempty"`
 	Level        string `json:"level"`
 	ExpiresAt    string `json:"expires_at,omitempty"` // Optional field, can be omitted
 }
 
+// LogLevelResourceStatus represents the status of the log level resource.
 type LogLevelResourceStatus struct {
 	Status string
 }
 
+// PostIndex returns an HTTP handler for setting the log level.
 func (dr *LogLevelResource) PostIndex() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req LogLevelPost
@@ -91,6 +96,7 @@ func (dr *LogLevelResource) PostIndex() http.HandlerFunc {
 	}
 }
 
+// GetIndex returns an HTTP handler for getting the current log level.
 func (dr *LogLevelResource) GetIndex() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp := LogLevelGet{
@@ -118,7 +124,7 @@ func (dr *LogLevelResource) GetIndex() http.HandlerFunc {
 // 	return m
 // }
 
-// RegisterRoutes ...
+// RegisterRoutes registers the log level resource routes on the provided router.
 func (dr *LogLevelResource) RegisterRoutes(parentRouter *mux.Router) {
 	parentRouter.HandleFunc("", dr.GetIndex()).Methods("GET")
 	parentRouter.HandleFunc("/", dr.GetIndex()).Methods("GET")
@@ -126,12 +132,14 @@ func (dr *LogLevelResource) RegisterRoutes(parentRouter *mux.Router) {
 	parentRouter.HandleFunc("/", dr.PostIndex()).Methods("POST")
 }
 
+// Status returns the status of the log level resource.
 func (dr *LogLevelResource) Status() (interface{}, error) {
 	return LogLevelResourceStatus{
 		Status: "OK",
 	}, nil
 }
 
+// NewLogLevelResource creates a new log level resource.
 func NewLogLevelResource(logger zerolog.Logger) *LogLevelResource {
 	return &LogLevelResource{
 		LogSetter: dnh.NewZeroLogLevelSetter(),

@@ -8,6 +8,7 @@ import (
 	"github.com/dioad/net/smtp/tlsrpt"
 )
 
+// DomainRecords holds all the DNS records required for domain authentication.
 type DomainRecords struct {
 	TLSRPT tlsrpt.Record `mapstructure:"tls-rpt"`
 	DKIM   dkim.Record   `mapstructure:"dkim"`
@@ -28,6 +29,7 @@ func (r *DomainRecords) Render(data interface{}) error {
 	return nil
 }
 
+// TemplatedRecord defines an interface for domain records that support templating.
 type TemplatedRecord interface {
 	Render(data interface{}) error
 	Empty() bool

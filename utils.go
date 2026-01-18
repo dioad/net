@@ -24,7 +24,7 @@ func TCPAddrFromURL(url *url.URL) (string, error) {
 }
 
 // TCPPortFromURL returns the TCP port from a given URL.
-// returns string because that's what url.URL.Port() does
+// It returns a string because that's what url.URL.Port() does.
 func TCPPortFromURL(url *url.URL) (string, error) {
 	defaultPort := url.Port()
 	if defaultPort == "" {
@@ -40,16 +40,19 @@ func TCPPortFromURL(url *url.URL) (string, error) {
 	return defaultPort, nil
 }
 
+// ConvertAddrToIP converts a netip.Addr to a net.IP.
 func ConvertAddrToIP(addr netip.Addr) net.IP {
 	return addr.AsSlice()
 }
 
+// FindInterfaceForAddr returns the network interface name that contains the given address.
 func FindInterfaceForAddr(a netip.Addr) (string, error) {
 	ip := ConvertAddrToIP(a)
 
 	return FindInterfaceForIP(ip)
 }
 
+// FindInterfaceForIP returns the network interface name that contains the given IP address.
 func FindInterfaceForIP(ip net.IP) (string, error) {
 	interfaces, err := net.Interfaces()
 
@@ -98,6 +101,7 @@ func AddrPortDetailsFromString(addrPort string) (netip.AddrPort, string, error) 
 	return listenAddr, listenInterface, nil
 }
 
+// ExpandStringTemplate expands a template string with the provided data.
 func ExpandStringTemplate(templateString string, data any) (string, error) {
 	tmpl, err := template.New("tmpl").Parse(templateString)
 	if err != nil {

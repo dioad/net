@@ -22,16 +22,19 @@ import (
 //  - claim_key_b: "blah"
 // ```
 
+// ClaimPredicate defines an interface for validating JWT claims.
 type ClaimPredicate interface {
 	Validate(input jwt.MapClaims) bool
 	String() string
 }
 
+// PredicateComposer defines an interface for composing claim predicates.
 type PredicateComposer interface {
 	And(predicates ...ClaimPredicate) ClaimPredicate
 	Or(predicates ...ClaimPredicate) ClaimPredicate
 }
 
+// Combinator is a function type for combining claim predicates.
 type Combinator func(...ClaimPredicate) ClaimPredicate
 
 // And combines the children with an AND

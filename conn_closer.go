@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// RawConn is an interface for getting the underlying net.Conn from a wrapped connection.
 type RawConn interface {
 	NetConn() net.Conn
 }
@@ -64,6 +65,7 @@ func (s *connWithCloser) SetWriteDeadline(t time.Time) error {
 	return s.conn.SetWriteDeadline(t)
 }
 
+// NewConnWithCloser wraps a net.Conn with a function that is called when the connection is closed.
 func NewConnWithCloser(c net.Conn, closer func(net.Conn)) DoneConn {
 	return &connWithCloser{
 		conn:    NewDoneConn(c),

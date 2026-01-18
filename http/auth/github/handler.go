@@ -1,3 +1,4 @@
+// Package github provides GitHub-based authentication middleware.
 package github
 
 import (
@@ -13,16 +14,20 @@ import (
 	"github.com/dioad/net/http/auth/context"
 )
 
+// NewHandler creates a new GitHub authentication handler with the provided configuration.
 func NewHandler(cfg ServerConfig) *Handler {
 	return &Handler{
 		Authenticator: NewGitHubAuthenticator(cfg),
 	}
 }
 
+// Handler implements GitHub token authentication.
 type Handler struct {
 	Authenticator *Authenticator
 }
 
+// AuthRequest authenticates an HTTP request using a GitHub token.
+// It expects a "Bearer" or "Token" Authorization header.
 func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	authHeader := r.Header.Get("Authorization")
 

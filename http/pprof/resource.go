@@ -1,3 +1,4 @@
+// Package pprof provides an HTTP resource for exposing pprof debugging endpoints.
 package pprof
 
 import (
@@ -7,15 +8,17 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// Resource implements the Resource interface for pprof endpoints.
 type Resource struct {
 	Logger zerolog.Logger
 }
 
+// Status represents the status of the pprof resource.
 type Status struct {
 	Status string
 }
 
-// RegisterRoutes ...
+// RegisterRoutes registers the pprof endpoints on the provided router.
 func (dr *Resource) RegisterRoutes(parentRouter *mux.Router) {
 	parentRouter.HandleFunc("/", pprof.Index)
 	parentRouter.HandleFunc("/cmdline", pprof.Cmdline)
@@ -31,10 +34,12 @@ func (dr *Resource) RegisterRoutes(parentRouter *mux.Router) {
 	parentRouter.Handle("/mutex", pprof.Handler("mutex"))
 }
 
+// Status returns the status of the pprof resource.
 func (dr *Resource) Status() (interface{}, error) {
 	return Status{Status: "OK"}, nil
 }
 
+// NewResource creates a new pprof resource.
 func NewResource(logger zerolog.Logger) *Resource {
 	return &Resource{
 		Logger: logger,
