@@ -21,6 +21,9 @@ func NewHandler(cfg ServerConfig) *Handler {
 	if cfg.MaxTimestampDiff == 0 {
 		cfg.MaxTimestampDiff = 5 * time.Minute
 	}
+	if len(cfg.SharedKey) == 0 {
+		panic("hmac: shared key must not be empty")
+	}
 	return &Handler{cfg: cfg}
 }
 
