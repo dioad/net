@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -69,7 +68,11 @@ func (a *Handler) AuthRequest(r *http.Request) (stdcontext.Context, error) {
 	}
 
 	now := time.Now().Unix()
-	if math.Abs(float64(now-timestamp)) > a.cfg.MaxTimestampDiff.Seconds() {
+	diff := now - timestamp
+	if diff < 0 {
+		diff = -diff
+	}
+	if diff > int64(a.cfg.MaxTimestampDiff.Seconds()) {
 		return r.Context(), errors.New("request timestamp expired or too far in the future")
 	}
 
