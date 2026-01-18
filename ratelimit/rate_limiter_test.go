@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -185,7 +186,7 @@ func BenchmarkRateLimiter_Allow_ParallelMultiPrincipal(b *testing.B) {
 		i := 0
 		for pb.Next() {
 			// Simulate multiple principals to test map access patterns
-			principal := "user" + string(rune('0'+i%10))
+			principal := "user" + strconv.Itoa(i%10)
 			rl.Allow(principal)
 			i++
 		}

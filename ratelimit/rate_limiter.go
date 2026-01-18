@@ -126,10 +126,13 @@ func (rl *RateLimiter) Allow(principal string) bool {
 	// Check if allowed (rate.Limiter.Allow is thread-safe)
 	allowed := entry.limiter.Allow()
 
-	// Update entry metadata with a single brief write lock
+	// Update entry metadata with a brief write lock
+	// Re-verify the entry still exists in case cleanup ran
 	rl.mu.Lock()
-	entry.lastUsed = time.Now()
-	entry.lastAllow = allowed
+	if currentEntry, stillExists := rl.limiters[principal]; stillExists && currentEntry == entry {
+		entry.lastUsed = time.Now()
+		entry.lastAllow = allowed
+	}
 	rl.mu.Unlock()
 
 	// Log rate limit exceeded outside of any locks
