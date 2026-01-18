@@ -273,3 +273,183 @@ func TestCachingFetcher_GetCacheInfo(t *testing.T) {
 	expectedExpiry := time.Now().Add(expiry)
 	assert.InDelta(t, expectedExpiry.Unix(), expiresAt.Unix(), 2) // Within 2 seconds
 }
+
+func TestCachingFetcher_CacheControl_NoStore(t *testing.T) {
+	callCount := atomic.Int32{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		w.Header().Set("Cache-Control", "no-store")
+		data := testData{Message: "hello", Count: int(callCount.Load())}
+		json.NewEncoder(w).Encode(data)
+	}))
+	defer server.Close()
+
+	fetcher := NewCachingFetcher[testData](server.URL, CacheConfig{
+		StaticExpiry: 1 * time.Hour,
+		ReturnStale:  false,
+	})
+
+	ctx := context.Background()
+
+	// First call should fetch
+	data1, result1, err1 := fetcher.Get(ctx)
+	require.NoError(t, err1)
+	assert.Equal(t, CacheResultFresh, result1)
+	assert.Equal(t, 1, data1.Count)
+	assert.Equal(t, int32(1), callCount.Load())
+
+	// Second call should fetch again (no-store means don't cache)
+	data2, result2, err2 := fetcher.Get(ctx)
+	require.NoError(t, err2)
+	assert.Equal(t, CacheResultFresh, result2)
+	assert.Equal(t, 2, data2.Count)
+	assert.Equal(t, int32(2), callCount.Load())
+}
+
+func TestCachingFetcher_CacheControl_NoCache(t *testing.T) {
+	callCount := atomic.Int32{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		w.Header().Set("Cache-Control", "no-cache")
+		data := testData{Message: "hello", Count: int(callCount.Load())}
+		json.NewEncoder(w).Encode(data)
+	}))
+	defer server.Close()
+
+	fetcher := NewCachingFetcher[testData](server.URL, CacheConfig{
+		StaticExpiry: 1 * time.Hour,
+		ReturnStale:  false,
+	})
+
+	ctx := context.Background()
+
+	// First call should fetch
+	data1, result1, err1 := fetcher.Get(ctx)
+	require.NoError(t, err1)
+	assert.Equal(t, CacheResultFresh, result1)
+	assert.Equal(t, 1, data1.Count)
+	assert.Equal(t, int32(1), callCount.Load())
+
+	// Second call immediately should use cache (no-cache allows brief caching)
+	data2, result2, err2 := fetcher.Get(ctx)
+	require.NoError(t, err2)
+	assert.Equal(t, CacheResultCached, result2)
+	assert.Equal(t, 1, data2.Count)
+	assert.Equal(t, int32(1), callCount.Load())
+
+	// Wait for the short expiry (1 second + buffer)
+	time.Sleep(1100 * time.Millisecond)
+
+	// Third call should fetch again (short expiry expired)
+	data3, result3, err3 := fetcher.Get(ctx)
+	require.NoError(t, err3)
+	assert.Equal(t, CacheResultFresh, result3)
+	assert.Equal(t, 2, data3.Count)
+	assert.Equal(t, int32(2), callCount.Load())
+}
+
+func TestCachingFetcher_CacheControl_MustRevalidate(t *testing.T) {
+	callCount := atomic.Int32{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		w.Header().Set("Cache-Control", "max-age=1, must-revalidate")
+		data := testData{Message: "hello", Count: int(callCount.Load())}
+		json.NewEncoder(w).Encode(data)
+	}))
+	defer server.Close()
+
+	fetcher := NewCachingFetcher[testData](server.URL, CacheConfig{
+		ReturnStale: false,
+	})
+
+	ctx := context.Background()
+
+	// First call should fetch
+	data1, result1, err1 := fetcher.Get(ctx)
+	require.NoError(t, err1)
+	assert.Equal(t, CacheResultFresh, result1)
+	assert.Equal(t, 1, data1.Count)
+
+	// Second call immediately should use cache
+	data2, result2, err2 := fetcher.Get(ctx)
+	require.NoError(t, err2)
+	assert.Equal(t, CacheResultCached, result2)
+	assert.Equal(t, 1, data2.Count)
+
+	// Wait for expiry
+	time.Sleep(1100 * time.Millisecond)
+
+	// Third call should fetch again (must-revalidate means don't use stale)
+	data3, result3, err3 := fetcher.Get(ctx)
+	require.NoError(t, err3)
+	assert.Equal(t, CacheResultFresh, result3)
+	assert.Equal(t, 2, data3.Count)
+	assert.Equal(t, int32(2), callCount.Load())
+}
+
+func TestCachingFetcher_CacheControl_MaxAgeWithNoCache(t *testing.T) {
+	callCount := atomic.Int32{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		// no-cache should take precedence over max-age
+		w.Header().Set("Cache-Control", "max-age=3600, no-cache")
+		data := testData{Message: "hello", Count: int(callCount.Load())}
+		json.NewEncoder(w).Encode(data)
+	}))
+	defer server.Close()
+
+	fetcher := NewCachingFetcher[testData](server.URL, CacheConfig{
+		StaticExpiry: 1 * time.Hour,
+		ReturnStale:  false,
+	})
+
+	ctx := context.Background()
+
+	// First call should fetch
+	data1, result1, err1 := fetcher.Get(ctx)
+	require.NoError(t, err1)
+	assert.Equal(t, CacheResultFresh, result1)
+	assert.Equal(t, 1, data1.Count)
+
+	// Wait just over 1 second (no-cache expiry)
+	time.Sleep(1100 * time.Millisecond)
+
+	// Should fetch again because no-cache uses 1-second expiry
+	data2, result2, err2 := fetcher.Get(ctx)
+	require.NoError(t, err2)
+	assert.Equal(t, CacheResultFresh, result2)
+	assert.Equal(t, 2, data2.Count)
+	assert.Equal(t, int32(2), callCount.Load())
+}
+
+func TestCachingFetcher_CacheControl_MaxAgeWithNoStore(t *testing.T) {
+	callCount := atomic.Int32{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		// no-store should take precedence over max-age
+		w.Header().Set("Cache-Control", "max-age=3600, no-store")
+		data := testData{Message: "hello", Count: int(callCount.Load())}
+		json.NewEncoder(w).Encode(data)
+	}))
+	defer server.Close()
+
+	fetcher := NewCachingFetcher[testData](server.URL, CacheConfig{
+		StaticExpiry: 1 * time.Hour,
+		ReturnStale:  false,
+	})
+
+	ctx := context.Background()
+
+	// First call should fetch
+	data1, result1, err1 := fetcher.Get(ctx)
+	require.NoError(t, err1)
+	assert.Equal(t, CacheResultFresh, result1)
+	assert.Equal(t, 1, data1.Count)
+
+	// Second call should fetch again (no-store means immediate expiry)
+	data2, result2, err2 := fetcher.Get(ctx)
+	require.NoError(t, err2)
+	assert.Equal(t, CacheResultFresh, result2)
+	assert.Equal(t, 2, data2.Count)
+	assert.Equal(t, int32(2), callCount.Load())
+}
