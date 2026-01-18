@@ -106,7 +106,7 @@ func ExampleString_second()       // multiple examples use underscore + lowercas
    }
    ```
 
-2. **No Test Functions:** Example files must contain **only** `Example*` functions and no `Test*` or `Benchmark*` functions. Supporting code (types, helper functions) may be included.
+2. **No Test Functions:** Example files may contain one or more `Example*` functions but must not contain any `Test*` or `Benchmark*` functions. Supporting code (types, helper functions) may be included.
 
 3. **Multiple Small Examples:** Create several focused examples (`ExampleFoo`, `ExampleFoo_second`, `ExampleFoo_third`) rather than one large example. Each should demonstrate a specific behavior or use case.
 
