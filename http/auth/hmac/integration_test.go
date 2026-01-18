@@ -95,27 +95,39 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 		},
 	}
 
-	req, _ := http.NewRequest("GET", testServer.URL, nil)
+	req, err := http.NewRequest("GET", testServer.URL, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
 	req.Header.Set(customHeader, customValue)
 
 	if err := clientAuth.AddAuth(req); err != nil {
 		t.Fatalf("AddAuth failed: %v", err)
 	}
 
-	resp, _ := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to make request: %v", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
 
 	// Now try with modified header value
-	req2, _ := http.NewRequest("GET", testServer.URL, nil)
+	req2, err := http.NewRequest("GET", testServer.URL, nil)
+	if err != nil {
+		t.Fatalf("failed to create tampered request: %v", err)
+	}
 	req2.Header.Set(customHeader, "WRONG")
 	// Manually copy the auth headers from previous request to simulate tampering
 	req2.Header.Set("Authorization", req.Header.Get("Authorization"))
 	req2.Header.Set(DefaultTimestampHeader, req.Header.Get(DefaultTimestampHeader))
 	req2.Header.Set(DefaultSignedHeadersHeader, req.Header.Get(DefaultSignedHeadersHeader))
 
-	resp2, _ := http.DefaultClient.Do(req2)
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatalf("failed to make tampered request: %v", err)
+	}
 	if resp2.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 for tampered header, got %d", resp2.StatusCode)
 	}
