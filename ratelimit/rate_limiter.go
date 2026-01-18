@@ -97,7 +97,6 @@ func (rl *RateLimiter) Allow(principal string) bool {
 	// Try to get existing entry with read lock first
 	rl.mu.RLock()
 	entry, exists := rl.limiters[principal]
-	needsCleanup := time.Since(rl.LastCleanup) > rl.CleanupInterval
 	rl.mu.RUnlock()
 
 	// If entry doesn't exist, acquire write lock to create it
@@ -127,11 +126,16 @@ func (rl *RateLimiter) Allow(principal string) bool {
 	allowed := entry.limiter.Allow()
 
 	// Update entry metadata with a brief write lock
-	// Re-verify the entry still exists in case cleanup ran
+	// Re-verify the entry still exists and is the same entry
 	rl.mu.Lock()
 	if currentEntry, stillExists := rl.limiters[principal]; stillExists && currentEntry == entry {
 		entry.lastUsed = time.Now()
 		entry.lastAllow = allowed
+	}
+	// Also check if cleanup is needed while we have the lock
+	needsCleanup := time.Since(rl.LastCleanup) > rl.CleanupInterval
+	if needsCleanup {
+		rl.cleanupExpiredLimiters()
 	}
 	rl.mu.Unlock()
 
@@ -142,16 +146,6 @@ func (rl *RateLimiter) Allow(principal string) bool {
 			Float64("rps", rps).
 			Int("burst", burst).
 			Msg("rate limit exceeded for principal")
-	}
-
-	// Cleanup old limiters periodically
-	if needsCleanup {
-		rl.mu.Lock()
-		// Double-check cleanup is still needed
-		if time.Since(rl.LastCleanup) > rl.CleanupInterval {
-			rl.cleanupExpiredLimiters()
-		}
-		rl.mu.Unlock()
 	}
 
 	return allowed
