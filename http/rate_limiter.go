@@ -1,6 +1,8 @@
 package http
 
 import (
+	"fmt"
+	"math"
 	"net/http"
 
 	"github.com/dioad/net/ratelimit"
@@ -33,7 +35,9 @@ func (rl *RateLimiter) Middleware(principal string) func(http.Handler) http.Hand
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !rl.Allow(principal) {
-				w.Header().Set("Retry-After", "60")
+				retryAfter := rl.RetryAfter(principal)
+				retryAfterSeconds := int(math.Ceil(retryAfter.Seconds()))
+				w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
 				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 				return
 			}
@@ -53,7 +57,9 @@ func (rl *RateLimiter) MiddlewareFromContext(contextKey interface{}) func(http.H
 			}
 
 			if !rl.Allow(principal) {
-				w.Header().Set("Retry-After", "60")
+				retryAfter := rl.RetryAfter(principal)
+				retryAfterSeconds := int(math.Ceil(retryAfter.Seconds()))
+				w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
 				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 				return
 			}

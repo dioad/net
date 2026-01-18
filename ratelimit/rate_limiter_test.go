@@ -192,3 +192,63 @@ func BenchmarkRateLimiter_Allow_ParallelMultiPrincipal(b *testing.B) {
 		}
 	})
 }
+
+func TestRateLimiter_RetryAfter(t *testing.T) {
+	logger := zerolog.Nop()
+
+	tests := []struct {
+		name              string
+		requestsPerSecond float64
+		burst             int
+		expectedSeconds   float64
+		tolerance         float64 // Allow some tolerance for timing
+	}{
+		{
+			name:              "1 request per second",
+			requestsPerSecond: 1,
+			burst:             1,
+			expectedSeconds:   1.0,
+			tolerance:         0.1,
+		},
+		{
+			name:              "10 requests per second",
+			requestsPerSecond: 10,
+			burst:             1,
+			expectedSeconds:   0.1,
+			tolerance:         0.01,
+		},
+		{
+			name:              "0.5 requests per second",
+			requestsPerSecond: 0.5,
+			burst:             1,
+			expectedSeconds:   2.0,
+			tolerance:         0.1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rl := NewRateLimiter(tt.requestsPerSecond, tt.burst, logger)
+
+			// Use up the burst
+			rl.Allow("user1")
+
+			// Now check retry-after time
+			retryAfter := rl.RetryAfter("user1")
+			actualSeconds := retryAfter.Seconds()
+
+			assert.InDelta(t, tt.expectedSeconds, actualSeconds, tt.tolerance,
+				"RetryAfter should return approximately %.2f seconds for %.1f req/sec",
+				tt.expectedSeconds, tt.requestsPerSecond)
+		})
+	}
+}
+
+func TestRateLimiter_RetryAfter_NoEntry(t *testing.T) {
+	logger := zerolog.Nop()
+	rl := NewRateLimiter(1, 1, logger)
+
+	// RetryAfter for a principal that hasn't been seen should return 0
+	retryAfter := rl.RetryAfter("unknown_user")
+	assert.Equal(t, time.Duration(0), retryAfter)
+}
