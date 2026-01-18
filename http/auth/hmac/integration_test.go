@@ -109,6 +109,7 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to make request: %v", err)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -128,6 +129,7 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to make tampered request: %v", err)
 	}
+	defer resp2.Body.Close()
 	if resp2.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 for tampered header, got %d", resp2.StatusCode)
 	}
@@ -158,7 +160,11 @@ func TestTimestampExpiry(t *testing.T) {
 	// Wait for expiry
 	time.Sleep(2 * time.Second)
 
-	resp, _ := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 for expired timestamp, got %d", resp.StatusCode)
 	}
@@ -186,7 +192,11 @@ func TestWrongPathOrMethod(t *testing.T) {
 	// Change path manually
 	req.URL.Path = "/invalid"
 
-	resp, _ := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 for wrong path, got %d", resp.StatusCode)
 	}
