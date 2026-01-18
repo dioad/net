@@ -70,6 +70,77 @@ Generated code should adhere to the following principles to maintain consistency
 10. **Security:**
     *   Generated code should follow secure coding practices, including input validation, avoiding hardcoded credentials, and using secure defaults for configurations (e.g., TLS).
 
+## Example Generation Guidelines
+
+Examples are an essential part of API documentation and should be created as executable, maintainable code artifacts rather than embedded markdown snippets. Follow the Go standard [example conventions](https://go.dev/blog/examples) when generating examples.
+
+### Example Approach
+
+**Small Examples (Simple API Interactions):**
+- Small examples demonstrating basic type interactions or single function calls are acceptable in `README.md` or package-level documentation
+- Keep these focused on a single concept and no more than 10-15 lines of code
+
+**Larger Examples (Multiple Concepts):**
+- Create dedicated `_test.go` files in the `examples/` directory for comprehensive examples
+- These examples must follow Go's `Example` naming convention and be executable
+
+### Example Function Naming Convention
+
+Examples are functions in `_test.go` files that demonstrate package functionality:
+
+```go
+func Example()                    // documents the package as a whole
+func ExampleFoo()                 // documents the Foo function or type
+func ExampleBar_Qux()             // documents the Qux method of type Bar
+func ExampleString_second()       // multiple examples use underscore + lowercase suffix
+```
+
+### Example Function Structure
+
+1. **Output Validation:** Include an `// Output:` comment to make the example executable and testable:
+   ```go
+   func ExampleFoo() {
+       result := Foo("input")
+       fmt.Println(result)
+       // Output: expected output
+   }
+   ```
+
+2. **No Test Functions:** Example files must contain **only** one `Example*` function and no `Test*` or `Benchmark*` functions. Supporting code (types, helper functions) may be included.
+
+3. **Multiple Small Examples:** Create several focused examples (`ExampleFoo`, `ExampleFoo_second`, `ExampleFoo_third`) rather than one large example. Each should demonstrate a specific behavior or use case.
+
+### Whole File Examples
+
+For complex examples requiring supporting types or context:
+
+1. Create a file ending in `_test.go` with:
+   - Exactly one `Example*` function
+   - Supporting types, interfaces, or helper functions as needed
+   - No other test or benchmark functions
+2. Include an `// Output:` comment for verification
+3. Godoc will display the entire file, providing essential context
+
+Example: demonstrating an interface implementation requires the types, methods, and then the `Example*` function.
+
+### Testing Examples
+
+Examples must pass the project's build and test requirements:
+
+- Examples are compiled as part of `go test ./...`
+- Examples with `// Output:` comments are executed; output must match exactly
+- Examples without `// Output:` comments are compiled but not executed (useful for non-runnable demonstrations)
+- All examples are included in `go test -race ./...` race detection
+
+### Best Practices
+
+- **One Concept Per Example:** Each example should clearly demonstrate a single feature or behavior
+- **Realistic Use Cases:** Examples should reflect actual usage patterns, not contrived scenarios
+- **Error Handling:** Include error handling where applicable to show proper API usage
+- **Comments:** Add explanatory comments for non-obvious behavior; the example itself should be mostly self-documenting
+- **Deterministic Output:** Ensure output is deterministic and doesn't depend on timing, randomness, or system state
+- **Package Imports:** Place examples in `_test.go` files that import the package being documented, using `package_test` where needed
+
 ## GitHub Actions Guidelines
 
 1.  **Linux-Based Commands:**
