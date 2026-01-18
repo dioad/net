@@ -258,20 +258,64 @@ func (f *CachingFetcher[T]) calculateExpiry(headers http.Header) time.Time {
 	return now.Add(1 * time.Hour)
 }
 
-// parseCacheControl extracts max-age from Cache-Control header
+// parseCacheControl extracts max-age from Cache-Control header and handles caching directives
 func (f *CachingFetcher[T]) parseCacheControl(cacheControl string, now time.Time) time.Time {
 	// Parse comma-separated directives
 	directives := strings.Split(cacheControl, ",")
+	
+	var maxAge time.Duration
+	var hasMaxAge bool
+	var noStore, noCache bool
+	
 	for _, directive := range directives {
 		directive = strings.TrimSpace(directive)
+		
+		// Check for no-store directive - response should not be cached
+		if directive == "no-store" {
+			noStore = true
+			continue
+		}
+		
+		// Check for no-cache directive - response can be cached but must be revalidated
+		if directive == "no-cache" {
+			noCache = true
+			continue
+		}
+		
+		// Check for must-revalidate directive - handled implicitly by our expiry logic
+		// (we don't serve stale content beyond expiry without revalidation)
+		if directive == "must-revalidate" {
+			// This directive is implicitly handled by our existing expiry logic
+			continue
+		}
+		
+		// Extract max-age value
 		if strings.HasPrefix(directive, "max-age=") {
 			maxAgeStr := strings.TrimPrefix(directive, "max-age=")
 			// Handle quoted values
 			maxAgeStr = strings.Trim(maxAgeStr, "\"")
-			if maxAge, err := time.ParseDuration(maxAgeStr + "s"); err == nil {
-				return now.Add(maxAge)
+			if duration, err := time.ParseDuration(maxAgeStr + "s"); err == nil {
+				maxAge = duration
+				hasMaxAge = true
 			}
 		}
+	}
+	
+	// Handle no-store: don't cache (use immediate expiry)
+	if noStore {
+		return now
+	}
+	
+	// Handle no-cache: cache but with very short expiry to force revalidation
+	if noCache {
+		// Use a very short expiry (1 second) to effectively force revalidation
+		// while still allowing brief caching to prevent request storms
+		return now.Add(1 * time.Second)
+	}
+	
+	// Use max-age if found
+	if hasMaxAge {
+		return now.Add(maxAge)
 	}
 
 	// If no max-age found, use static expiry
