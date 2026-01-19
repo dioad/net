@@ -130,7 +130,7 @@ func TestAuthRequest_DenyList(t *testing.T) {
 	}
 }
 
-func TestWrap_Authorized(t *testing.T) {
+func TestWrap_Authorised(t *testing.T) {
 	cfg := authz.PrincipalACLConfig{
 		AllowList: []string{"admin@example.com"},
 	}
