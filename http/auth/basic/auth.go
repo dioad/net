@@ -35,7 +35,7 @@ type ClientAuth struct {
 	netrcProvider  *NetrcProvider
 }
 
-func (a ClientAuth) HTTPClient() *http.Client {
+func (a *ClientAuth) HTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &RoundTripper{
 			Username: a.user,

@@ -2,47 +2,23 @@ package basic
 
 import (
 	"net/http"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
 func TestNetrcProviderIsolation(t *testing.T) {
-	// Create a temporary directory for test files
-	tmpDir := t.TempDir()
-
-	// Create first netrc file
-	netrc1Path := filepath.Join(tmpDir, "netrc1")
+	// Create first netrc content
 	netrc1Content := `machine example.com
 login user1
 password pass1`
-	if err := os.WriteFile(netrc1Path, []byte(netrc1Content), 0600); err != nil {
-		t.Fatalf("Failed to create netrc1: %v", err)
-	}
 
-	// Create second netrc file
-	netrc2Path := filepath.Join(tmpDir, "netrc2")
+	// Create second netrc content
 	netrc2Content := `machine example.com
 login user2
 password pass2`
-	if err := os.WriteFile(netrc2Path, []byte(netrc2Content), 0600); err != nil {
-		t.Fatalf("Failed to create netrc2: %v", err)
-	}
 
 	// Create two separate NetrcProvider instances with different data
-	provider1 := &NetrcProvider{}
-	provider2 := &NetrcProvider{}
-
-	// Manually load data into providers to simulate different configurations
-	provider1.once.Do(func() {
-		data, _ := os.ReadFile(netrc1Path)
-		provider1.lines = parseNetrc(string(data))
-	})
-
-	provider2.once.Do(func() {
-		data, _ := os.ReadFile(netrc2Path)
-		provider2.lines = parseNetrc(string(data))
-	})
+	provider1 := NewNetrcProviderFromContent(netrc1Content)
+	provider2 := NewNetrcProviderFromContent(netrc2Content)
 
 	// Create test requests
 	req1, err := http.NewRequest("GET", "http://example.com", nil)
@@ -79,27 +55,15 @@ password pass2`
 
 func TestNetrcProviderWithClientAuth(t *testing.T) {
 	// Test that ClientAuth uses its own NetrcProvider instance
-	tmpDir := t.TempDir()
-
-	netrcPath := filepath.Join(tmpDir, "netrc")
 	netrcContent := `machine test.example.com
 login testuser
 password testpass`
-	if err := os.WriteFile(netrcPath, []byte(netrcContent), 0600); err != nil {
-		t.Fatalf("Failed to create netrc: %v", err)
-	}
 
 	// Create a ClientAuth instance
 	auth := &ClientAuth{
-		Config: ClientConfig{},
+		Config:        ClientConfig{},
+		netrcProvider: NewNetrcProviderFromContent(netrcContent),
 	}
-
-	// Manually set the netrcProvider with test data
-	auth.netrcProvider = &NetrcProvider{}
-	auth.netrcProvider.once.Do(func() {
-		data, _ := os.ReadFile(netrcPath)
-		auth.netrcProvider.lines = parseNetrc(string(data))
-	})
 
 	// Create a request
 	req, err := http.NewRequest("GET", "http://test.example.com", nil)
@@ -142,10 +106,6 @@ func TestAddCredentialsBackwardCompatibility(t *testing.T) {
 
 func TestClientAuthMultipleInstances(t *testing.T) {
 	// Test that multiple ClientAuth instances don't interfere with each other
-	tmpDir := t.TempDir()
-
-	// Create netrc file
-	netrcPath := filepath.Join(tmpDir, "netrc")
 	netrcContent := `machine example1.com
 login user1
 password pass1
@@ -153,26 +113,11 @@ password pass1
 machine example2.com
 login user2
 password pass2`
-	if err := os.WriteFile(netrcPath, []byte(netrcContent), 0600); err != nil {
-		t.Fatalf("Failed to create netrc: %v", err)
-	}
 
-	// Create two ClientAuth instances
-	auth1 := &ClientAuth{Config: ClientConfig{}}
-	auth2 := &ClientAuth{Config: ClientConfig{}}
-
-	// Set up their netrc providers
-	auth1.netrcProvider = &NetrcProvider{}
-	auth1.netrcProvider.once.Do(func() {
-		data, _ := os.ReadFile(netrcPath)
-		auth1.netrcProvider.lines = parseNetrc(string(data))
-	})
-
-	auth2.netrcProvider = &NetrcProvider{}
-	auth2.netrcProvider.once.Do(func() {
-		data, _ := os.ReadFile(netrcPath)
-		auth2.netrcProvider.lines = parseNetrc(string(data))
-	})
+	// Create two ClientAuth instances with the same netrc provider
+	provider := NewNetrcProviderFromContent(netrcContent)
+	auth1 := &ClientAuth{Config: ClientConfig{}, netrcProvider: provider}
+	auth2 := &ClientAuth{Config: ClientConfig{}, netrcProvider: provider}
 
 	// Create requests for different hosts
 	req1, _ := http.NewRequest("GET", "http://example1.com", nil)
