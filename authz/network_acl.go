@@ -118,7 +118,20 @@ func containsAddress(netList []*net.IPNet, ip net.IP) bool {
 func parseTCPNet(n string) (*net.IPNet, error) {
 	netParts := strings.Split(n, "/")
 	if len(netParts) == 1 {
-		n = fmt.Sprintf("%v/32", n)
+		// No mask provided, detect IP version and use appropriate default
+		ip := net.ParseIP(n)
+		if ip == nil {
+			return nil, fmt.Errorf("invalid IP address: %s", n)
+		}
+		
+		// Check if it's IPv6 (fails to convert to IPv4)
+		if ip.To4() == nil {
+			// IPv6 address
+			n = fmt.Sprintf("%v/128", n)
+		} else {
+			// IPv4 address
+			n = fmt.Sprintf("%v/32", n)
+		}
 	}
 
 	_, ipNet, err := net.ParseCIDR(n)

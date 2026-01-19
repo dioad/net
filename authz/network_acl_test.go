@@ -114,3 +114,102 @@ func TestAuthoriserAllowFromString(t *testing.T) {
 
 	require.True(t, got)
 }
+
+func TestParseNetIPv6WithDefault(t *testing.T) {
+	testCase := "2001:db8::1"
+
+	expectedOnes, expectedBits := net.CIDRMask(128, 128).Size()
+
+	n, err := parseTCPNet(testCase)
+	require.NoError(t, err)
+
+	gotOnes, gotBits := n.Mask.Size()
+
+	require.Equal(t, expectedOnes, gotOnes)
+	require.Equal(t, expectedBits, gotBits)
+}
+
+func TestParseNetIPv6WithMask(t *testing.T) {
+	testCase := "2001:db8::/32"
+
+	expectedOnes, expectedBits := net.CIDRMask(32, 128).Size()
+
+	n, err := parseTCPNet(testCase)
+	require.NoError(t, err)
+
+	gotOnes, gotBits := n.Mask.Size()
+
+	require.Equal(t, expectedOnes, gotOnes)
+	require.Equal(t, expectedBits, gotBits)
+}
+
+func TestAuthoriserIPv6Allow(t *testing.T) {
+	c := NetworkACLConfig{
+		AllowedNets:    []string{"2001:db8::/32"},
+		DeniedNets:     []string{},
+		AllowByDefault: false,
+	}
+
+	a, err := NewNetworkACL(c)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// Test with IPv6 address in the allowed range
+	got, err := a.AuthoriseFromString("[2001:db8::1]:1234")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	require.True(t, got)
+}
+
+func TestAuthoriserIPv6Deny(t *testing.T) {
+	c := NetworkACLConfig{
+		AllowedNets:    []string{"2001:db8::/32"},
+		DeniedNets:     []string{},
+		AllowByDefault: false,
+	}
+
+	a, err := NewNetworkACL(c)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// Test with IPv6 address outside the allowed range
+	got, err := a.AuthoriseFromString("[2001:db9::1]:1234")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	require.False(t, got)
+}
+
+func TestAuthoriserIPv6SingleAddress(t *testing.T) {
+	c := NetworkACLConfig{
+		AllowedNets:    []string{"2001:db8::1"},
+		DeniedNets:     []string{},
+		AllowByDefault: false,
+	}
+
+	a, err := NewNetworkACL(c)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// Test with the exact IPv6 address
+	got, err := a.AuthoriseFromString("[2001:db8::1]:1234")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	require.True(t, got)
+
+	// Test with a different IPv6 address
+	got, err = a.AuthoriseFromString("[2001:db8::2]:1234")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	require.False(t, got)
+}
