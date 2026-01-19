@@ -2,6 +2,7 @@ package hmac
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -244,5 +245,168 @@ func TestTimestampValidation_PreSignedReplayAttackPrevention(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "too far in the future") {
 		t.Errorf("expected error about future timestamp, got: %v", err)
+	}
+}
+
+const (
+	// expectedMaxSizeErrorMessage is the expected error message when request size limit is exceeded
+	expectedMaxSizeErrorMessage = "exceeds maximum size limit"
+)
+
+// createAuthenticatedRequest is a helper function to create an authenticated request with a body of specified size.
+func createAuthenticatedRequest(t *testing.T, sharedKey, principal string, bodySize int) *http.Request {
+	t.Helper()
+
+	bodyContent := strings.Repeat("a", bodySize)
+	req := httptest.NewRequest("POST", "http://example.com/api", strings.NewReader(bodyContent))
+
+	clientAuth := ClientAuth{
+		Config: ClientConfig{
+			CommonConfig: CommonConfig{SharedKey: sharedKey},
+			Principal:    principal,
+		},
+	}
+
+	if err := clientAuth.AddAuth(req); err != nil {
+		t.Fatalf("failed to add auth: %v", err)
+	}
+
+	return req
+}
+
+// TestMaxRequestSize_UnderLimit tests that requests under the size limit are accepted.
+func TestMaxRequestSize_UnderLimit(t *testing.T) {
+	const sharedKey = "test-key"
+	const principal = "user"
+	const maxSize = 1024 // 1KB limit
+
+	handler := NewHandler(ServerConfig{
+		CommonConfig: CommonConfig{
+			SharedKey: sharedKey,
+		},
+		MaxRequestSize: maxSize,
+	})
+
+	// Create a request with body under the limit (500 bytes)
+	req := createAuthenticatedRequest(t, sharedKey, principal, 500)
+
+	// Request should be accepted
+	ctx, err := handler.AuthRequest(req)
+	if err != nil {
+		t.Errorf("expected request under size limit to be accepted, got error: %v", err)
+	}
+	if ctx == nil {
+		t.Error("expected non-nil context")
+	}
+}
+
+// TestMaxRequestSize_ExceedsLimit tests that requests exceeding the size limit are rejected.
+func TestMaxRequestSize_ExceedsLimit(t *testing.T) {
+	const sharedKey = "test-key"
+	const principal = "user"
+	const maxSize = 1024 // 1KB limit
+
+	handler := NewHandler(ServerConfig{
+		CommonConfig: CommonConfig{
+			SharedKey: sharedKey,
+		},
+		MaxRequestSize: maxSize,
+	})
+
+	// Create a request with body exceeding the limit (2KB)
+	req := createAuthenticatedRequest(t, sharedKey, principal, 2048)
+
+	// Request should be rejected
+	_, err := handler.AuthRequest(req)
+	if err == nil {
+		t.Error("expected request exceeding size limit to be rejected")
+	}
+	if !strings.Contains(err.Error(), expectedMaxSizeErrorMessage) {
+		t.Errorf("expected error about size limit, got: %v", err)
+	}
+}
+
+// TestMaxRequestSize_DefaultLimit tests that the default 10MB limit is applied when not configured.
+func TestMaxRequestSize_DefaultLimit(t *testing.T) {
+	const sharedKey = "test-key"
+	const principal = "user"
+
+	handler := NewHandler(ServerConfig{
+		CommonConfig: CommonConfig{
+			SharedKey: sharedKey,
+		},
+		// MaxRequestSize not set - should use default
+	})
+
+	// Verify the default limit is applied
+	expectedDefault := DefaultMaxRequestSizeBytes
+	actualLimit := handler.maxRequestSizeBytes()
+	if actualLimit != expectedDefault {
+		t.Errorf("expected default limit %d bytes, got %d bytes", expectedDefault, actualLimit)
+	}
+
+	// Create a request with body under the default limit (9MB - close to the 10MB default)
+	bodySize := 9 * 1024 * 1024 // 9MB
+	req := createAuthenticatedRequest(t, sharedKey, principal, bodySize)
+
+	// Request should be accepted with default limit
+	ctx, err := handler.AuthRequest(req)
+	if err != nil {
+		t.Errorf("expected request under default limit to be accepted, got error: %v", err)
+	}
+	if ctx == nil {
+		t.Error("expected non-nil context")
+	}
+}
+
+// TestMaxRequestSize_AtExactLimit tests behavior at the exact size limit.
+func TestMaxRequestSize_AtExactLimit(t *testing.T) {
+	const sharedKey = "test-key"
+	const principal = "user"
+	const maxSize = 1024 // 1KB limit
+
+	handler := NewHandler(ServerConfig{
+		CommonConfig: CommonConfig{
+			SharedKey: sharedKey,
+		},
+		MaxRequestSize: maxSize,
+	})
+
+	// Create a request with body exactly at the limit (1024 bytes)
+	req := createAuthenticatedRequest(t, sharedKey, principal, maxSize)
+
+	// Request at exact limit should be accepted
+	ctx, err := handler.AuthRequest(req)
+	if err != nil {
+		t.Errorf("expected request at exact limit to be accepted, got error: %v", err)
+	}
+	if ctx == nil {
+		t.Error("expected non-nil context")
+	}
+}
+
+// TestMaxRequestSize_OneBytePastLimit tests behavior one byte past the limit.
+func TestMaxRequestSize_OneBytePastLimit(t *testing.T) {
+	const sharedKey = "test-key"
+	const principal = "user"
+	const maxSize = 1024 // 1KB limit
+
+	handler := NewHandler(ServerConfig{
+		CommonConfig: CommonConfig{
+			SharedKey: sharedKey,
+		},
+		MaxRequestSize: maxSize,
+	})
+
+	// Create a request with body one byte over the limit (1025 bytes)
+	req := createAuthenticatedRequest(t, sharedKey, principal, maxSize+1)
+
+	// Request should be rejected
+	_, err := handler.AuthRequest(req)
+	if err == nil {
+		t.Error("expected request one byte over limit to be rejected")
+	}
+	if !strings.Contains(err.Error(), expectedMaxSizeErrorMessage) {
+		t.Errorf("expected error about size limit, got: %v", err)
 	}
 }
