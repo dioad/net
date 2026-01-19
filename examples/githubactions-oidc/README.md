@@ -4,25 +4,38 @@ This example demonstrates how to use GitHub Actions OIDC for authentication, inc
 
 ## Running the Examples
 
-Run all examples:
+### Client Example (Getting OIDC Token)
+
 ```bash
-go test -v github.com/dioad/net/examples/githubactions-oidc
+go run github.com/dioad/net/examples/githubactions-oidc/client
+```
+
+Or build and run:
+```bash
+cd examples/githubactions-oidc/client
+go build
+./client
+```
+
+### Validator Example (Validating OIDC Token)
+
+```bash
+go run github.com/dioad/net/examples/githubactions-oidc/validator
+```
+
+Or build and run:
+```bash
+cd examples/githubactions-oidc/validator
+go build
+./validator
 ```
 
 **Note:** These examples require GitHub Actions environment variables. They will only work when run inside a GitHub Actions workflow with `id-token: write` permission.
 
 ## What It Demonstrates
 
-- **Token Source**: Retrieving OIDC tokens from GitHub Actions
-- **Token Validation**: Validating GitHub Actions OIDC tokens
-- Decoding and inspecting JWT claims
-- Creating OIDC validator configurations
-
-## Code
-
-See [example_test.go](example_test.go) for the complete executable examples:
-- `Example_tokenSource()` - Demonstrates retrieving OIDC tokens from GitHub Actions
-- `Example_validator()` - Demonstrates validating GitHub Actions OIDC tokens
+- **Client** ([client/main.go](client/main.go)): Retrieving OIDC tokens from GitHub Actions, decoding and inspecting JWT claims
+- **Validator** ([validator/main.go](validator/main.go)): Validating GitHub Actions OIDC tokens, creating OIDC validator configurations
 
 ## Configuration Examples
 

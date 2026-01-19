@@ -80,73 +80,44 @@ Examples are an essential part of API documentation and should be created as exe
 - Small examples demonstrating basic type interactions or single function calls are acceptable in `README.md` or package-level documentation.
 - Keep these focused on a single concept and no more than 10-15 lines of code.
 
-**Larger Examples (Multiple Concepts):**
-- Create dedicated `_test.go` files in the `examples/` directory for comprehensive examples.
-- These examples must follow Go's `Example` naming convention and be executable.
-- When adding new features or major functionality, create a corresponding example in `examples/` (e.g., `examples/my-feature/example_test.go`).
+**Larger Examples (Standalone Executables):**
+- Create standalone executable programs in the `examples/` directory for comprehensive examples.
+- These examples must be complete programs with `package main` and `func main()` that users can build and run.
+- When adding new features or major functionality, create a corresponding example in `examples/` (e.g., `examples/my-feature/main.go`).
 - All examples in the `examples/` directory are automatically built as part of the CI workflow.
 
 **Examples Directory Structure:**
 - Each feature area should have its own subdirectory under `examples/` (e.g., `examples/basic-http-server/`, `examples/oidc-auth/`)
-- Each subdirectory should contain an `example_test.go` file with one or more `Example*` functions
-- Examples should be fully executable and testable with `go test ./examples/...`
+- Each subdirectory should contain a `main.go` file with a complete, runnable program
+- Examples should be fully executable with `go run` or by building with `go build`
+- Include a `README.md` in each example directory with instructions on how to run the example
 
-### Example Function Naming Convention
+### Running Examples
 
-Examples are functions in `_test.go` files that demonstrate package functionality:
-
-```go
-func Example()                    // documents the package as a whole
-func ExampleFoo()                 // documents the Foo function or type
-func ExampleBar_Qux()             // documents the Qux method of type Bar
-func ExampleString_second()       // multiple examples use underscore + lowercase suffix
+Examples can be run directly with `go run`:
+```bash
+go run github.com/dioad/net/examples/basic-http-server
 ```
 
-### Example Function Structure
-
-1. **Output Validation:** Include an `// Output:` comment to make the example executable and testable:
-   ```go
-   func ExampleFoo() {
-       result := Foo("input")
-       fmt.Println(result)
-       // Output: expected output
-   }
-   ```
-
-2. **No Test Functions:** Example files may contain one or more `Example*` functions but must not contain any `Test*` or `Benchmark*` functions. Supporting code (types, helper functions) may be included.
-
-3. **Multiple Small Examples:** Create several focused examples (`ExampleFoo`, `ExampleFoo_second`, `ExampleFoo_third`) rather than one large example. Each should demonstrate a specific behavior or use case.
-
-### Whole File Examples
-
-For complex examples requiring supporting types or context:
-
-1. Create a file ending in `_test.go` with:
-   - One or more `Example*` functions
-   - Supporting types, interfaces, or helper functions as needed
-   - No other test or benchmark functions
-2. Include an `// Output:` comment for verification
-3. Godoc will display the entire file, providing essential context
-
-For example, demonstrating an interface implementation requires the types, methods, and then the `Example*` function.
-
-### Testing Examples
-
-Examples must pass the project's build and test requirements:
-
-- Examples are compiled as part of `go test ./...`
-- Examples with `// Output:` comments are executed; output must match exactly
-- Examples without `// Output:` comments are compiled but not executed (useful for non-runnable demonstrations)
-- All examples are included in `go test -race ./...` race detection
+Or by building and running the executable:
+```bash
+cd examples/basic-http-server
+go build
+./basic-http-server
+```
 
 ### Best Practices
 
-- **One Concept Per Example:** Each example should clearly demonstrate a single feature or behavior
-- **Realistic Use Cases:** Examples should reflect actual usage patterns, not contrived scenarios
-- **Error Handling:** Include error handling where applicable to show proper API usage
+- **Realistic Use Cases:** Examples should reflect actual usage patterns that users might encounter
+- **Error Handling:** Include proper error handling to demonstrate correct API usage
 - **Comments:** Add explanatory comments for non-obvious behavior; the example itself should be mostly self-documenting
-- **Deterministic Output:** Ensure output is deterministic and doesn't depend on timing, randomness, or system state
-- **Package Imports:** Place examples in `_test.go` files that import the package being documented, using `package_test` where needed
+- **Graceful Shutdown:** For server examples, include proper signal handling for graceful shutdown
+- **Complete Programs:** Examples should be complete, runnable programs that users can immediately use
+- **README Files:** Each example directory should include a README.md with:
+  - Brief description of what the example demonstrates
+  - Instructions on how to run the example
+  - Any prerequisites or special requirements
+  - Example commands to test the running program
 
 ## GitHub Actions Guidelines
 
