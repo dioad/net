@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/sessions"
-	"github.com/pkg/errors"
 )
 
 // CookieConfig describes the configuration for HTTP cookies.
@@ -32,7 +31,7 @@ func NewPersistentCookieStore(config CookieConfig) (*sessions.CookieStore, error
 func NewSessionCookieStore(config CookieConfig) (*sessions.CookieStore, error) {
 	authKey, err := base64.StdEncoding.DecodeString(config.Base64AuthenticationKey)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("failed to decode %v", config.Base64AuthenticationKey))
+		return nil, fmt.Errorf("failed to decode %v: %w", config.Base64AuthenticationKey, err)
 	}
 
 	store := sessions.NewCookieStore(authKey)
