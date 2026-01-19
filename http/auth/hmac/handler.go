@@ -16,8 +16,6 @@ import (
 	"github.com/dioad/net/http/auth/context"
 )
 
-const ()
-
 // NewHandler creates a new HMAC authentication handler with the provided configuration.
 func NewHandler(cfg ServerConfig) *Handler {
 	if cfg.MaxTimestampDiff == 0 {
