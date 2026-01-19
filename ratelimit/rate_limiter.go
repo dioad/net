@@ -66,6 +66,14 @@ func NewRateLimiter(requestsPerSecond float64, burst int, logger zerolog.Logger)
 	return NewRateLimiterWithConfig(requestsPerSecond, burst, 5*time.Minute, 30*time.Minute, logger)
 }
 
+// NewRateLimiterWithContext creates a new rate limiter with static limits and a context.
+// The rate limiter will stop its background cleanup when the context is cancelled.
+// requestsPerSecond: allowed requests per second per principal
+// burst: maximum burst size
+func NewRateLimiterWithContext(ctx context.Context, requestsPerSecond float64, burst int, logger zerolog.Logger) *RateLimiter {
+	return NewRateLimiterWithContextAndConfig(ctx, requestsPerSecond, burst, 5*time.Minute, 30*time.Minute, logger)
+}
+
 // NewRateLimiterWithConfig creates a new rate limiter with custom configuration.
 func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -83,9 +91,33 @@ func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInter
 	return rl
 }
 
+// NewRateLimiterWithContextAndConfig creates a new rate limiter with custom configuration and a context.
+// The rate limiter will stop its background cleanup when the context is cancelled.
+func NewRateLimiterWithContextAndConfig(ctx context.Context, requestsPerSecond float64, burst int, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
+	derivedCtx, cancel := context.WithCancel(ctx)
+	rl := &RateLimiter{
+		limiters:          make(map[string]*limiterEntry),
+		logger:            logger,
+		requestsPerSecond: requestsPerSecond,
+		burst:             burst,
+		cleanupInterval:   cleanupInterval,
+		staleTTL:          staleTTL,
+		ctx:               derivedCtx,
+		cancel:            cancel,
+	}
+	rl.start()
+	return rl
+}
+
 // NewRateLimiterWithSource creates a new rate limiter with a custom rate limit source.
 func NewRateLimiterWithSource(source RateLimitSource, logger zerolog.Logger) *RateLimiter {
 	return NewRateLimiterWithSourceAndConfig(source, 5*time.Minute, 30*time.Minute, logger)
+}
+
+// NewRateLimiterWithSourceAndContext creates a new rate limiter with a custom rate limit source and a context.
+// The rate limiter will stop its background cleanup when the context is cancelled.
+func NewRateLimiterWithSourceAndContext(ctx context.Context, source RateLimitSource, logger zerolog.Logger) *RateLimiter {
+	return NewRateLimiterWithSourceContextAndConfig(ctx, source, 5*time.Minute, 30*time.Minute, logger)
 }
 
 // NewRateLimiterWithSourceAndConfig creates a new rate limiter with a custom rate limit source and configuration.
@@ -98,6 +130,23 @@ func NewRateLimiterWithSourceAndConfig(source RateLimitSource, cleanupInterval, 
 		cleanupInterval: cleanupInterval,
 		staleTTL:        staleTTL,
 		ctx:             ctx,
+		cancel:          cancel,
+	}
+	rl.start()
+	return rl
+}
+
+// NewRateLimiterWithSourceContextAndConfig creates a new rate limiter with a custom rate limit source,
+// context, and configuration. The rate limiter will stop its background cleanup when the context is cancelled.
+func NewRateLimiterWithSourceContextAndConfig(ctx context.Context, source RateLimitSource, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
+	derivedCtx, cancel := context.WithCancel(ctx)
+	rl := &RateLimiter{
+		limiters:        make(map[string]*limiterEntry),
+		logger:          logger,
+		LimitSource:     source,
+		cleanupInterval: cleanupInterval,
+		staleTTL:        staleTTL,
+		ctx:             derivedCtx,
 		cancel:          cancel,
 	}
 	rl.start()

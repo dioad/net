@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"context"
 	"strconv"
 	"sync"
 	"testing"
@@ -302,6 +303,60 @@ func TestRateLimiter_Stop(t *testing.T) {
 		// Expected - context should be done
 	default:
 		t.Fatal("Context should be done after Stop()")
+	}
+}
+
+func TestRateLimiter_WithContext(t *testing.T) {
+	logger := zerolog.Nop()
+	ctx, cancel := context.WithCancel(context.Background())
+	
+	rl := NewRateLimiterWithContext(ctx, 1, 1, logger)
+
+	// Use the rate limiter
+	assert.True(t, rl.Allow("user1"))
+
+	// Cancel the context
+	cancel()
+
+	// Wait a bit for the goroutine to exit
+	time.Sleep(50 * time.Millisecond)
+
+	// Verify the context is cancelled
+	select {
+	case <-rl.ctx.Done():
+		// Expected - context should be done
+	default:
+		t.Fatal("Context should be done after parent context cancellation")
+	}
+}
+
+func TestRateLimiter_WithContextCancellation(t *testing.T) {
+	logger := zerolog.Nop()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rl := NewRateLimiterWithContextAndConfig(ctx, 10, 10, 50*time.Millisecond, 30*time.Millisecond, logger)
+
+	// Add some limiters
+	rl.Allow("user1")
+	rl.Allow("user2")
+
+	rl.mu.Lock()
+	assert.Len(t, rl.limiters, 2)
+	rl.mu.Unlock()
+
+	// Cancel the context
+	cancel()
+
+	// Wait for the background goroutine to stop
+	rl.wg.Wait()
+
+	// Verify the context is done
+	select {
+	case <-rl.ctx.Done():
+		// Expected
+	default:
+		t.Fatal("Context should be done after cancellation")
 	}
 }
 
