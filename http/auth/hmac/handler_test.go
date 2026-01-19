@@ -37,6 +37,14 @@ func TestTimestampValidation_FutureTimestamps(t *testing.T) {
 			wantAccepted:           true,
 		},
 		{
+			name:                   "future timestamp at limit + 1",
+			maxTimestampDiff:       5 * time.Minute,
+			maxFutureTimestampDiff: 30 * time.Second,
+			timestampOffset:        31 * time.Second, // exactly 31 seconds in future
+			wantAccepted:           false,
+			wantErrorContains:      "too far in the future",
+		},
+		{
 			name:                   "far future timestamp exceeds clock skew",
 			maxTimestampDiff:       5 * time.Minute,
 			maxFutureTimestampDiff: 30 * time.Second,
