@@ -9,16 +9,7 @@ dist/
 *.out
 /vendor/
 
-# Example binaries
-/basic-http-server
-/client
-/ip-acl
-/oidc-auth
-/rate-limiting-dynamic
-/rate-limiting-http
-/rate-limiting-network
-/tls-config
-/validator
+# Example binaries in subdirectories
 /examples/basic-http-server/basic-http-server
 /examples/ip-acl/ip-acl
 /examples/oidc-auth/oidc-auth

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -47,8 +48,8 @@ func main() {
 	for {
 		conn, err := rlListener.Accept()
 		if err != nil {
-			// Check if it's because we're shutting down
-			if opErr, ok := err.(*net.OpError); ok && opErr.Err.Error() == "use of closed network connection" {
+			// Check if we're shutting down
+			if errors.Is(err, net.ErrClosed) {
 				break
 			}
 			log.Printf("Error accepting connection: %v\n", err)
