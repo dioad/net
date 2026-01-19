@@ -24,10 +24,16 @@ type netrcLine struct {
 	password string
 }
 
+// NetrcProvider manages netrc credentials and their loading.
+type NetrcProvider struct {
+	once  sync.Once
+	lines []netrcLine
+	err   error
+}
+
 var (
-	netrcOnce sync.Once
-	netrc     []netrcLine
-	netrcErr  error
+	// defaultNetrcProvider is the package-level default provider for backward compatibility.
+	defaultNetrcProvider = &NetrcProvider{}
 )
 
 func parseNetrc(data string) []netrcLine {
@@ -97,10 +103,11 @@ func netrcPath() (string, error) {
 	return filepath.Join(dir, base), nil
 }
 
-func readNetrc() {
+// readNetrc reads and parses the netrc file for this provider.
+func (p *NetrcProvider) readNetrc() {
 	path, err := netrcPath()
 	if err != nil {
-		netrcErr = err
+		p.err = err
 		return
 	}
 
@@ -108,24 +115,23 @@ func readNetrc() {
 	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			netrcErr = err
+			p.err = err
 		}
 		return
 	}
 
-	netrc = parseNetrc(string(data))
+	p.lines = parseNetrc(string(data))
 }
 
 // Following imported from https://golang.org/src/cmd/go/internal/auth/auth.go
 
-// AddCredentials fills in the user's credentials for req, if any.
+// AddCredentialsWithProvider fills in the user's credentials for req using the specified provider.
 // The return value reports whether any matching credentials were found.
-func AddCredentials(req *http.Request) (added bool) {
+func AddCredentialsWithProvider(req *http.Request, provider *NetrcProvider) (added bool) {
 	host := req.URL.Hostname()
 
-	// TODO(golang.org/issue/26232): Support arbitrary user-provided credentials.
-	netrcOnce.Do(readNetrc)
-	for _, l := range netrc {
+	provider.once.Do(provider.readNetrc)
+	for _, l := range provider.lines {
 		if l.machine == host {
 			req.SetBasicAuth(l.login, l.password)
 			return true
@@ -133,4 +139,11 @@ func AddCredentials(req *http.Request) (added bool) {
 	}
 
 	return false
+}
+
+// AddCredentials fills in the user's credentials for req, if any.
+// The return value reports whether any matching credentials were found.
+// This function uses the default package-level NetrcProvider for backward compatibility.
+func AddCredentials(req *http.Request) (added bool) {
+	return AddCredentialsWithProvider(req, defaultNetrcProvider)
 }
