@@ -145,11 +145,17 @@ func TestHeaderCaseNormalization(t *testing.T) {
 // produces the same output regardless of header name casing.
 func TestCanonicalDataCaseNormalization(t *testing.T) {
 	// Create two requests with identical data but different header casing
-	req1, _ := http.NewRequest("POST", "http://example.com/api?id=123", bytes.NewBufferString(`{"data": true}`))
+	req1, err := http.NewRequest("POST", "http://example.com/api?id=123", bytes.NewBufferString(`{"data": true}`))
+	if err != nil {
+		t.Fatalf("failed to create request req1: %v", err)
+	}
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("X-Api-Key", "secret123")
 
-	req2, _ := http.NewRequest("POST", "http://example.com/api?id=123", bytes.NewBufferString(`{"data": true}`))
+	req2, err := http.NewRequest("POST", "http://example.com/api?id=123", bytes.NewBufferString(`{"data": true}`))
+	if err != nil {
+		t.Fatalf("failed to create request req2: %v", err)
+	}
 	req2.Header.Set("content-type", "application/json")
 	req2.Header.Set("x-api-key", "secret123")
 
