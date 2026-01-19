@@ -2,12 +2,12 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"golang.org/x/oauth2"
 
 	"github.com/google/go-github/v33/github"
-	"github.com/pkg/errors"
 )
 
 // Authenticator handles GitHub token validation using the GitHub API.
@@ -38,13 +38,13 @@ func (a *Authenticator) AuthenticateToken(accessToken string) (*UserInfo, error)
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return nil, errors.New(response.Status)
+		return nil, fmt.Errorf("failed to authenticate token: %s", response.Status)
 	}
 
 	// get some info
 	u, err := FetchUserInfo(accessToken)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch user info: %w", err)
 	}
 
 	return u, nil

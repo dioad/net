@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -96,8 +95,8 @@ func LoadBasicAuthFromFile(filePath string) (AuthMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	if stat.Mode() != 0600 {
-		return nil, errors.New(fmt.Sprintf("file mode is not 0600, it is %v %s", stat.Mode(), filePathClean))
+	if stat.Mode() != 0600 && stat.Mode() != 0400 {
+		return nil, fmt.Errorf("error: basic auth file permissions are too open %v for %s, should be 0600 or 0400", stat.Mode(), filePathClean)
 	}
 	authMap := LoadBasicAuthFromReader(f)
 
