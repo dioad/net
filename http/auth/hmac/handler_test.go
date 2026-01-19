@@ -345,8 +345,8 @@ func TestMaxRequestSize_DefaultLimit(t *testing.T) {
 		t.Errorf("expected default limit %d bytes, got %d bytes", expectedDefault, actualLimit)
 	}
 
-	// Create a request with body under the default limit (1MB)
-	bodySize := 1024 * 1024 // 1MB
+	// Create a request with body under the default limit (9MB - close to the 10MB default)
+	bodySize := 9 * 1024 * 1024 // 9MB
 	req := createAuthenticatedRequest(t, sharedKey, principal, bodySize)
 
 	// Request should be accepted with default limit
