@@ -75,6 +75,11 @@ func NewRateLimiterWithContext(ctx context.Context, requestsPerSecond float64, b
 }
 
 // NewRateLimiterWithConfig creates a new rate limiter with custom configuration.
+// requestsPerSecond: allowed requests per second per principal.
+// burst: maximum burst size.
+// cleanupInterval: how often stale limiter cleanup runs.
+// staleTTL: how long a limiter can remain unused before it is considered stale and removed.
+// logger: zerolog logger used for logging within the rate limiter.
 func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
 	ctx, cancel := context.WithCancel(context.Background())
 	rl := &RateLimiter{
