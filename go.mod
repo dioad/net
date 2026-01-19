@@ -6,7 +6,7 @@ toolchain go1.24.2
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cli/oauth v1.2.0
+	github.com/cli/oauth v1.2.1
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.7.0
