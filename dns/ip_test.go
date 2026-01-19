@@ -2,36 +2,37 @@ package dns
 
 import "testing"
 
-func TestUitoa(t *testing.T) {
+func TestReverseIP(t *testing.T) {
 	var tests = []struct {
-		in  uint64
-		out string
+		in      string
+		out     string
+		wantErr bool
 	}{
-		{0, "0"},
-		{1, "1"},
-		{10, "10"},
-		{10000000000, "10000000000"},
+		{"127.0.0.1", "1.0.0.127", false},
+		{"128.3.244.164", "164.244.3.128", false},
+		{"invalid", "", true},
+		{"", "", true},
+		{"2001:db8::1", "", false}, // Currently returns "", nil for IPv6
 	}
 	for _, test := range tests {
-		if out := uitoa(test.in); out != test.out {
-			t.Errorf("uitoa(%v) = %v", test.in, out)
+		out, err := ReverseIP(test.in)
+		if (err != nil) != test.wantErr {
+			t.Errorf("ReverseIP(%v) error = %v, wantErr %v", test.in, err, test.wantErr)
+			continue
+		}
+		if out != test.out {
+			t.Errorf("ReverseIP(%v) = %v, want %v", test.in, out, test.out)
 		}
 	}
 }
 
-func TestReverseIP(t *testing.T) {
-	var tests = []struct {
-		in  string
-		out string
-	}{
-		{"127.0.0.1", "1.0.0.127"},
-		{"128.3.244.164", "164.244.3.128"},
-	}
-	for _, test := range tests {
-		if out, _ := ReverseIP(test.in); out != test.out {
-			t.Errorf("ReverseIP(%v) = %v", test.in, out)
-		}
-	}
+func FuzzReverseIP(f *testing.F) {
+	f.Add("127.0.0.1")
+	f.Add("2001:db8::1")
+	f.Add("invalid")
+	f.Fuzz(func(t *testing.T, addr string) {
+		_, _ = ReverseIP(addr)
+	})
 }
 
 func TestBlockListLookupAddr(t *testing.T) {

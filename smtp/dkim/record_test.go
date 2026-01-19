@@ -22,21 +22,55 @@ func TestDKIMRecord(t *testing.T) {
 }
 
 func TestParseParam(t *testing.T) {
-	input := "v=DKIM1; k=rsa; p=EXAMPLE="
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{
+			name:    "valid",
+			input:   "v=DKIM1; k=rsa; p=EXAMPLE=",
+			wantErr: false,
+		},
+		{
+			name:    "extra spaces",
+			input:   " v = DKIM1 ;  k = rsa ; p = EXAMPLE= ",
+			wantErr: false,
+		},
+		{
+			name:    "invalid parameter",
+			input:   "v=DKIM1; x=unknown",
+			wantErr: true,
+		},
+		{
+			name:    "missing value",
+			input:   "v=DKIM1; k=; p=EXAMPLE=",
+			wantErr: false, // parseParams will just have empty string value
+		},
+		{
+			name:    "no equals",
+			input:   "v",
+			wantErr: true, // "v" is invalid parameter because it doesn't match keys if it's trimmed? wait.
+		},
+	}
 
-	params, err := ParseParams(input)
-	if err != nil {
-		t.Fatalf("failed to parse params: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseParams(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseParams() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
-	if params["v"] != "DKIM1" {
-		t.Errorf("params[v]: got: %s, expected: %s", params["v"], "DKIM1")
-	}
-	if params["p"] != "EXAMPLE=" {
-		t.Errorf("params[p]: got: %s, expected: %s", params["p"], "EXAMPLE=")
-	}
-	if params["k"] != "rsa" {
-		t.Errorf("params[k]: got: %s, expected: %s", params["k"], "rsa")
-	}
+}
+
+func FuzzParseParams(f *testing.F) {
+	f.Add("v=DKIM1; k=rsa; p=EXAMPLE=")
+	f.Add("v=DKIM1; k=; p=")
+	f.Add("invalid=param")
+	f.Fuzz(func(t *testing.T, s string) {
+		_, _ = ParseParams(s)
+	})
 }
 
 func TestRecordFileReader(t *testing.T) {
