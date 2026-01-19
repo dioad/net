@@ -82,10 +82,21 @@ func (a *Handler) AuthRequest(r *http.Request) (stdcontext.Context, error) {
 	bodyBytes := []byte{}
 	if r.Body != nil {
 		var err error
-		limitedReader := io.LimitReader(r.Body, int64(a.maxRequestSizeBytes()))
+		maxSize := int64(a.maxRequestSizeBytes())
+		limitedReader := &io.LimitedReader{R: r.Body, N: maxSize}
 		bodyBytes, err = io.ReadAll(limitedReader)
 		if err != nil {
 			return r.Context(), fmt.Errorf("failed to read request body: %w", err)
+		}
+
+		// Check if there is more data beyond the maximum allowed size.
+		extraBuf := make([]byte, 1)
+		n, err := r.Body.Read(extraBuf)
+		if err != nil && err != io.EOF {
+			return r.Context(), fmt.Errorf("failed to read request body: %w", err)
+		}
+		if n > 0 {
+			return r.Context(), errors.New("request body exceeds maximum size limit")
 		}
 		// Restore body for handler to use
 		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
