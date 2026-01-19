@@ -189,17 +189,15 @@ func acceptConnections(listener *authz.Listener, listenerType string, logger zer
 			continue
 		}
 
-		// Connection accepted (note: authz.Listener closes denied connections but still returns them)
-		// The authz.Listener itself logs access denied messages
-		if conn != nil {
-			logger.Info().
-				Str("type", listenerType).
-				Str("remote_addr", conn.RemoteAddr().String()).
-				Msg("✓ Connection received and processing")
+		// Connection returned (authz.Listener closes denied connections but still returns them)
+		// The authz.Listener itself logs "access denied" for rejected connections
+		logger.Info().
+			Str("type", listenerType).
+			Str("remote_addr", conn.RemoteAddr().String()).
+			Msg("Connection received")
 
-			// Handle the connection (it may already be closed if denied by ACL)
-			go handleConnection(conn, logger)
-		}
+		// Handle the connection (it may already be closed if denied by ACL)
+		go handleConnection(conn, logger)
 	}
 }
 
