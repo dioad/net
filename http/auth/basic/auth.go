@@ -62,6 +62,7 @@ func (a *ClientAuth) AddAuth(req *http.Request) error {
 				if l.machine == host {
 					a.user = l.login
 					a.password = l.password
+					break
 				}
 			}
 		}

@@ -233,3 +233,34 @@ password pass2`
 		t.Errorf("Second line incorrect: %+v", lines[1])
 	}
 }
+
+func TestNetrcProviderFirstMatchWins(t *testing.T) {
+	// Test that when there are multiple entries for the same host,
+	// the first one is used
+	netrcContent := `machine example.com
+login user1
+password pass1
+
+machine example.com
+login user2
+password pass2`
+
+	provider := NewNetrcProviderFromContent(netrcContent)
+	req, _ := http.NewRequest("GET", "http://example.com", nil)
+
+	added := AddCredentialsWithProvider(req, provider)
+
+	if !added {
+		t.Fatal("Expected credentials to be added")
+	}
+
+	user, pass, ok := req.BasicAuth()
+	if !ok {
+		t.Fatal("Expected credentials on request")
+	}
+
+	// Should use the first entry
+	if user != "user1" || pass != "pass1" {
+		t.Errorf("Expected first entry (user1/pass1), got %s/%s", user, pass)
+	}
+}
