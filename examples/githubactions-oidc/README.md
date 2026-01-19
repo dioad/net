@@ -20,84 +20,9 @@ go test -v github.com/dioad/net/examples/githubactions-oidc
 
 ## Code
 
-See [example_test.go](example_test.go) for the complete executable examples.
-
-## Detailed Documentation
-
-### Client Example (Getting OIDC Token)
-
-```go
-package main
-
-import (
-    "fmt"
-    "os"
-    
-    "github.com/dioad/net/oidc/githubactions"
-)
-
-func main() {
-    // Create a token source with optional audience
-    tokenSource := githubactions.NewTokenSource(
-        githubactions.WithAudience("https://github.com/dioad"),
-    )
-    
-    // Get an OIDC token
-    token, err := tokenSource.Token()
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "Failed to get token: %v\n", err)
-        os.Exit(1)
-    }
-    
-    fmt.Printf("Token: %s\n", token.AccessToken)
-    fmt.Printf("Expiry: %s\n", token.Expiry)
-}
-```
-
-## Server Example (Validating OIDC Token)
-
-```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "os"
-    
-    "github.com/dioad/net/oidc"
-)
-
-func main() {
-    ctx := context.Background()
-    
-    // Create a validator config
-    validatorConfig := oidc.ValidatorConfig{
-        EndpointConfig: oidc.EndpointConfig{
-            Type: "githubactions",
-            URL:  "https://token.actions.githubusercontent.com",
-        },
-        Audiences: []string{"https://github.com/dioad"},
-        Issuer:    "https://token.actions.githubusercontent.com",
-    }
-    
-    // Create a validator
-    validator, err := oidc.NewValidatorFromConfig(&validatorConfig)
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "Failed to create validator: %v\n", err)
-        os.Exit(1)
-    }
-    
-    // Validate a token (example token - replace with actual token)
-    tokenString := os.Getenv("GITHUB_ACTIONS_TOKEN")
-    claims, err := validator.ValidateToken(ctx, tokenString)
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "Failed to validate token: %v\n", err)
-        os.Exit(1)
-    }
-    
-    fmt.Printf("Claims: %+v\n", claims)
-}
-```
+See [example_test.go](example_test.go) for the complete executable examples:
+- `Example_tokenSource()` - Demonstrates retrieving OIDC tokens from GitHub Actions
+- `Example_validator()` - Demonstrates validating GitHub Actions OIDC tokens
 
 ## Configuration Examples
 
