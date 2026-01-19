@@ -77,7 +77,7 @@ func TestAuthRequest_Authorized(t *testing.T) {
 	}
 }
 
-func TestAuthRequest_Unauthorized(t *testing.T) {
+func TestAuthRequest_Unauthorised(t *testing.T) {
 	cfg := authz.PrincipalACLConfig{
 		AllowList: []string{"alice@example.com"},
 	}
