@@ -91,7 +91,7 @@ func TestAuthRequest_Unauthorised(t *testing.T) {
 	_, err := handler.AuthRequest(req)
 
 	if err == nil {
-		t.Error("Expected error for unauthorized principal, got nil")
+		t.Error("Expected error for unauthorised principal, got nil")
 	}
 }
 
