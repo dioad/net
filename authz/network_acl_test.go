@@ -121,19 +121,12 @@ func TestParseNetIPv6WithDefault(t *testing.T) {
 	expectedOnes, expectedBits := net.CIDRMask(128, 128).Size()
 
 	n, err := parseTCPNet(testCase)
-	if err != nil {
-		t.Fatalf("didn't expect err: %v", err)
-	}
+	require.NoError(t, err)
 
 	gotOnes, gotBits := n.Mask.Size()
 
-	if gotOnes != expectedOnes {
-		t.Fatalf("got %v ones, expected %v ones", gotOnes, expectedOnes)
-	}
-
-	if gotBits != expectedBits {
-		t.Fatalf("got %v bits, expected %v bits", gotBits, expectedBits)
-	}
+	require.Equal(t, expectedOnes, gotOnes)
+	require.Equal(t, expectedBits, gotBits)
 }
 
 func TestParseNetIPv6WithMask(t *testing.T) {
@@ -142,19 +135,12 @@ func TestParseNetIPv6WithMask(t *testing.T) {
 	expectedOnes, expectedBits := net.CIDRMask(32, 128).Size()
 
 	n, err := parseTCPNet(testCase)
-	if err != nil {
-		t.Fatalf("didn't expect err: %v", err)
-	}
+	require.NoError(t, err)
 
 	gotOnes, gotBits := n.Mask.Size()
 
-	if gotOnes != expectedOnes {
-		t.Fatalf("got %v ones, expected %v ones", gotOnes, expectedOnes)
-	}
-
-	if gotBits != expectedBits {
-		t.Fatalf("got %v bits, expected %v bits", gotBits, expectedBits)
-	}
+	require.Equal(t, expectedOnes, gotOnes)
+	require.Equal(t, expectedBits, gotBits)
 }
 
 func TestAuthoriserIPv6Allow(t *testing.T) {
