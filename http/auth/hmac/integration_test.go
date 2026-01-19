@@ -139,9 +139,9 @@ func TestTimestampExpiry(t *testing.T) {
 	const sharedKey = "secret"
 	serverHandler := NewHandler(ServerConfig{
 		CommonConfig: CommonConfig{
-			SharedKey:        sharedKey,
-			MaxTimestampDiff: 1 * time.Second,
+			SharedKey: sharedKey,
 		},
+		MaxTimestampDiff: 1 * time.Second,
 	})
 
 	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))

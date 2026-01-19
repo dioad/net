@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -25,7 +26,9 @@ const (
 	// This aligns with custom implementations; RFC 9421 uses 'Signature-Input'.
 	DefaultSignedHeadersHeader = "X-Signed-Headers"
 	// AuthScheme is the scheme used in the Authorization header.
-	AuthScheme = "HMAC"
+	AuthScheme                 = "HMAC"
+	DefaultMaxRequestSizeBytes = 10 * 1024 * 1024 // 10 MB
+	DefaultMaxTimestampDiff    = 5 * time.Minute
 )
 
 // CanonicalData generates the string to be signed based on the request.

@@ -7,21 +7,10 @@ type CommonConfig struct {
 	AllowInsecureHTTP bool `mapstructure:"allow-insecure-http"`
 	// Inline shared key used to HMAC with value from HTTPHeader
 	SharedKey string `mapstructure:"shared-key"`
-	// Path to read shared key from
-	SharedKeyPath string `mapstructure:"shared-key-path"`
-	// Deprecated: Data is unused in the current HMAC implementation and is
-	// retained only for backward compatibility with older configurations.
-	Data string `mapstructure:"data"`
 	// HTTP Headers to include in the HMAC calculation.
 	SignedHeaders []string `mapstructure:"signed-headers"`
 	// HTTP Header to use for the timestamp (default: X-Timestamp)
 	TimestampHeader string `mapstructure:"timestamp-header"`
-	// Maximum allowed time difference for the timestamp (default: 5m)
-	MaxTimestampDiff time.Duration `mapstructure:"max-timestamp-diff"`
-	// Maximum allowed time difference for future timestamps (default: 30s)
-	// This should be smaller than MaxTimestampDiff to prevent pre-signed replay attacks.
-	// A smaller value is appropriate since it only needs to account for clock skew.
-	MaxFutureTimestampDiff time.Duration `mapstructure:"max-future-timestamp-diff"`
 }
 
 // ClientConfig contains configuration for an HMAC authentication client.
@@ -34,4 +23,12 @@ type ClientConfig struct {
 // ServerConfig contains configuration for an HMAC authentication server.
 type ServerConfig struct {
 	CommonConfig `mapstructure:",squash"`
+	// Maximum allowed time difference for the timestamp (default: 5m)
+	MaxTimestampDiff time.Duration `mapstructure:"max-timestamp-diff"`
+	// Maximum allowed time difference for future timestamps (default: 30s)
+	// This should be smaller than MaxTimestampDiff to prevent pre-signed replay attacks.
+	// A smaller value is appropriate since it only needs to account for clock skew.
+	MaxFutureTimestampDiff time.Duration `mapstructure:"max-future-timestamp-diff"`
+	// Maximum request size in bytes (default: 10 MB)
+	MaxRequestSize int `mapstructure:"max-request-size"`
 }
