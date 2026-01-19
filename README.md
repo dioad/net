@@ -202,6 +202,21 @@ config := http.Config{
 server := http.NewServer(config)
 ```
 
+### More Examples
+
+For more comprehensive, executable examples, see the [`examples/`](examples/) directory:
+
+- **[Basic HTTP Server](examples/basic-http-server/)** - HTTP server with basic authentication
+- **[OIDC Authentication](examples/oidc-auth/)** - OpenID Connect/JWT authentication
+- **[IP-based Access Control](examples/ip-acl/)** - Network ACLs for IP filtering
+- **[HTTP Rate Limiting](examples/rate-limiting-http/)** - Per-principal HTTP rate limiting
+- **[Dynamic Rate Limiting](examples/rate-limiting-dynamic/)** - Rate limiting with custom sources
+- **[Network Rate Limiting](examples/rate-limiting-network/)** - Network-level rate limiting
+- **[TLS Configuration](examples/tls-config/)** - TLS setup with self-signed certificates
+- **[GitHub Actions OIDC](examples/githubactions-oidc/)** - GitHub Actions OIDC token handling
+
+All examples are fully executable Go test files that can be run with `go test ./examples/...`
+
 ## Package Structure
 
 - **`authz/`** - Authorization utilities (ACLs, principal checks, IP filtering)

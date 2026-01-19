@@ -83,6 +83,13 @@ Examples are an essential part of API documentation and should be created as exe
 **Larger Examples (Multiple Concepts):**
 - Create dedicated `_test.go` files in the `examples/` directory for comprehensive examples.
 - These examples must follow Go's `Example` naming convention and be executable.
+- When adding new features or major functionality, create a corresponding example in `examples/` (e.g., `examples/my-feature/example_test.go`).
+- All examples in the `examples/` directory are automatically built as part of the CI workflow.
+
+**Examples Directory Structure:**
+- Each feature area should have its own subdirectory under `examples/` (e.g., `examples/basic-http-server/`, `examples/oidc-auth/`)
+- Each subdirectory should contain an `example_test.go` file with one or more `Example*` functions
+- Examples should be fully executable and testable with `go test ./examples/...`
 
 ### Example Function Naming Convention
 

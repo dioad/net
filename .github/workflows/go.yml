@@ -84,6 +84,12 @@ jobs:
       run: |
         go build -v ./...
 
+    - name: Build Examples
+      run: |
+        go test -c ./examples/...
+        echo "All examples built successfully"
+
+
   fuzz:
     name: Fuzz
     needs: test
