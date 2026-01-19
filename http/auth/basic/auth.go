@@ -29,12 +29,13 @@ func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
 }
 
 type ClientAuth struct {
-	Config   ClientConfig
-	user     string
-	password string
+	Config         ClientConfig
+	user           string
+	password       string
+	netrcProvider  *NetrcProvider
 }
 
-func (a ClientAuth) HTTPClient() *http.Client {
+func (a *ClientAuth) HTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &RoundTripper{
 			Username: a.user,
@@ -43,7 +44,12 @@ func (a ClientAuth) HTTPClient() *http.Client {
 	}
 }
 
-func (a ClientAuth) AddAuth(req *http.Request) error {
+func (a *ClientAuth) AddAuth(req *http.Request) error {
+	// Initialize netrcProvider if not set
+	if a.netrcProvider == nil {
+		a.netrcProvider = &NetrcProvider{}
+	}
+
 	if a.user == "" {
 		if a.Config.User != "" {
 			a.user = a.Config.User
@@ -51,11 +57,12 @@ func (a ClientAuth) AddAuth(req *http.Request) error {
 		} else {
 			host := req.URL.Hostname()
 
-			netrcOnce.Do(readNetrc)
-			for _, l := range netrc {
+			a.netrcProvider.once.Do(a.netrcProvider.readNetrc)
+			for _, l := range a.netrcProvider.lines {
 				if l.machine == host {
 					a.user = l.login
 					a.password = l.password
+					break
 				}
 			}
 		}

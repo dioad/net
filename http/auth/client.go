@@ -14,7 +14,7 @@ func NewClientAuth(authConfig ClientConfig) ClientAuth {
 		return github.ClientAuth{Config: authConfig.GitHubAuthConfig}
 	}
 	if !generics.IsZeroValue(authConfig.BasicAuthConfig) {
-		return basic.ClientAuth{Config: authConfig.BasicAuthConfig}
+		return &basic.ClientAuth{Config: authConfig.BasicAuthConfig}
 	}
 	if !generics.IsZeroValue(authConfig.HMACAuthConfig) {
 		return hmac.ClientAuth{Config: authConfig.HMACAuthConfig}
