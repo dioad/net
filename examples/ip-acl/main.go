@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -181,27 +182,23 @@ func acceptConnections(listener *authz.Listener, listenerType string, logger zer
 		conn, err := listener.Accept()
 		if err != nil {
 			// Check if listener was closed
-			if opErr, ok := err.(*net.OpError); ok && opErr.Err.Error() == "use of closed network connection" {
+			if errors.Is(err, net.ErrClosed) {
 				return
 			}
 			logger.Error().Err(err).Str("type", listenerType).Msg("accept error")
 			continue
 		}
 
-		// Connection was authorized and accepted
+		// Connection accepted (note: authz.Listener closes denied connections but still returns them)
+		// The authz.Listener itself logs access denied messages
 		if conn != nil {
 			logger.Info().
 				Str("type", listenerType).
 				Str("remote_addr", conn.RemoteAddr().String()).
-				Msg("✓ Connection ALLOWED")
+				Msg("✓ Connection received and processing")
 
-			// Handle the connection
+			// Handle the connection (it may already be closed if denied by ACL)
 			go handleConnection(conn, logger)
-		} else {
-			// Connection was denied (conn is nil when ACL rejects)
-			logger.Warn().
-				Str("type", listenerType).
-				Msg("✗ Connection DENIED by ACL")
 		}
 	}
 }
