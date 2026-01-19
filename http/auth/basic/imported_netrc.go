@@ -25,6 +25,9 @@ type netrcLine struct {
 }
 
 // NetrcProvider manages netrc credentials and their loading.
+// It encapsulates the state for loading and parsing netrc files,
+// allowing for multiple independent instances with different configurations.
+// This resolves the global state issue that made testing difficult.
 type NetrcProvider struct {
 	once  sync.Once
 	lines []netrcLine
