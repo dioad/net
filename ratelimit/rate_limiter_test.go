@@ -110,6 +110,39 @@ func TestRateLimiter_WithSource(t *testing.T) {
 	assert.False(t, rl.Allow("free"))
 }
 
+func TestRateLimiter_WithSourceAndFallback(t *testing.T) {
+	logger := zerolog.Nop()
+	source := &mockSource{
+		limits: map[string]struct {
+			rps   float64
+			burst int
+		}{
+			"premium": {rps: 1000, burst: 1000},
+			"free":    {rps: 1, burst: 1},
+		},
+	}
+
+	// Create a rate limiter with source and fallback limits
+	rl := NewRateLimiterWithConfig(5, 5, 5*time.Minute, 30*time.Minute, logger)
+	rl.LimitSource = source
+	defer rl.Stop()
+
+	// Premium user should use source limits
+	for i := 0; i < 50; i++ {
+		assert.True(t, rl.Allow("premium"))
+	}
+
+	// Free user should use source limits
+	assert.True(t, rl.Allow("free"))
+	assert.False(t, rl.Allow("free"))
+
+	// Unknown user should use fallback limits (5 rps, 5 burst)
+	for i := 0; i < 5; i++ {
+		assert.True(t, rl.Allow("unknown"))
+	}
+	assert.False(t, rl.Allow("unknown"))
+}
+
 func TestRateLimiter_DynamicUpdate(t *testing.T) {
 	logger := zerolog.Nop()
 	source := &mockSource{
