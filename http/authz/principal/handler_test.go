@@ -70,7 +70,7 @@ func TestAuthRequest_Authorized(t *testing.T) {
 	resultCtx, err := handler.AuthRequest(req)
 
 	if err != nil {
-		t.Errorf("Expected no error for authorized principal, got: %v", err)
+		t.Errorf("Expected no error for authorised principal, got: %v", err)
 	}
 	if resultCtx == nil {
 		t.Error("Expected context to be returned")
