@@ -215,7 +215,7 @@ For more comprehensive, executable examples, see the [`examples/`](examples/) di
 - **[TLS Configuration](examples/tls-config/)** - TLS setup with self-signed certificates
 - **[GitHub Actions OIDC](examples/githubactions-oidc/)** - GitHub Actions OIDC token handling
 
-All examples are fully executable Go test files that can be run with `go test ./examples/...`
+All examples are standalone executable Go programs that can be run with `go run ./examples/...` or built with `go build ./examples/...`.
 
 ## Package Structure
 
