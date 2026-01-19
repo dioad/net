@@ -84,6 +84,24 @@ jobs:
       run: |
         go build -v ./...
 
+    - name: Build Examples
+      run: |
+        for dir in examples/*/; do
+          if [ -f "$dir/main.go" ]; then
+            echo "Building $dir..."
+            go build "./$dir..." || exit 1
+          fi
+        done
+        # Also build subdirectories with main.go (e.g., githubactions-oidc/client)
+        for dir in examples/*/*/; do
+          if [ -f "$dir/main.go" ]; then
+            echo "Building $dir..."
+            go build "./$dir..." || exit 1
+          fi
+        done
+        echo "All examples built successfully"
+
+
   fuzz:
     name: Fuzz
     needs: test

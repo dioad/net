@@ -9,6 +9,17 @@ dist/
 *.out
 /vendor/
 
+# Example binaries
+basic-http-server
+client
+ip-acl
+oidc-auth
+rate-limiting-dynamic
+rate-limiting-http
+rate-limiting-network
+tls-config
+validator
+
 # Test coverage
 *.coverprofile
 coverage.out

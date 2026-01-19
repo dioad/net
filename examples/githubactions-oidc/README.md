@@ -1,81 +1,41 @@
 # GitHub Actions OIDC Example
 
-This example demonstrates how to use GitHub Actions OIDC for authentication.
+This example demonstrates how to use GitHub Actions OIDC for authentication, including both obtaining and validating tokens.
 
-## Client Example (Getting OIDC Token)
+## Running the Examples
 
-```go
-package main
+### Client Example (Getting OIDC Token)
 
-import (
-    "fmt"
-    "os"
-    
-    "github.com/dioad/net/oidc/githubactions"
-)
-
-func main() {
-    // Create a token source with optional audience
-    tokenSource := githubactions.NewTokenSource(
-        githubactions.WithAudience("https://github.com/dioad"),
-    )
-    
-    // Get an OIDC token
-    token, err := tokenSource.Token()
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "Failed to get token: %v\n", err)
-        os.Exit(1)
-    }
-    
-    fmt.Printf("Token: %s\n", token.AccessToken)
-    fmt.Printf("Expiry: %s\n", token.Expiry)
-}
+```bash
+go run github.com/dioad/net/examples/githubactions-oidc/client
 ```
 
-## Server Example (Validating OIDC Token)
-
-```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "os"
-    
-    "github.com/dioad/net/oidc"
-)
-
-func main() {
-    ctx := context.Background()
-    
-    // Create a validator config
-    validatorConfig := oidc.ValidatorConfig{
-        EndpointConfig: oidc.EndpointConfig{
-            Type: "githubactions",
-            URL:  "https://token.actions.githubusercontent.com",
-        },
-        Audiences: []string{"https://github.com/dioad"},
-        Issuer:    "https://token.actions.githubusercontent.com",
-    }
-    
-    // Create a validator
-    validator, err := oidc.NewValidatorFromConfig(&validatorConfig)
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "Failed to create validator: %v\n", err)
-        os.Exit(1)
-    }
-    
-    // Validate a token (example token - replace with actual token)
-    tokenString := os.Getenv("GITHUB_ACTIONS_TOKEN")
-    claims, err := validator.ValidateToken(ctx, tokenString)
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "Failed to validate token: %v\n", err)
-        os.Exit(1)
-    }
-    
-    fmt.Printf("Claims: %+v\n", claims)
-}
+Or build and run:
+```bash
+cd examples/githubactions-oidc/client
+go build
+./client
 ```
+
+### Validator Example (Validating OIDC Token)
+
+```bash
+go run github.com/dioad/net/examples/githubactions-oidc/validator
+```
+
+Or build and run:
+```bash
+cd examples/githubactions-oidc/validator
+go build
+./validator
+```
+
+**Note:** These examples require GitHub Actions environment variables. They will only work when run inside a GitHub Actions workflow with `id-token: write` permission.
+
+## What It Demonstrates
+
+- **Client** ([client/main.go](client/main.go)): Retrieving OIDC tokens from GitHub Actions, decoding and inspecting JWT claims
+- **Validator** ([validator/main.go](validator/main.go)): Validating GitHub Actions OIDC tokens, creating OIDC validator configurations
 
 ## Configuration Examples
 
