@@ -123,10 +123,15 @@ func TestRateLimiter_WithSourceAndFallback(t *testing.T) {
 		},
 	}
 
-	// Create a rate limiter with source and fallback limits
+	// Create a rate limiter with fallback limits first, then we'll set source
+	// This approach is not ideal but demonstrates fallback behavior
+	// In production, consider having the source always return ok=true
 	rl := NewRateLimiterWithConfig(5, 5, 5*time.Minute, 30*time.Minute, logger)
-	rl.LimitSource = source
 	defer rl.Stop()
+	
+	// Note: Setting LimitSource after construction can be done, but the source
+	// should be set before any Allow() calls to avoid race conditions
+	rl.LimitSource = source
 
 	// Premium user should use source limits
 	for i := 0; i < 50; i++ {
@@ -306,6 +311,27 @@ func TestRateLimiter_Stop(t *testing.T) {
 	}
 }
 
+func TestRateLimiter_StopMultipleTimes(t *testing.T) {
+	logger := zerolog.Nop()
+	rl := NewRateLimiter(1, 1, logger)
+
+	// Use the rate limiter
+	assert.True(t, rl.Allow("user1"))
+
+	// Stop multiple times should be safe
+	rl.Stop()
+	rl.Stop()
+	rl.Stop()
+
+	// Verify the context is cancelled
+	select {
+	case <-rl.ctx.Done():
+		// Expected - context should be done
+	default:
+		t.Fatal("Context should be done after Stop()")
+	}
+}
+
 func TestRateLimiter_WithContext(t *testing.T) {
 	logger := zerolog.Nop()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -376,13 +402,29 @@ func TestRateLimiter_BackgroundCleanup(t *testing.T) {
 	// Wait for TTL to pass
 	time.Sleep(40 * time.Millisecond)
 
-	// Wait for background cleanup to run
-	time.Sleep(70 * time.Millisecond)
+	// Poll for cleanup to complete with timeout
+	maxWait := 200 * time.Millisecond
+	pollInterval := 10 * time.Millisecond
+	startTime := time.Now()
+	
+	for time.Since(startTime) < maxWait {
+		rl.mu.Lock()
+		count := len(rl.limiters)
+		rl.mu.Unlock()
+		
+		if count == 0 {
+			// Cleanup succeeded
+			return
+		}
+		time.Sleep(pollInterval)
+	}
 
+	// If we get here, cleanup didn't happen in time
 	rl.mu.Lock()
-	// Both users should be cleaned up
-	assert.Len(t, rl.limiters, 0)
+	count := len(rl.limiters)
 	rl.mu.Unlock()
+	
+	t.Fatalf("Expected limiters to be cleaned up, but found %d limiters after %v", count, maxWait)
 }
 
 func TestRateLimiter_ConcurrentAccess(t *testing.T) {

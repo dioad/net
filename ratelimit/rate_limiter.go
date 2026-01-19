@@ -54,9 +54,10 @@ type RateLimiter struct {
 	LimitSource RateLimitSource
 
 	// Background cleanup
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	ctx      context.Context
+	cancel   context.CancelFunc
+	wg       sync.WaitGroup
+	stopOnce sync.Once
 }
 
 // NewRateLimiter creates a new rate limiter with static limits.
@@ -81,6 +82,19 @@ func NewRateLimiterWithContext(ctx context.Context, requestsPerSecond float64, b
 // staleTTL: how long a limiter can remain unused before it is considered stale and removed.
 // logger: zerolog logger used for logging within the rate limiter.
 func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
+	if requestsPerSecond < 0 {
+		requestsPerSecond = 0
+	}
+	if burst < 0 {
+		burst = 0
+	}
+	if cleanupInterval <= 0 {
+		cleanupInterval = 5 * time.Minute
+	}
+	if staleTTL <= 0 {
+		staleTTL = 30 * time.Minute
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	rl := &RateLimiter{
 		limiters:          make(map[string]*limiterEntry),
@@ -98,7 +112,26 @@ func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInter
 
 // NewRateLimiterWithContextAndConfig creates a new rate limiter with custom configuration and a context.
 // The rate limiter will stop its background cleanup when the context is cancelled.
+// ctx: parent context for lifecycle management.
+// requestsPerSecond: allowed requests per second per principal.
+// burst: maximum burst size.
+// cleanupInterval: how often stale limiter cleanup runs.
+// staleTTL: how long a limiter can remain unused before it is considered stale and removed.
+// logger: zerolog logger used for logging within the rate limiter.
 func NewRateLimiterWithContextAndConfig(ctx context.Context, requestsPerSecond float64, burst int, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
+	if requestsPerSecond < 0 {
+		requestsPerSecond = 0
+	}
+	if burst < 0 {
+		burst = 0
+	}
+	if cleanupInterval <= 0 {
+		cleanupInterval = 5 * time.Minute
+	}
+	if staleTTL <= 0 {
+		staleTTL = 30 * time.Minute
+	}
+
 	derivedCtx, cancel := context.WithCancel(ctx)
 	rl := &RateLimiter{
 		limiters:          make(map[string]*limiterEntry),
@@ -126,7 +159,21 @@ func NewRateLimiterWithSourceAndContext(ctx context.Context, source RateLimitSou
 }
 
 // NewRateLimiterWithSourceAndConfig creates a new rate limiter with a custom rate limit source and configuration.
+// source: provides dynamic rate limits per principal.
+// cleanupInterval: how often stale limiter cleanup runs.
+// staleTTL: how long a limiter can remain unused before it is considered stale and removed.
+// logger: zerolog logger used for logging within the rate limiter.
+// Note: This constructor does not set fallback requestsPerSecond and burst values.
+// If the source returns ok=false for a principal, the rate limiter will use 0 for both,
+// which will block all requests. Use NewRateLimiterWithConfig and set LimitSource if you need fallback limits.
 func NewRateLimiterWithSourceAndConfig(source RateLimitSource, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
+	if cleanupInterval <= 0 {
+		cleanupInterval = 5 * time.Minute
+	}
+	if staleTTL <= 0 {
+		staleTTL = 30 * time.Minute
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	rl := &RateLimiter{
 		limiters:        make(map[string]*limiterEntry),
@@ -143,7 +190,22 @@ func NewRateLimiterWithSourceAndConfig(source RateLimitSource, cleanupInterval, 
 
 // NewRateLimiterWithSourceContextAndConfig creates a new rate limiter with a custom rate limit source,
 // context, and configuration. The rate limiter will stop its background cleanup when the context is cancelled.
+// ctx: parent context for lifecycle management.
+// source: provides dynamic rate limits per principal.
+// cleanupInterval: how often stale limiter cleanup runs.
+// staleTTL: how long a limiter can remain unused before it is considered stale and removed.
+// logger: zerolog logger used for logging within the rate limiter.
+// Note: This constructor does not set fallback requestsPerSecond and burst values.
+// If the source returns ok=false for a principal, the rate limiter will use 0 for both,
+// which will block all requests. Use NewRateLimiterWithContextAndConfig and set LimitSource if you need fallback limits.
 func NewRateLimiterWithSourceContextAndConfig(ctx context.Context, source RateLimitSource, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
+	if cleanupInterval <= 0 {
+		cleanupInterval = 5 * time.Minute
+	}
+	if staleTTL <= 0 {
+		staleTTL = 30 * time.Minute
+	}
+
 	derivedCtx, cancel := context.WithCancel(ctx)
 	rl := &RateLimiter{
 		limiters:        make(map[string]*limiterEntry),
@@ -258,8 +320,14 @@ func (rl *RateLimiter) start() {
 
 // Stop gracefully stops the background cleanup goroutine.
 // It should be called when the RateLimiter is no longer needed.
+// Stop can be safely called multiple times.
+// Note: When using context-based constructors (NewRateLimiterWithContext, etc.),
+// calling Stop is not necessary as cleanup happens automatically when the context is cancelled.
+// However, calling Stop after context cancellation is safe and will wait for cleanup to complete.
 func (rl *RateLimiter) Stop() {
-	rl.cancel()
+	rl.stopOnce.Do(func() {
+		rl.cancel()
+	})
 	rl.wg.Wait()
 }
 
