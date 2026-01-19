@@ -318,8 +318,8 @@ func TestRateLimiter_WithContext(t *testing.T) {
 	// Cancel the context
 	cancel()
 
-	// Wait a bit for the goroutine to exit
-	time.Sleep(50 * time.Millisecond)
+	// Wait for the background goroutine to exit
+	rl.wg.Wait()
 
 	// Verify the context is cancelled
 	select {
