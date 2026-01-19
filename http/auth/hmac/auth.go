@@ -63,8 +63,12 @@ func CanonicalData(r *http.Request, principal string, timestamp string, signedHe
 	b.WriteString(principal)
 	b.WriteString("\n")
 
-	// Signed Header names
-	b.WriteString(strings.Join(signedHeaders, ","))
+	// Signed Header names - normalize to lowercase for consistency
+	normalizedHeaders := make([]string, len(signedHeaders))
+	for i, h := range signedHeaders {
+		normalizedHeaders[i] = strings.ToLower(h)
+	}
+	b.WriteString(strings.Join(normalizedHeaders, ","))
 	b.WriteString("\n")
 
 	// Signed Header values
