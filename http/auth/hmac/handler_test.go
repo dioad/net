@@ -111,10 +111,10 @@ func TestTimestampValidation_FutureTimestamps(t *testing.T) {
 			// Create handler with custom config
 			handler := NewHandler(ServerConfig{
 				CommonConfig: CommonConfig{
-					SharedKey:              sharedKey,
-					MaxTimestampDiff:       tt.maxTimestampDiff,
-					MaxFutureTimestampDiff: tt.maxFutureTimestampDiff,
+					SharedKey: sharedKey,
 				},
+				MaxTimestampDiff:       tt.maxTimestampDiff,
+				MaxFutureTimestampDiff: tt.maxFutureTimestampDiff,
 			})
 
 			// Calculate timestamp with offset
@@ -202,10 +202,10 @@ func TestTimestampValidation_PreSignedReplayAttackPrevention(t *testing.T) {
 
 	handler := NewHandler(ServerConfig{
 		CommonConfig: CommonConfig{
-			SharedKey:              sharedKey,
-			MaxTimestampDiff:       5 * time.Minute,
-			MaxFutureTimestampDiff: 30 * time.Second,
+			SharedKey: sharedKey,
 		},
+		MaxTimestampDiff:       5 * time.Minute,
+		MaxFutureTimestampDiff: 30 * time.Second,
 	})
 
 	// Simulate the attack scenario from the issue:
