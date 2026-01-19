@@ -2,6 +2,7 @@ package hmac
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -247,6 +248,32 @@ func TestTimestampValidation_PreSignedReplayAttackPrevention(t *testing.T) {
 	}
 }
 
+const (
+	// expectedMaxSizeErrorMessage is the expected error message when request size limit is exceeded
+	expectedMaxSizeErrorMessage = "exceeds maximum size limit"
+)
+
+// createAuthenticatedRequest is a helper function to create an authenticated request with a body of specified size.
+func createAuthenticatedRequest(t *testing.T, sharedKey, principal string, bodySize int) *http.Request {
+	t.Helper()
+
+	bodyContent := strings.Repeat("a", bodySize)
+	req := httptest.NewRequest("POST", "http://example.com/api", strings.NewReader(bodyContent))
+
+	clientAuth := ClientAuth{
+		Config: ClientConfig{
+			CommonConfig: CommonConfig{SharedKey: sharedKey},
+			Principal:    principal,
+		},
+	}
+
+	if err := clientAuth.AddAuth(req); err != nil {
+		t.Fatalf("failed to add auth: %v", err)
+	}
+
+	return req
+}
+
 // TestMaxRequestSize_UnderLimit tests that requests under the size limit are accepted.
 func TestMaxRequestSize_UnderLimit(t *testing.T) {
 	const sharedKey = "test-key"
@@ -261,19 +288,7 @@ func TestMaxRequestSize_UnderLimit(t *testing.T) {
 	})
 
 	// Create a request with body under the limit (500 bytes)
-	bodyContent := strings.Repeat("a", 500)
-	req := httptest.NewRequest("POST", "http://example.com/api", strings.NewReader(bodyContent))
-
-	clientAuth := ClientAuth{
-		Config: ClientConfig{
-			CommonConfig: CommonConfig{SharedKey: sharedKey},
-			Principal:    principal,
-		},
-	}
-
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	req := createAuthenticatedRequest(t, sharedKey, principal, 500)
 
 	// Request should be accepted
 	ctx, err := handler.AuthRequest(req)
@@ -299,26 +314,14 @@ func TestMaxRequestSize_ExceedsLimit(t *testing.T) {
 	})
 
 	// Create a request with body exceeding the limit (2KB)
-	bodyContent := strings.Repeat("a", 2048)
-	req := httptest.NewRequest("POST", "http://example.com/api", strings.NewReader(bodyContent))
-
-	clientAuth := ClientAuth{
-		Config: ClientConfig{
-			CommonConfig: CommonConfig{SharedKey: sharedKey},
-			Principal:    principal,
-		},
-	}
-
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	req := createAuthenticatedRequest(t, sharedKey, principal, 2048)
 
 	// Request should be rejected
 	_, err := handler.AuthRequest(req)
 	if err == nil {
 		t.Error("expected request exceeding size limit to be rejected")
 	}
-	if !strings.Contains(err.Error(), "exceeds maximum size limit") {
+	if !strings.Contains(err.Error(), expectedMaxSizeErrorMessage) {
 		t.Errorf("expected error about size limit, got: %v", err)
 	}
 }
@@ -344,19 +347,7 @@ func TestMaxRequestSize_DefaultLimit(t *testing.T) {
 
 	// Create a request with body under the default limit (1MB)
 	bodySize := 1024 * 1024 // 1MB
-	bodyContent := strings.Repeat("a", bodySize)
-	req := httptest.NewRequest("POST", "http://example.com/api", strings.NewReader(bodyContent))
-
-	clientAuth := ClientAuth{
-		Config: ClientConfig{
-			CommonConfig: CommonConfig{SharedKey: sharedKey},
-			Principal:    principal,
-		},
-	}
-
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	req := createAuthenticatedRequest(t, sharedKey, principal, bodySize)
 
 	// Request should be accepted with default limit
 	ctx, err := handler.AuthRequest(req)
@@ -382,19 +373,7 @@ func TestMaxRequestSize_AtExactLimit(t *testing.T) {
 	})
 
 	// Create a request with body exactly at the limit (1024 bytes)
-	bodyContent := strings.Repeat("a", maxSize)
-	req := httptest.NewRequest("POST", "http://example.com/api", strings.NewReader(bodyContent))
-
-	clientAuth := ClientAuth{
-		Config: ClientConfig{
-			CommonConfig: CommonConfig{SharedKey: sharedKey},
-			Principal:    principal,
-		},
-	}
-
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	req := createAuthenticatedRequest(t, sharedKey, principal, maxSize)
 
 	// Request at exact limit should be accepted
 	ctx, err := handler.AuthRequest(req)
@@ -420,26 +399,14 @@ func TestMaxRequestSize_OneBytePastLimit(t *testing.T) {
 	})
 
 	// Create a request with body one byte over the limit (1025 bytes)
-	bodyContent := strings.Repeat("a", maxSize+1)
-	req := httptest.NewRequest("POST", "http://example.com/api", strings.NewReader(bodyContent))
-
-	clientAuth := ClientAuth{
-		Config: ClientConfig{
-			CommonConfig: CommonConfig{SharedKey: sharedKey},
-			Principal:    principal,
-		},
-	}
-
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	req := createAuthenticatedRequest(t, sharedKey, principal, maxSize+1)
 
 	// Request should be rejected
 	_, err := handler.AuthRequest(req)
 	if err == nil {
 		t.Error("expected request one byte over limit to be rejected")
 	}
-	if !strings.Contains(err.Error(), "exceeds maximum size limit") {
+	if !strings.Contains(err.Error(), expectedMaxSizeErrorMessage) {
 		t.Errorf("expected error about size limit, got: %v", err)
 	}
 }
