@@ -18,8 +18,8 @@ func TestListener_Accept(t *testing.T) {
 	defer ln.Close()
 
 	// Create a rate limiter: 1 RPS, burst of 2
-	rl := NewRateLimiter(1.0, 2, zerolog.Nop())
-	rl.CleanupInterval = 100 * time.Millisecond // fast cleanup for testing
+	rl := NewRateLimiterWithConfig(1.0, 2, 100*time.Millisecond, 30*time.Minute, zerolog.Nop())
+	defer rl.Stop()
 
 	rlListener := NewListener(ln, rl, zerolog.Nop())
 
@@ -97,6 +97,7 @@ func TestListener_Accept(t *testing.T) {
 
 func TestListener_getPrincipal(t *testing.T) {
 	rl := NewRateLimiter(1.0, 1, zerolog.Nop())
+	defer rl.Stop()
 	l := NewListener(nil, rl, zerolog.Nop())
 
 	tests := []struct {

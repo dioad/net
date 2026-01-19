@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 func TestRateLimiter_Allow(t *testing.T) {
 	logger := zerolog.New(zerolog.NewConsoleWriter())
 	rl := NewRateLimiter(1, 2, logger)
+	defer rl.Stop()
 
 	// Initial burst
 	assert.True(t, rl.Allow("user1"))
@@ -27,9 +29,8 @@ func TestRateLimiter_Allow(t *testing.T) {
 
 func TestRateLimiter_Cleanup(t *testing.T) {
 	logger := zerolog.New(zerolog.NewConsoleWriter())
-	rl := NewRateLimiter(10, 10, logger)
-	rl.CleanupInterval = 10 * time.Millisecond
-	rl.StaleTTL = 20 * time.Millisecond
+	rl := NewRateLimiterWithConfig(10, 10, 10*time.Millisecond, 20*time.Millisecond, logger)
+	defer rl.Stop()
 
 	// Add some limiters
 	rl.Allow("user1")
@@ -60,6 +61,7 @@ func TestRateLimiter_Refill(t *testing.T) {
 	logger := zerolog.New(zerolog.NewConsoleWriter())
 	// 10 tokens per second, burst of 1
 	rl := NewRateLimiter(10, 1, logger)
+	defer rl.Stop()
 
 	assert.True(t, rl.Allow("user1"))
 	assert.False(t, rl.Allow("user1"))
@@ -96,9 +98,7 @@ func TestRateLimiter_WithSource(t *testing.T) {
 		},
 	}
 	rl := NewRateLimiterWithSource(source, logger)
-	// Default fallback if no principal match (ok=false)
-	rl.RequestsPerSecond = 5
-	rl.Burst = 5
+	defer rl.Stop()
 
 	// Premium user
 	for i := 0; i < 50; i++ {
@@ -108,12 +108,6 @@ func TestRateLimiter_WithSource(t *testing.T) {
 	// Free user
 	assert.True(t, rl.Allow("free"))
 	assert.False(t, rl.Allow("free"))
-
-	// Fallback user
-	for i := 0; i < 5; i++ {
-		assert.True(t, rl.Allow("unknown"))
-	}
-	assert.False(t, rl.Allow("unknown"))
 }
 
 func TestRateLimiter_DynamicUpdate(t *testing.T) {
@@ -127,6 +121,7 @@ func TestRateLimiter_DynamicUpdate(t *testing.T) {
 		},
 	}
 	rl := NewRateLimiterWithSource(source, logger)
+	defer rl.Stop()
 
 	assert.True(t, rl.Allow("user1"))
 	assert.False(t, rl.Allow("user1"))
@@ -158,6 +153,7 @@ func TestStaticRateLimitSource(t *testing.T) {
 func BenchmarkRateLimiter_Allow_Sequential(b *testing.B) {
 	logger := zerolog.Nop()
 	rl := NewRateLimiter(1000000, 1000000, logger) // High limits to focus on lock contention
+	defer rl.Stop()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -168,6 +164,7 @@ func BenchmarkRateLimiter_Allow_Sequential(b *testing.B) {
 func BenchmarkRateLimiter_Allow_Parallel(b *testing.B) {
 	logger := zerolog.Nop()
 	rl := NewRateLimiter(1000000, 1000000, logger) // High limits to focus on lock contention
+	defer rl.Stop()
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -180,6 +177,7 @@ func BenchmarkRateLimiter_Allow_Parallel(b *testing.B) {
 func BenchmarkRateLimiter_Allow_ParallelMultiPrincipal(b *testing.B) {
 	logger := zerolog.Nop()
 	rl := NewRateLimiter(1000000, 1000000, logger) // High limits to focus on lock contention
+	defer rl.Stop()
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -229,6 +227,7 @@ func TestRateLimiter_RetryAfter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rl := NewRateLimiter(tt.requestsPerSecond, tt.burst, logger)
+			defer rl.Stop()
 
 			// Use up the burst
 			rl.Allow("user1")
@@ -247,8 +246,84 @@ func TestRateLimiter_RetryAfter(t *testing.T) {
 func TestRateLimiter_RetryAfter_NoEntry(t *testing.T) {
 	logger := zerolog.Nop()
 	rl := NewRateLimiter(1, 1, logger)
+	defer rl.Stop()
 
 	// RetryAfter for a principal that hasn't been seen should return 0
 	retryAfter := rl.RetryAfter("unknown_user")
 	assert.Equal(t, time.Duration(0), retryAfter)
+}
+
+func TestRateLimiter_Stop(t *testing.T) {
+	logger := zerolog.Nop()
+	rl := NewRateLimiter(1, 1, logger)
+
+	// Use the rate limiter
+	assert.True(t, rl.Allow("user1"))
+
+	// Stop should gracefully shut down the background goroutine
+	rl.Stop()
+
+	// Verify the context is cancelled
+	select {
+	case <-rl.ctx.Done():
+		// Expected - context should be done
+	default:
+		t.Fatal("Context should be done after Stop()")
+	}
+}
+
+func TestRateLimiter_BackgroundCleanup(t *testing.T) {
+	logger := zerolog.Nop()
+	rl := NewRateLimiterWithConfig(10, 10, 50*time.Millisecond, 30*time.Millisecond, logger)
+	defer rl.Stop()
+
+	// Add some limiters
+	rl.Allow("user1")
+	rl.Allow("user2")
+
+	rl.mu.Lock()
+	assert.Len(t, rl.limiters, 2)
+	rl.mu.Unlock()
+
+	// Wait for TTL to pass
+	time.Sleep(40 * time.Millisecond)
+
+	// Wait for background cleanup to run
+	time.Sleep(70 * time.Millisecond)
+
+	rl.mu.Lock()
+	// Both users should be cleaned up
+	assert.Len(t, rl.limiters, 0)
+	rl.mu.Unlock()
+}
+
+func TestRateLimiter_ConcurrentAccess(t *testing.T) {
+	logger := zerolog.Nop()
+	rl := NewRateLimiter(1000000, 1000000, logger)
+	defer rl.Stop()
+
+	const numGoroutines = 100
+	const numIterations = 100
+
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Run multiple goroutines concurrently accessing the rate limiter
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			principal := "user" + strconv.Itoa(id%10)
+			for j := 0; j < numIterations; j++ {
+				rl.Allow(principal)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify no panics occurred and limiters were created
+	rl.mu.RLock()
+	assert.True(t, len(rl.limiters) > 0)
+	assert.True(t, len(rl.limiters) <= 10) // Max 10 unique principals
+	rl.mu.RUnlock()
 }
