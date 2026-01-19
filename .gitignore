@@ -9,6 +9,26 @@ dist/
 *.out
 /vendor/
 
+# Example binaries
+/basic-http-server
+/client
+/ip-acl
+/oidc-auth
+/rate-limiting-dynamic
+/rate-limiting-http
+/rate-limiting-network
+/tls-config
+/validator
+/examples/basic-http-server/basic-http-server
+/examples/ip-acl/ip-acl
+/examples/oidc-auth/oidc-auth
+/examples/rate-limiting-dynamic/rate-limiting-dynamic
+/examples/rate-limiting-http/rate-limiting-http
+/examples/rate-limiting-network/rate-limiting-network
+/examples/tls-config/tls-config
+/examples/githubactions-oidc/client/client
+/examples/githubactions-oidc/validator/validator
+
 # Test coverage
 *.coverprofile
 coverage.out
