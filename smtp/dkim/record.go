@@ -90,17 +90,24 @@ func ParseParams(s string) (map[string]string, error) {
 
 // ParseParams borrowed from https://github.com/emersion/go-msgauth/dkim/header.go
 func parseParams(validParams map[string]bool, s string) (map[string]string, error) {
-
 	pairs := strings.Split(s, ";")
 	params := make(map[string]string)
-	for _, s := range pairs {
-		k, v, _ := strings.Cut(s, "=")
+	for _, pair := range pairs {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+
+		k, v, found := strings.Cut(pair, "=")
+		if !found {
+			return nil, fmt.Errorf("invalid parameter format: %q", pair)
+		}
 
 		strippedK := strings.TrimSpace(k)
 		if p, ok := validParams[strippedK]; ok && p {
-			params[strings.TrimSpace(k)] = strings.TrimSpace(v)
+			params[strippedK] = strings.TrimSpace(v)
 		} else {
-			return nil, fmt.Errorf("invalid parameter %v not in %v", strippedK, strings.Join(maps.Keys(validParams), ","))
+			return nil, fmt.Errorf("invalid parameter %q not in %v", strippedK, strings.Join(maps.Keys(validParams), ","))
 		}
 	}
 	return params, nil
