@@ -63,9 +63,9 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
-	
+
 	fmt.Printf("New connection from %s\n", conn.RemoteAddr())
-	
+
 	// Send welcome message
 	io.WriteString(conn, "Hello! You've connected to the rate-limited server.\n")
 	io.WriteString(conn, "This connection is rate-limited by source IP.\n")
@@ -81,7 +81,7 @@ func handleConnection(conn net.Conn) {
 			}
 			break
 		}
-		
+
 		if n > 0 {
 			msg := string(buf[:n])
 			if msg == "quit\n" || msg == "quit\r\n" {
@@ -91,6 +91,6 @@ func handleConnection(conn net.Conn) {
 			conn.Write(buf[:n])
 		}
 	}
-	
+
 	fmt.Printf("Connection from %s closed\n", conn.RemoteAddr())
 }
