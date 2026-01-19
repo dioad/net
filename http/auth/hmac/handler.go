@@ -21,6 +21,9 @@ func NewHandler(cfg ServerConfig) *Handler {
 	if cfg.MaxTimestampDiff == 0 {
 		cfg.MaxTimestampDiff = 5 * time.Minute
 	}
+	if cfg.MaxFutureTimestampDiff == 0 {
+		cfg.MaxFutureTimestampDiff = 30 * time.Second
+	}
 	if len(cfg.SharedKey) == 0 {
 		panic("hmac: shared key must not be empty")
 	}
@@ -72,11 +75,17 @@ func (a *Handler) AuthRequest(r *http.Request) (stdcontext.Context, error) {
 
 	now := time.Now().Unix()
 	diff := now - timestamp
-	if diff < 0 {
-		diff = -diff
-	}
+
+	// Reject timestamps too far in the past
 	if diff > int64(a.cfg.MaxTimestampDiff.Seconds()) {
-		return r.Context(), errors.New("request timestamp expired or too far in the future")
+		return r.Context(), errors.New("request timestamp expired")
+	}
+
+	// Reject timestamps too far in the future
+	// Use a smaller window to prevent pre-signed replay attacks
+	maxFuture := int64(a.cfg.MaxFutureTimestampDiff.Seconds())
+	if diff < -maxFuture {
+		return r.Context(), errors.New("request timestamp too far in the future")
 	}
 
 	// Get signed headers
