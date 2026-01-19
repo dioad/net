@@ -1,7 +1,6 @@
 package dns
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -17,14 +16,7 @@ type DOHClient struct {
 
 // Exchange performs a DNS query using DNS over HTTPS.
 func (c *DOHClient) Exchange(msg *dns.Msg) (*dns.Msg, error) {
-	// pass Hostname() rather than String() to NewRequest as
-	// there's something in there that is acting weird.
-	// when passing URL.String() it works on darwin/arm64 but fails on github.com actions
-	addr := c.URL.Hostname()
-	if c.URL.Port() != "" {
-		addr = fmt.Sprintf("%s:%s", addr, c.URL.Port())
-	}
-	req, err := doh.NewRequest(http.MethodGet, addr, msg)
+	req, err := doh.NewRequest(http.MethodGet, c.URL.Host, msg)
 	if err != nil {
 		return nil, err
 	}
