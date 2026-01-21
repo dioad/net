@@ -70,6 +70,8 @@ func (c *OIDCConfig) SetDefaults() {
 // applyCookieDefaults applies default values to a cookie configuration.
 // This helper method reduces cyclomatic complexity by consolidating the validation
 // logic that was previously spread across 21 guard conditions.
+// Note: Domain is intentionally not set to a default value as an empty domain
+// means "the domain of the current page", which is the appropriate default behavior.
 func (c *OIDCConfig) applyCookieDefaults(config OIDCCookieConfig, defaultName string, defaultMaxAge int) OIDCCookieConfig {
 	if config.Name == "" {
 		config.Name = defaultName
