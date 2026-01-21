@@ -254,7 +254,7 @@ func marshalField(header http.Header, headerName string, field reflect.Value) er
 	return nil
 }
 
-// unmarshalField unmarshals a header value into a field
+// unmarshalField unmarshals a header value into a field using the strategy pattern
 func unmarshalField(header http.Header, headerName string, field reflect.Value) error {
 	if headerName == "" {
 		return nil // Skip fields with empty header names
@@ -269,52 +269,10 @@ func unmarshalField(header http.Header, headerName string, field reflect.Value) 
 		return nil // No value in header, leave field as zero value
 	}
 
-	switch field.Kind() {
-	case reflect.String:
-		field.SetString(values[0])
-
-	case reflect.Slice:
-		if field.Type().Elem().Kind() == reflect.String {
-			// Handle []string
-			slice := reflect.MakeSlice(field.Type(), len(values), len(values))
-			for i, v := range values {
-				slice.Index(i).SetString(v)
-			}
-			field.Set(slice)
-		} else {
-			return fmt.Errorf("unsupported slice type: []%s", field.Type().Elem().Kind())
-		}
-
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		var n int64
-		_, err := fmt.Sscanf(values[0], "%d", &n)
-		if err != nil {
-			return fmt.Errorf("failed to parse int: %w", err)
-		}
-		field.SetInt(n)
-
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		var n uint64
-		_, err := fmt.Sscanf(values[0], "%d", &n)
-		if err != nil {
-			return fmt.Errorf("failed to parse uint: %w", err)
-		}
-		field.SetUint(n)
-
-	case reflect.Bool:
-		var b bool
-		if values[0] == "true" {
-			b = true
-		} else if values[0] == "false" {
-			b = false
-		} else {
-			return fmt.Errorf("invalid bool value: %s", values[0])
-		}
-		field.SetBool(b)
-
-	default:
+	unmarshaler := findUnmarshaler(field)
+	if unmarshaler == nil {
 		return fmt.Errorf("unsupported field type: %s", field.Kind())
 	}
 
-	return nil
+	return unmarshaler.unmarshal(values, field)
 }
