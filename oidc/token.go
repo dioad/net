@@ -41,13 +41,14 @@ func (c *clientConfigTokenSource) resolveFileTokenSource(oidcClient *Client) (oa
 
 	token, err := ResolveTokenFromFile(c.clientConfig.TokenFile)
 	if err != nil {
+		// If we can't read the token file, continue to the next strategy
 		return nil, false, nil
 	}
 
 	if token.AccessToken != "" && token.RefreshToken == "" {
 		return oauth2.StaticTokenSource(token), true, nil
 	}
-	
+
 	tokenSource, err := oidcClient.TokenSource(token)
 	if err != nil {
 		return nil, false, err
