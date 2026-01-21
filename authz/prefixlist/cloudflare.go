@@ -4,6 +4,14 @@ import (
 	"time"
 )
 
+func init() {
+	RegisterProvider("cloudflare", func(cfg ProviderConfig) (Provider, error) {
+		// Cloudflare: support "version" key (e.g., "ipv6")
+		version := cfg.Filter["version"]
+		return NewCloudflareProvider(version == "ipv6"), nil
+	})
+}
+
 // CloudflareProvider fetches IP ranges from Cloudflare
 type CloudflareProvider struct {
 	*HTTPTextProvider

@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+func init() {
+	RegisterProvider("fastly", func(cfg ProviderConfig) (Provider, error) {
+		return NewFastlyProvider(), nil
+	})
+}
+
 // FastlyProvider fetches IP ranges from Fastly CDN
 type FastlyProvider struct {
 	*HTTPJSONProvider[fastlyIPRanges]

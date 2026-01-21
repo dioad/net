@@ -6,6 +6,15 @@ import (
 	"time"
 )
 
+func init() {
+	RegisterProvider("atlassian", func(cfg ProviderConfig) (Provider, error) {
+		// Atlassian: support "region" and "product" keys (comma-separated values)
+		regions := parseCommaSeparated(cfg.Filter["region"])
+		products := parseCommaSeparated(cfg.Filter["product"])
+		return NewAtlassianProvider(regions, products), nil
+	})
+}
+
 // AtlassianProvider fetches IP ranges from Atlassian
 type AtlassianProvider struct {
 	*HTTPJSONProvider[atlassianIPRanges]

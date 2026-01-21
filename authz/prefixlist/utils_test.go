@@ -7,6 +7,47 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestParseCommaSeparated(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		want  []string
+	}{
+		{
+			name:  "single value",
+			value: "us-central1",
+			want:  []string{"us-central1"},
+		},
+		{
+			name:  "multiple values",
+			value: "us-central1,europe-west1",
+			want:  []string{"us-central1", "europe-west1"},
+		},
+		{
+			name:  "values with spaces",
+			value: "us-central1, europe-west1 , asia-east1",
+			want:  []string{"us-central1", "europe-west1", "asia-east1"},
+		},
+		{
+			name:  "empty string",
+			value: "",
+			want:  nil,
+		},
+		{
+			name:  "only commas",
+			value: ",,,",
+			want:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseCommaSeparated(tt.value)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestParseCIDRs(t *testing.T) {
 	tests := []struct {
 		name    string

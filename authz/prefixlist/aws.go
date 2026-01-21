@@ -5,6 +5,15 @@ import (
 	"time"
 )
 
+func init() {
+	RegisterProvider("aws", func(cfg ProviderConfig) (Provider, error) {
+		// AWS: support "service" and "region" keys
+		service := cfg.Filter["service"]
+		region := cfg.Filter["region"]
+		return NewAWSProvider(service, region), nil
+	})
+}
+
 // AWSProvider fetches IP ranges from AWS
 type AWSProvider struct {
 	*HTTPJSONProvider[awsIPRanges]

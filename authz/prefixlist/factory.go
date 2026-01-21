@@ -3,11 +3,49 @@ package prefixlist
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/rs/zerolog"
 )
 
-// NewProviderFromConfig creates a provider instance from configuration
+// ProviderConstructor is a function that creates a Provider from configuration.
+// It receives a ProviderConfig and returns a Provider instance or an error.
+//
+// Custom providers can implement their own constructors and register them
+// using RegisterProvider in an init() function. This allows for easy extension
+// of the provider factory without modifying the core factory code.
+type ProviderConstructor func(cfg ProviderConfig) (Provider, error)
+
+// providerRegistry holds registered provider constructors.
+var (
+	providerRegistry   = make(map[string]ProviderConstructor)
+	providerRegistryMu sync.RWMutex
+)
+
+// RegisterProvider registers a provider constructor for a given provider name.
+// The name is case-insensitive and will be normalized to lowercase.
+//
+// This function is typically called in an init() function in the provider's source file.
+// For example, to add a new provider:
+//
+//	func init() {
+//	    RegisterProvider("myprovider", func(cfg ProviderConfig) (Provider, error) {
+//	        // Parse configuration and create provider
+//	        return NewMyProvider(cfg.Filter["option"]), nil
+//	    })
+//	}
+//
+// This registration-based approach reduces cyclomatic complexity by eliminating
+// the need for a large switch statement in the factory function.
+func RegisterProvider(name string, constructor ProviderConstructor) {
+	providerRegistryMu.Lock()
+	defer providerRegistryMu.Unlock()
+	providerRegistry[strings.ToLower(name)] = constructor
+}
+
+// NewProviderFromConfig creates a provider instance from configuration.
+// It looks up the provider by name in the registry and invokes its constructor.
+// The provider must be registered via RegisterProvider before it can be instantiated.
 func NewProviderFromConfig(cfg ProviderConfig) (Provider, error) {
 	if !cfg.Enabled {
 		return nil, fmt.Errorf("provider %s is not enabled", cfg.Name)
@@ -15,60 +53,15 @@ func NewProviderFromConfig(cfg ProviderConfig) (Provider, error) {
 
 	name := strings.ToLower(cfg.Name)
 
-	switch name {
-	case "github":
-		// GitHub: support "service" key (e.g., "hooks", "actions")
-		service := cfg.Filter["service"]
-		return NewGitHubProvider(service), nil
-	case "cloudflare":
-		// Cloudflare: support "version" key (e.g., "ipv6")
-		version := cfg.Filter["version"]
-		return NewCloudflareProvider(version == "ipv6"), nil
-	case "google":
-		// Google: support "scope" and "service" keys (comma-separated values)
-		scopes := parseCommaSeparated(cfg.Filter["scope"])
-		services := parseCommaSeparated(cfg.Filter["service"])
-		return NewGoogleProvider(scopes, services), nil
-	case "atlassian":
-		// Atlassian: support "region" and "product" keys (comma-separated values)
-		regions := parseCommaSeparated(cfg.Filter["region"])
-		products := parseCommaSeparated(cfg.Filter["product"])
-		return NewAtlassianProvider(regions, products), nil
-	case "gitlab":
-		return NewGitLabProvider(), nil
-	case "aws":
-		// AWS: support "service" and "region" keys
-		service := cfg.Filter["service"]
-		region := cfg.Filter["region"]
-		return NewAWSProvider(service, region), nil
-	case "fastly":
-		return NewFastlyProvider(), nil
-	case "hetzner":
-		return NewHetznerProvider(), nil
-	default:
+	providerRegistryMu.RLock()
+	constructor, ok := providerRegistry[name]
+	providerRegistryMu.RUnlock()
+
+	if !ok {
 		return nil, fmt.Errorf("unknown provider: %s", cfg.Name)
 	}
-}
 
-// parseCommaSeparated parses comma-separated values into a slice
-func parseCommaSeparated(value string) []string {
-	if value == "" {
-		return nil
-	}
-
-	parts := strings.Split(value, ",")
-	result := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-
-	if len(result) == 0 {
-		return nil
-	}
-	return result
+	return constructor(cfg)
 }
 
 // NewMultiProviderFromConfig creates a MultiProvider from configuration

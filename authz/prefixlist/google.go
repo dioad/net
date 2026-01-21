@@ -6,6 +6,15 @@ import (
 	"time"
 )
 
+func init() {
+	RegisterProvider("google", func(cfg ProviderConfig) (Provider, error) {
+		// Google: support "scope" and "service" keys (comma-separated values)
+		scopes := parseCommaSeparated(cfg.Filter["scope"])
+		services := parseCommaSeparated(cfg.Filter["service"])
+		return NewGoogleProvider(scopes, services), nil
+	})
+}
+
 // GoogleProvider fetches IP ranges from Google Cloud
 type GoogleProvider struct {
 	*HTTPJSONProvider[googleIPRanges]
