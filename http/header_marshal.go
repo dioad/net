@@ -220,37 +220,60 @@ func marshalField(header http.Header, headerName string, field reflect.Value) er
 
 	switch field.Kind() {
 	case reflect.String:
-		value := field.String()
-		if value != "" {
-			header.Set(headerName, value)
-		}
-
+		return marshalStringField(header, headerName, field)
 	case reflect.Slice:
-		if field.Type().Elem().Kind() == reflect.String {
-			// Handle []string
-			for i := 0; i < field.Len(); i++ {
-				value := field.Index(i).String()
-				if value != "" {
-					header.Add(headerName, value)
-				}
-			}
-		} else {
-			return fmt.Errorf("unsupported slice type: []%s", field.Type().Elem().Kind())
-		}
-
+		return marshalSliceField(header, headerName, field)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		header.Set(headerName, fmt.Sprintf("%d", field.Int()))
-
+		return marshalIntField(header, headerName, field)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		header.Set(headerName, fmt.Sprintf("%d", field.Uint()))
-
+		return marshalUintField(header, headerName, field)
 	case reflect.Bool:
-		header.Set(headerName, fmt.Sprintf("%t", field.Bool()))
-
+		return marshalBoolField(header, headerName, field)
 	default:
 		return fmt.Errorf("unsupported field type: %s", field.Kind())
 	}
+}
 
+// marshalStringField marshals a string field to the header
+func marshalStringField(header http.Header, headerName string, field reflect.Value) error {
+	value := field.String()
+	if value != "" {
+		header.Set(headerName, value)
+	}
+	return nil
+}
+
+// marshalSliceField marshals a slice field to the header
+func marshalSliceField(header http.Header, headerName string, field reflect.Value) error {
+	if field.Type().Elem().Kind() != reflect.String {
+		return fmt.Errorf("unsupported slice type: []%s", field.Type().Elem().Kind())
+	}
+
+	// Handle []string
+	for i := 0; i < field.Len(); i++ {
+		value := field.Index(i).String()
+		if value != "" {
+			header.Add(headerName, value)
+		}
+	}
+	return nil
+}
+
+// marshalIntField marshals an integer field to the header
+func marshalIntField(header http.Header, headerName string, field reflect.Value) error {
+	header.Set(headerName, fmt.Sprintf("%d", field.Int()))
+	return nil
+}
+
+// marshalUintField marshals an unsigned integer field to the header
+func marshalUintField(header http.Header, headerName string, field reflect.Value) error {
+	header.Set(headerName, fmt.Sprintf("%d", field.Uint()))
+	return nil
+}
+
+// marshalBoolField marshals a boolean field to the header
+func marshalBoolField(header http.Header, headerName string, field reflect.Value) error {
+	header.Set(headerName, fmt.Sprintf("%t", field.Bool()))
 	return nil
 }
 
@@ -271,50 +294,73 @@ func unmarshalField(header http.Header, headerName string, field reflect.Value) 
 
 	switch field.Kind() {
 	case reflect.String:
-		field.SetString(values[0])
-
+		return unmarshalStringField(field, values)
 	case reflect.Slice:
-		if field.Type().Elem().Kind() == reflect.String {
-			// Handle []string
-			slice := reflect.MakeSlice(field.Type(), len(values), len(values))
-			for i, v := range values {
-				slice.Index(i).SetString(v)
-			}
-			field.Set(slice)
-		} else {
-			return fmt.Errorf("unsupported slice type: []%s", field.Type().Elem().Kind())
-		}
-
+		return unmarshalSliceField(field, values)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		var n int64
-		_, err := fmt.Sscanf(values[0], "%d", &n)
-		if err != nil {
-			return fmt.Errorf("failed to parse int: %w", err)
-		}
-		field.SetInt(n)
-
+		return unmarshalIntField(field, values)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		var n uint64
-		_, err := fmt.Sscanf(values[0], "%d", &n)
-		if err != nil {
-			return fmt.Errorf("failed to parse uint: %w", err)
-		}
-		field.SetUint(n)
-
+		return unmarshalUintField(field, values)
 	case reflect.Bool:
-		var b bool
-		if values[0] == "true" {
-			b = true
-		} else if values[0] == "false" {
-			b = false
-		} else {
-			return fmt.Errorf("invalid bool value: %s", values[0])
-		}
-		field.SetBool(b)
-
+		return unmarshalBoolField(field, values)
 	default:
 		return fmt.Errorf("unsupported field type: %s", field.Kind())
 	}
+}
 
+// unmarshalStringField unmarshals a string field from header values
+func unmarshalStringField(field reflect.Value, values []string) error {
+	field.SetString(values[0])
+	return nil
+}
+
+// unmarshalSliceField unmarshals a slice field from header values
+func unmarshalSliceField(field reflect.Value, values []string) error {
+	if field.Type().Elem().Kind() != reflect.String {
+		return fmt.Errorf("unsupported slice type: []%s", field.Type().Elem().Kind())
+	}
+
+	// Handle []string
+	slice := reflect.MakeSlice(field.Type(), len(values), len(values))
+	for i, v := range values {
+		slice.Index(i).SetString(v)
+	}
+	field.Set(slice)
+	return nil
+}
+
+// unmarshalIntField unmarshals an integer field from header values
+func unmarshalIntField(field reflect.Value, values []string) error {
+	var n int64
+	_, err := fmt.Sscanf(values[0], "%d", &n)
+	if err != nil {
+		return fmt.Errorf("failed to parse int: %w", err)
+	}
+	field.SetInt(n)
+	return nil
+}
+
+// unmarshalUintField unmarshals an unsigned integer field from header values
+func unmarshalUintField(field reflect.Value, values []string) error {
+	var n uint64
+	_, err := fmt.Sscanf(values[0], "%d", &n)
+	if err != nil {
+		return fmt.Errorf("failed to parse uint: %w", err)
+	}
+	field.SetUint(n)
+	return nil
+}
+
+// unmarshalBoolField unmarshals a boolean field from header values
+func unmarshalBoolField(field reflect.Value, values []string) error {
+	var b bool
+	if values[0] == "true" {
+		b = true
+	} else if values[0] == "false" {
+		b = false
+	} else {
+		return fmt.Errorf("invalid bool value: %s", values[0])
+	}
+	field.SetBool(b)
 	return nil
 }
