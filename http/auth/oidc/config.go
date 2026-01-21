@@ -74,9 +74,6 @@ func (c *OIDCConfig) applyCookieDefaults(config OIDCCookieConfig, defaultName st
 	if config.Name == "" {
 		config.Name = defaultName
 	}
-	if config.Domain == "" {
-		config.Domain = ""
-	}
 	if config.MaxAge <= 0 {
 		config.MaxAge = defaultMaxAge
 	}
