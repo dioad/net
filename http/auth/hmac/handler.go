@@ -42,27 +42,81 @@ func (a *Handler) maxRequestSizeBytes() int {
 	return DefaultMaxRequestSizeBytes
 }
 
-// AuthRequest authenticates an HTTP request using HMAC.
-// It expects an Authorization header in the format "HMAC principal:signature".
-// It also verifies the request timestamp to prevent replay attacks.
-func (a *Handler) AuthRequest(r *http.Request) (stdcontext.Context, error) {
-	authHeader := r.Header.Get("Authorization")
+// parseAuthHeader parses the Authorization header and extracts the principal and signature.
+func parseAuthHeader(authHeader string) (principal, signature string, err error) {
 	if authHeader == "" {
-		return r.Context(), errors.New("missing auth header")
+		return "", "", errors.New("missing auth header")
 	}
 
 	if !strings.HasPrefix(authHeader, AuthScheme+" ") {
-		return r.Context(), errors.New("invalid auth scheme")
+		return "", "", errors.New("invalid auth scheme")
 	}
 
 	credentials := strings.TrimPrefix(authHeader, AuthScheme+" ")
 	parts := strings.SplitN(credentials, ":", 2)
 	if len(parts) != 2 {
-		return r.Context(), errors.New("invalid authorization header format")
+		return "", "", errors.New("invalid authorization header format")
 	}
 
-	principal := parts[0]
-	signature := parts[1]
+	return parts[0], parts[1], nil
+}
+
+// readAndValidateBody reads the request body with size limits and restores it for the handler.
+func readAndValidateBody(r *http.Request, maxSize int) ([]byte, error) {
+	if r.Body == nil {
+		return []byte{}, nil
+	}
+
+	maxSizeInt64 := int64(maxSize)
+	limitedReader := &io.LimitedReader{R: r.Body, N: maxSizeInt64}
+	bodyBytes, err := io.ReadAll(limitedReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read request body: %w", err)
+	}
+
+	// Check if there is more data beyond the maximum allowed size.
+	extraBuf := make([]byte, 1)
+	n, err := r.Body.Read(extraBuf)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("failed to read request body: %w", err)
+	}
+	if n > 0 {
+		return nil, errors.New("request body exceeds maximum size limit")
+	}
+
+	// Restore body for handler to use
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	return bodyBytes, nil
+}
+
+// verifyHMACSignature generates the canonical data and verifies the HMAC signature.
+func verifyHMACSignature(r *http.Request, principal, signature, timestampStr string, signedHeaders []string, bodyBytes, sharedKey []byte) error {
+	// Reconstruct canonical data
+	verificationData := CanonicalData(r, principal, timestampStr, signedHeaders, bodyBytes)
+
+	// Verify HMAC token
+	verificationKey, err := HMACKey(sharedKey, []byte(verificationData))
+	if err != nil {
+		return fmt.Errorf("failed to generate verification key: %w", err)
+	}
+
+	// Use constant-time comparison to prevent timing attacks
+	if !hmac.Equal([]byte(signature), []byte(verificationKey)) {
+		return errors.New("invalid auth token")
+	}
+
+	return nil
+}
+
+// AuthRequest authenticates an HTTP request using HMAC.
+// It expects an Authorization header in the format "HMAC principal:signature".
+// It also verifies the request timestamp to prevent replay attacks.
+func (a *Handler) AuthRequest(r *http.Request) (stdcontext.Context, error) {
+	// Parse Authorization header
+	principal, signature, err := parseAuthHeader(r.Header.Get("Authorization"))
+	if err != nil {
+		return r.Context(), err
+	}
 
 	// Verify timestamp
 	timestampStr, err := verifyTimestamp(r, a.cfg.TimestampHeader, a.cfg.MaxTimestampDiff, a.cfg.MaxFutureTimestampDiff)
@@ -76,46 +130,18 @@ func (a *Handler) AuthRequest(r *http.Request) (stdcontext.Context, error) {
 		return r.Context(), err
 	}
 
-	// Read the request body for HMAC verification
-	bodyBytes := []byte{}
-	if r.Body != nil {
-		var err error
-		maxSize := int64(a.maxRequestSizeBytes())
-		limitedReader := &io.LimitedReader{R: r.Body, N: maxSize}
-		bodyBytes, err = io.ReadAll(limitedReader)
-		if err != nil {
-			return r.Context(), fmt.Errorf("failed to read request body: %w", err)
-		}
-
-		// Check if there is more data beyond the maximum allowed size.
-		extraBuf := make([]byte, 1)
-		n, err := r.Body.Read(extraBuf)
-		if err != nil && err != io.EOF {
-			return r.Context(), fmt.Errorf("failed to read request body: %w", err)
-		}
-		if n > 0 {
-			return r.Context(), errors.New("request body exceeds maximum size limit")
-		}
-		// Restore body for handler to use
-		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	}
-
-	// Reconstruct canonical data
-	verificationData := CanonicalData(r, principal, timestampStr, signedHeaders, bodyBytes)
-
-	// Verify HMAC token
-	verificationKey, err := HMACKey([]byte(a.cfg.SharedKey), []byte(verificationData))
+	// Read and validate request body
+	bodyBytes, err := readAndValidateBody(r, a.maxRequestSizeBytes())
 	if err != nil {
-		return r.Context(), fmt.Errorf("failed to generate verification key: %w", err)
+		return r.Context(), err
 	}
 
-	// Use constant-time comparison to prevent timing attacks
-	if !hmac.Equal([]byte(signature), []byte(verificationKey)) {
-		return r.Context(), errors.New("invalid auth token")
+	// Verify HMAC signature
+	if err := verifyHMACSignature(r, principal, signature, timestampStr, signedHeaders, bodyBytes, []byte(a.cfg.SharedKey)); err != nil {
+		return r.Context(), err
 	}
 
 	ctx := context.NewContextWithAuthenticatedPrincipal(r.Context(), principal)
-
 	return ctx, nil
 }
 
