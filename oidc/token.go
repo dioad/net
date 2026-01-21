@@ -20,36 +20,79 @@ type clientConfigTokenSource struct {
 	m sync.Mutex
 }
 
-func (c *clientConfigTokenSource) resolveTokenSource() (oauth2.TokenSource, error) {
+// resolvePlatformTokenSource resolves token sources for platform-specific providers (Fly.io, GitHub Actions)
+func (c *clientConfigTokenSource) resolvePlatformTokenSource() (oauth2.TokenSource, bool) {
 	if c.clientConfig.Type == "flyio" {
-		return flyio.NewTokenSource(flyio.WithAudience(c.clientConfig.Audience)), nil
+		return flyio.NewTokenSource(flyio.WithAudience(c.clientConfig.Audience)), true
 	}
 
 	if c.clientConfig.Type == "githubactions" {
-		return githubactions.NewTokenSource(githubactions.WithAudience(c.clientConfig.Audience)), nil
+		return githubactions.NewTokenSource(githubactions.WithAudience(c.clientConfig.Audience)), true
 	}
 
+	return nil, false
+}
+
+// resolveFileTokenSource resolves token source from a token file, if configured
+func (c *clientConfigTokenSource) resolveFileTokenSource(oidcClient *Client) (oauth2.TokenSource, bool, error) {
+	if c.clientConfig.TokenFile == "" {
+		return nil, false, nil
+	}
+
+	token, err := ResolveTokenFromFile(c.clientConfig.TokenFile)
+	if err != nil {
+		return nil, false, nil
+	}
+
+	if token.AccessToken != "" && token.RefreshToken == "" {
+		return oauth2.StaticTokenSource(token), true, nil
+	}
+	
+	tokenSource, err := oidcClient.TokenSource(token)
+	if err != nil {
+		return nil, false, err
+	}
+	return tokenSource, true, nil
+}
+
+// resolveClientCredentialsTokenSource resolves token source using client credentials grant
+func (c *clientConfigTokenSource) resolveClientCredentialsTokenSource(oidcClient *Client) (oauth2.TokenSource, bool, error) {
+	if c.clientConfig.ClientID == "" || c.clientConfig.ClientSecret.UnmaskedString() == "" {
+		return nil, false, nil
+	}
+
+	token, err := oidcClient.RefreshingClientCredentialsToken(context.Background())
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get client credentials token: %w", err)
+	}
+
+	return token, true, nil
+}
+
+func (c *clientConfigTokenSource) resolveTokenSource() (oauth2.TokenSource, error) {
+	// Try platform-specific token sources first
+	if tokenSource, ok := c.resolvePlatformTokenSource(); ok {
+		return tokenSource, nil
+	}
+
+	// For other token sources, we need an OIDC client
 	oidcClient, err := NewClientFromConfig(&c.clientConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OIDC client: %w", err)
 	}
-	if c.clientConfig.TokenFile != "" {
-		token, err := ResolveTokenFromFile(c.clientConfig.TokenFile)
-		if err == nil {
-			if token.AccessToken != "" && token.RefreshToken == "" {
-				return oauth2.StaticTokenSource(token), nil
-			}
-			return oidcClient.TokenSource(token)
-		}
+
+	// Try file-based token source
+	if tokenSource, ok, err := c.resolveFileTokenSource(oidcClient); err != nil {
+		return nil, err
+	} else if ok {
+		return tokenSource, nil
 	}
 
-	if c.clientConfig.ClientID != "" && c.clientConfig.ClientSecret.UnmaskedString() != "" {
-		token, err := oidcClient.RefreshingClientCredentialsToken(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get client credentials token: %w", err)
-		}
-
-		return token, nil
+	// Try client credentials token source
+	if tokenSource, ok, err := c.resolveClientCredentialsTokenSource(oidcClient); err != nil {
+		return nil, err
+	} else if ok {
+		return tokenSource, nil
 	}
 
 	return nil, fmt.Errorf("no token source found")
