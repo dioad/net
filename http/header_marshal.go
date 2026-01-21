@@ -271,6 +271,10 @@ func unmarshalField(header http.Header, headerName string, field reflect.Value) 
 
 	unmarshaler := findUnmarshaler(field)
 	if unmarshaler == nil {
+		// Special error message for unsupported slice types
+		if field.Kind() == reflect.Slice {
+			return fmt.Errorf("unsupported slice type: []%s", field.Type().Elem().Kind())
+		}
 		return fmt.Errorf("unsupported field type: %s", field.Kind())
 	}
 

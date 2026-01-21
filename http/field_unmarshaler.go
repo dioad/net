@@ -84,23 +84,16 @@ func (u boolUnmarshaler) canUnmarshal(kind reflect.Kind, typ reflect.Type) bool 
 }
 
 func (u boolUnmarshaler) unmarshal(values []string, field reflect.Value) error {
-	b, err := strconv.ParseBool(values[0])
-	if err != nil {
+	var b bool
+	if values[0] == "true" {
+		b = true
+	} else if values[0] == "false" {
+		b = false
+	} else {
 		return fmt.Errorf("invalid bool value: %s", values[0])
 	}
 	field.SetBool(b)
 	return nil
-}
-
-// unsupportedSliceUnmarshaler handles unsupported slice types
-type unsupportedSliceUnmarshaler struct{}
-
-func (u unsupportedSliceUnmarshaler) canUnmarshal(kind reflect.Kind, typ reflect.Type) bool {
-	return kind == reflect.Slice && typ.Elem().Kind() != reflect.String
-}
-
-func (u unsupportedSliceUnmarshaler) unmarshal(values []string, field reflect.Value) error {
-	return fmt.Errorf("unsupported slice type: []%s", field.Type().Elem().Kind())
 }
 
 // unmarshalerRegistry holds all registered unmarshalers
@@ -110,13 +103,17 @@ var unmarshalerRegistry = []fieldUnmarshaler{
 	intUnmarshaler{},
 	uintUnmarshaler{},
 	boolUnmarshaler{},
-	unsupportedSliceUnmarshaler{},
 }
 
 // findUnmarshaler returns the appropriate unmarshaler for the given field
 func findUnmarshaler(field reflect.Value) fieldUnmarshaler {
 	kind := field.Kind()
 	typ := field.Type()
+
+	// Check for unsupported slice types first
+	if kind == reflect.Slice && typ.Elem().Kind() != reflect.String {
+		return nil
+	}
 
 	for _, u := range unmarshalerRegistry {
 		if u.canUnmarshal(kind, typ) {
