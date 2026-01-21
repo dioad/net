@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 )
 
 // fieldUnmarshaler is an interface for unmarshaling header values into struct fields
@@ -50,8 +51,7 @@ func (u intUnmarshaler) canUnmarshal(kind reflect.Kind, typ reflect.Type) bool {
 }
 
 func (u intUnmarshaler) unmarshal(values []string, field reflect.Value) error {
-	var n int64
-	_, err := fmt.Sscanf(values[0], "%d", &n)
+	n, err := strconv.ParseInt(values[0], 10, 64)
 	if err != nil {
 		return fmt.Errorf("failed to parse int: %w", err)
 	}
@@ -68,8 +68,7 @@ func (u uintUnmarshaler) canUnmarshal(kind reflect.Kind, typ reflect.Type) bool 
 }
 
 func (u uintUnmarshaler) unmarshal(values []string, field reflect.Value) error {
-	var n uint64
-	_, err := fmt.Sscanf(values[0], "%d", &n)
+	n, err := strconv.ParseUint(values[0], 10, 64)
 	if err != nil {
 		return fmt.Errorf("failed to parse uint: %w", err)
 	}
@@ -85,12 +84,8 @@ func (u boolUnmarshaler) canUnmarshal(kind reflect.Kind, typ reflect.Type) bool 
 }
 
 func (u boolUnmarshaler) unmarshal(values []string, field reflect.Value) error {
-	var b bool
-	if values[0] == "true" {
-		b = true
-	} else if values[0] == "false" {
-		b = false
-	} else {
+	b, err := strconv.ParseBool(values[0])
+	if err != nil {
 		return fmt.Errorf("invalid bool value: %s", values[0])
 	}
 	field.SetBool(b)
