@@ -5,6 +5,12 @@ import (
 	"net/netip"
 )
 
+func init() {
+	RegisterProvider("gitlab", func(cfg ProviderConfig) (Provider, error) {
+		return NewGitLabProvider(), nil
+	})
+}
+
 // GitLabProvider provides static IP ranges for GitLab webhooks
 type GitLabProvider struct {
 	prefixes []netip.Prefix

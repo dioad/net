@@ -5,6 +5,12 @@ import (
 	"net/netip"
 )
 
+func init() {
+	RegisterProvider("hetzner", func(cfg ProviderConfig) (Provider, error) {
+		return NewHetznerProvider(), nil
+	})
+}
+
 // HetznerProvider provides static IP ranges for Hetzner Cloud
 type HetznerProvider struct {
 	prefixes []netip.Prefix

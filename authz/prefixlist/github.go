@@ -6,6 +6,14 @@ import (
 	"time"
 )
 
+func init() {
+	RegisterProvider("github", func(cfg ProviderConfig) (Provider, error) {
+		// GitHub: support "service" key (e.g., "hooks", "actions")
+		service := cfg.Filter["service"]
+		return NewGitHubProvider(service), nil
+	})
+}
+
 // GitHubProvider fetches IP ranges from GitHub's meta API
 type GitHubProvider struct {
 	*HTTPJSONProvider[githubMeta]
