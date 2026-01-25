@@ -10,10 +10,11 @@ It provides implementations of common networking patterns, authentication mechan
 ## Core Features
 
 ### 🔐 Authentication & Authorization
-- **Multiple Auth Methods**: Basic auth, HMAC, JWT, OIDC
+- **Multiple Auth Methods**: Basic auth, HMAC, JWT, OIDC, AWS Signature V4
 - **HTTP Auth Handlers**: Easy-to-use middleware for protecting HTTP endpoints
 - **OIDC Integration**: Full OpenID Connect support with claim-based authorization
 - **OAuth2 Support**: Seamless OAuth2 token handling and validation
+- **AWS SigV4 Authentication**: Native AWS Signature Version 4 support for workload identity
 - **GitHub Actions OIDC**: Native support for GitHub Actions OIDC token validation
 - **Fly.io OIDC**: Support for Fly.io identity tokens
 
@@ -102,6 +103,40 @@ config := http.Config{ListenAddress: ":8080"}
 server := http.NewServer(config, http.WithOAuth2Validator([]oidc.ValidatorConfig{validatorConfig}))
 
 server.AddHandler("/secure", myHandler)
+```
+
+### AWS Signature V4 Authentication
+```go
+import (
+	"context"
+	"net/http"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/dioad/net/http/auth/awssigv4"
+)
+
+// Client-side: Sign requests with AWS credentials
+awsConfig, _ := config.LoadDefaultConfig(context.Background(),
+	config.WithRegion("us-east-1"),
+)
+
+clientAuth := awssigv4.NewClientAuth(awsConfig, "us-east-1", "execute-api")
+req, _ := http.NewRequest("GET", "https://api.example.com/resource", nil)
+clientAuth.AddAuth(req) // Signs the request with AWS SigV4
+
+// Server-side: Verify AWS SigV4 signatures
+handler := awssigv4.NewHandler(awssigv4.ServerConfig{
+	CommonConfig: awssigv4.CommonConfig{
+		Region:  "us-east-1",
+		Service: "execute-api",
+	},
+	VerifyCredentials: false, // Set to true to verify with AWS STS
+})
+
+protectedHandler := handler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Extract AWS principal from context
+	awsPrincipal := awssigv4.AWSPrincipalFromContext(r.Context())
+	// Access principal info: awsPrincipal.AccessKeyID, awsPrincipal.AccountID, etc.
+}))
 ```
 
 ### IP-based Access Control
@@ -222,7 +257,7 @@ All examples are standalone executable Go programs that can be run with `go run 
 - **`authz/`** - Authorization utilities (ACLs, principal checks, IP filtering)
 - **`dns/`** - DNS utilities (DoH, IP utilities, blocklist checks)
 - **`http/`** - HTTP server and client
-  - **`auth/`** - Authentication handlers (Basic, HMAC, GitHub, OIDC)
+  - **`auth/`** - Authentication handlers (Basic, HMAC, GitHub, OIDC, AWS SigV4)
   - **`authz/`** - Authorization middleware (IP-based, JWT-based, Principal-based)
   - **`resource/`** - Resource-based request handlers
 - **`ratelimit/`** - Generic per-principal rate limiting logic
