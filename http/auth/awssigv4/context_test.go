@@ -131,16 +131,16 @@ func TestAWSPrincipal_String(t *testing.T) {
 			name: "with ARN",
 			principal: &AWSPrincipal{
 				ARN:         "arn:aws:iam::123456789012:user/alice",
-				AccessKeyID: "AKIAIOSFODNN7EXAMPLE",
+				AccessKeyID: "AKIA-TEST-FAKE-KEY",
 			},
 			expected: "arn:aws:iam::123456789012:user/alice",
 		},
 		{
 			name: "without ARN",
 			principal: &AWSPrincipal{
-				AccessKeyID: "AKIAIOSFODNN7EXAMPLE",
+				AccessKeyID: "AKIA-TEST-FAKE-KEY",
 			},
-			expected: "AKIAIOSFODNN7EXAMPLE",
+			expected: "AKIA-TEST-FAKE-KEY",
 		},
 	}
 
@@ -240,7 +240,7 @@ func TestAWSPrincipal_IsFederatedUser(t *testing.T) {
 
 func TestContextWithAWSPrincipal(t *testing.T) {
 	principal := &AWSPrincipal{
-		AccessKeyID: "AKIAIOSFODNN7EXAMPLE",
+		AccessKeyID: "AKIA-TEST-FAKE-KEY",
 		ARN:         "arn:aws:iam::123456789012:user/alice",
 		AccountID:   "123456789012",
 		Type:        "user",

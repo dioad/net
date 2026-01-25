@@ -16,8 +16,8 @@ import (
 
 // TestClientHandlerIntegration tests the full client-to-server flow with AWS SigV4 authentication.
 func TestClientHandlerIntegration(t *testing.T) {
-	const accessKeyID = "AKIAIOSFODNN7EXAMPLE"
-	const secretAccessKey = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+	const accessKeyID = "AKIA-TEST-FAKE-ACCESS-KEY"
+	const secretAccessKey = "test-fake-secret-access-key-for-testing-only"
 	const region = "us-east-1"
 	const service = "execute-api"
 
@@ -105,8 +105,8 @@ func TestClientHandlerIntegration(t *testing.T) {
 
 // TestClientHandlerIntegration_POST tests POST requests with body.
 func TestClientHandlerIntegration_POST(t *testing.T) {
-	const accessKeyID = "AKIAIOSFODNN7EXAMPLE"
-	const secretAccessKey = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+	const accessKeyID = "AKIA-TEST-FAKE-ACCESS-KEY"
+	const secretAccessKey = "test-fake-secret-access-key-for-testing-only"
 	const region = "us-west-2"
 	const service = "execute-api"
 	const requestBody = `{"message": "hello world"}`
@@ -168,9 +168,9 @@ func TestClientHandlerIntegration_POST(t *testing.T) {
 
 // TestClientHandlerIntegration_WithSessionToken tests requests with session token.
 func TestClientHandlerIntegration_WithSessionToken(t *testing.T) {
-	const accessKeyID = "ASIAIOSFODNN7EXAMPLE"
-	const secretAccessKey = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
-	const sessionToken = "FwoGZXIvYXdzEBQaDDU2NzExMjM0NTY3OCKgASABCiEKHgoQPPIaQbGvRdExampleToken"
+	const accessKeyID = "ASIA-TEST-FAKE-SESSION-KEY"
+	const secretAccessKey = "test-fake-secret-access-key-for-testing-only"
+	const sessionToken = "FakeSessionTokenForTestingOnlyNotARealAWSToken12345"
 	const region = "eu-west-1"
 	const service = "s3"
 
@@ -303,8 +303,8 @@ func TestHandlerInvalidAuth(t *testing.T) {
 
 // TestRoundTripper tests the AWSSigV4RoundTripper.
 func TestRoundTripper(t *testing.T) {
-	const accessKeyID = "AKIAIOSFODNN7EXAMPLE"
-	const secretAccessKey = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+	const accessKeyID = "AKIA-TEST-FAKE-ACCESS-KEY"
+	const secretAccessKey = "test-fake-secret-access-key-for-testing-only"
 	const region = "us-east-1"
 	const service = "execute-api"
 

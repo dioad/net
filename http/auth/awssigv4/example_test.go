@@ -98,7 +98,7 @@ func ExampleNewHandler() {
 func ExampleAWSPrincipal() {
 	// This would typically come from the request context after authentication
 	principal := &awssigv4.AWSPrincipal{
-		AccessKeyID: "AKIAIOSFODNN7EXAMPLE",
+		AccessKeyID: "AKIA-EXAMPLE-TEST-KEY",
 		ARN:         "arn:aws:sts::123456789012:assumed-role/MyRole/session-name",
 		AccountID:   "123456789012",
 		Type:        "assumed-role",

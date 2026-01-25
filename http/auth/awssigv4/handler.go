@@ -3,7 +3,6 @@ package awssigv4
 import (
 	"bytes"
 	stdcontext "context"
-	"crypto/hmac"
 	"errors"
 	"fmt"
 	"io"
@@ -26,6 +25,9 @@ func NewHandler(cfg ServerConfig) *Handler {
 	if cfg.MaxTimestampDiff == 0 {
 		cfg.MaxTimestampDiff = DefaultMaxTimestampDiff
 	}
+	if cfg.VerifyCredentials && cfg.AWSConfig.Region == "" {
+		panic("awssigv4: AWSConfig must be provided when VerifyCredentials is true")
+	}
 	return &Handler{cfg: cfg}
 }
 
@@ -33,7 +35,7 @@ func NewHandler(cfg ServerConfig) *Handler {
 // It validates the signature and optionally verifies the credentials with AWS STS.
 func (h *Handler) AuthRequest(r *http.Request) (stdcontext.Context, error) {
 	// Parse Authorization header
-	accessKeyID, credentialScope, signedHeadersStr, _, err := ParseAuthorizationHeader(r.Header.Get(AuthorizationHeader))
+	accessKeyID, credentialScope, _, _, err := ParseAuthorizationHeader(r.Header.Get(AuthorizationHeader))
 	if err != nil {
 		return r.Context(), fmt.Errorf("failed to parse authorization header: %w", err)
 	}
@@ -57,31 +59,11 @@ func (h *Handler) AuthRequest(r *http.Request) (stdcontext.Context, error) {
 		return r.Context(), errors.New("payload hash mismatch")
 	}
 
-	// Parse signed headers
-	signedHeaders := strings.Split(signedHeadersStr, ";")
-
-	// Build canonical request (for future signature verification)
-	uri := r.URL.Path
-	if uri == "" {
-		uri = "/"
-	}
-	query := CanonicalQueryString(r.URL.RawQuery)
-	canonicalHeaders := CanonicalHeaders(r.Header, signedHeaders)
-	_ = CanonicalRequest(
-		r.Method,
-		uri,
-		query,
-		canonicalHeaders,
-		signedHeadersStr,
-		actualPayloadHash,
-	)
-
 	// Parse credential scope to extract region and service
 	scopeParts := strings.Split(credentialScope, "/")
 	if len(scopeParts) != 4 {
 		return r.Context(), errors.New("invalid credential scope format")
 	}
-	_ = scopeParts[0] // dateStr - keep for future use
 	region := scopeParts[1]
 	service := scopeParts[2]
 
@@ -195,18 +177,4 @@ func (h *Handler) Wrap(handler http.Handler) http.Handler {
 
 		handler.ServeHTTP(w, r.WithContext(ctx))
 	})
-}
-
-// verifySignature verifies the AWS SigV4 signature using the secret key.
-// This is only possible if we have access to the AWS secret key, which
-// typically requires the VerifyCredentials option to be enabled.
-func verifySignature(secretKey, region, service string, timestamp time.Time, stringToSign, providedSignature string) error {
-	signingKey := DeriveSigningKey(secretKey, timestamp, region, service)
-	expectedSignature := CalculateSignature(signingKey, stringToSign)
-
-	if !hmac.Equal([]byte(expectedSignature), []byte(providedSignature)) {
-		return errors.New("signature mismatch")
-	}
-
-	return nil
 }

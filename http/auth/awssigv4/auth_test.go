@@ -84,7 +84,7 @@ func TestCredentialScope(t *testing.T) {
 }
 
 func TestDeriveSigningKey(t *testing.T) {
-	secretKey := "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+	secretKey := "test-fake-secret-key-for-testing-purposes"
 	timestamp, _ := time.Parse(TimeFormat, "20150830T123600Z")
 	region := "us-east-1"
 	service := "iam"
@@ -252,8 +252,8 @@ func TestParseAuthorizationHeader(t *testing.T) {
 	}{
 		{
 			name:                   "valid authorization header",
-			authHeader:             "AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request, SignedHeaders=host;range;x-amz-date, Signature=fe5f80f77d5fa3beca038a248ff027d0445342fe2855ddc963176630326f1024",
-			expectedAccessKeyID:    "AKIAIOSFODNN7EXAMPLE",
+			authHeader:             "AWS4-HMAC-SHA256 Credential=AKIA-TEST-FAKE-KEY/20130524/us-east-1/s3/aws4_request, SignedHeaders=host;range;x-amz-date, Signature=fe5f80f77d5fa3beca038a248ff027d0445342fe2855ddc963176630326f1024",
+			expectedAccessKeyID:    "AKIA-TEST-FAKE-KEY",
 			expectedCredentialScope: "20130524/us-east-1/s3/aws4_request",
 			expectedSignedHeaders:  "host;range;x-amz-date",
 			expectedSignature:      "fe5f80f77d5fa3beca038a248ff027d0445342fe2855ddc963176630326f1024",
@@ -266,7 +266,7 @@ func TestParseAuthorizationHeader(t *testing.T) {
 		},
 		{
 			name:        "missing components",
-			authHeader:  "AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request",
+			authHeader:  "AWS4-HMAC-SHA256 Credential=AKIA-TEST-FAKE-KEY/20130524/us-east-1/s3/aws4_request",
 			expectError: true,
 		},
 		{
