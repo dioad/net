@@ -10,11 +10,11 @@ It provides implementations of common networking patterns, authentication mechan
 ## Core Features
 
 ### 🔐 Authentication & Authorization
-- **Multiple Auth Methods**: Basic auth, HMAC, JWT, OIDC, AWS Signature V4
+- **Multiple Auth Methods**: Basic auth, HMAC, JWT, OIDC
 - **HTTP Auth Handlers**: Easy-to-use middleware for protecting HTTP endpoints
 - **OIDC Integration**: Full OpenID Connect support with claim-based authorization
 - **OAuth2 Support**: Seamless OAuth2 token handling and validation
-- **AWS SigV4 Authentication**: Native AWS Signature Version 4 support for workload identity
+- **AWS OIDC**: AssumeRoleWithWebIdentity support for AWS authentication with OIDC tokens
 - **GitHub Actions OIDC**: Native support for GitHub Actions OIDC token validation
 - **Fly.io OIDC**: Support for Fly.io identity tokens
 
@@ -105,38 +105,33 @@ server := http.NewServer(config, http.WithOAuth2Validator([]oidc.ValidatorConfig
 server.AddHandler("/secure", myHandler)
 ```
 
-### AWS Signature V4 Authentication
+### AWS OIDC Authentication
 ```go
 import (
 	"context"
-	"net/http"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/dioad/net/http/auth/awssigv4"
+	"github.com/dioad/net/oidc/aws"
 )
 
-// Client-side: Sign requests with AWS credentials
-awsConfig, _ := config.LoadDefaultConfig(context.Background(),
-	config.WithRegion("us-east-1"),
+// Load AWS configuration
+awsConfig, _ := config.LoadDefaultConfig(context.Background())
+
+// Get an OIDC token from your identity provider
+// For example, from GitHub Actions, Kubernetes, etc.
+oidcToken := "your-oidc-token-here"
+
+// Create HTTP client that automatically assumes AWS role with OIDC token
+client := aws.NewHTTPClient(
+	context.Background(),
+	aws.WithAWSConfig(awsConfig),
+	aws.WithRoleARN("arn:aws:iam::123456789012:role/MyRole"),
+	aws.WithRoleSessionName("my-session"),
+	aws.WithWebIdentityToken(oidcToken),
 )
 
-clientAuth := awssigv4.NewClientAuth(awsConfig, "us-east-1", "execute-api")
-req, _ := http.NewRequest("GET", "https://api.example.com/resource", nil)
-clientAuth.AddAuth(req) // Signs the request with AWS SigV4
-
-// Server-side: Verify AWS SigV4 signatures
-handler := awssigv4.NewHandler(awssigv4.ServerConfig{
-	CommonConfig: awssigv4.CommonConfig{
-		Region:  "us-east-1",
-		Service: "execute-api",
-	},
-	VerifyCredentials: false, // Set to true to verify with AWS STS
-})
-
-protectedHandler := handler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// Extract AWS principal from context
-	awsPrincipal := awssigv4.AWSPrincipalFromContext(r.Context())
-	// Access principal info: awsPrincipal.AccessKeyID, awsPrincipal.AccountID, etc.
-}))
+// Use client to make authenticated requests
+// AWS credentials are automatically refreshed
+resp, _ := client.Get("https://api.example.com/resource")
 ```
 
 ### IP-based Access Control
@@ -257,12 +252,13 @@ All examples are standalone executable Go programs that can be run with `go run 
 - **`authz/`** - Authorization utilities (ACLs, principal checks, IP filtering)
 - **`dns/`** - DNS utilities (DoH, IP utilities, blocklist checks)
 - **`http/`** - HTTP server and client
-  - **`auth/`** - Authentication handlers (Basic, HMAC, GitHub, OIDC, AWS SigV4)
+  - **`auth/`** - Authentication handlers (Basic, HMAC, GitHub, OIDC)
   - **`authz/`** - Authorization middleware (IP-based, JWT-based, Principal-based)
   - **`resource/`** - Resource-based request handlers
 - **`ratelimit/`** - Generic per-principal rate limiting logic
 - **`metrics/`** - Prometheus metrics collection
 - **`oidc/`** - OpenID Connect client library and validation
+  - **`aws/`** - AWS AssumeRoleWithWebIdentity integration
   - **`flyio/`** - Fly.io identity integration
   - **`githubactions/`** - GitHub Actions OIDC integration
 - **`smtp/`** - SMTP/email security (DKIM, DMARC, SPF, MTA-STS)
