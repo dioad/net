@@ -9,6 +9,7 @@ import (
 	"github.com/dioad/net/http/auth/basic"
 	"github.com/dioad/net/http/auth/github"
 	"github.com/dioad/net/http/auth/hmac"
+	"github.com/dioad/net/http/auth/jwt"
 )
 
 // Handler describes an HTTP authentication handler.
@@ -36,6 +37,8 @@ func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {
 		return basic.NewHandler(cfg.BasicAuthConfig)
 	} else if !generics.IsZeroValue(cfg.HMACAuthConfig) {
 		return hmac.NewHandler(cfg.HMACAuthConfig), nil
+	} else if !generics.IsZeroValue(cfg.JWTAuthConfig) {
+		return jwt.NewHandler(cfg.JWTAuthConfig), nil
 	}
 
 	return nil, nil
@@ -86,6 +89,8 @@ func MultiAuthnHandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) http
 				}
 			case "hmac":
 				a = hmac.NewHandler(cfg.HMACAuthConfig)
+			case "jwt":
+				a = jwt.NewHandler(cfg.JWTAuthConfig)
 			}
 
 			ctx, err = a.AuthRequest(r)
