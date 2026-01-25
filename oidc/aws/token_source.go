@@ -5,34 +5,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"golang.org/x/oauth2"
-
-	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
 )
-
-// CustomClaims represents custom claims in an AWS OIDC token.
-// These are standard JWT claims plus AWS-specific information.
-type CustomClaims struct {
-	// AWS-specific claims from AssumeRoleWithWebIdentity
-	// These will be populated based on the identity provider used
-}
-
-// Claims represents the full set of claims in an AWS OIDC token.
-type Claims struct {
-	jwtvalidator.RegisteredClaims
-	CustomClaims
-}
-
-// Validate implements the CustomClaims interface.
-func (c *Claims) Validate(_ context.Context) error {
-	return nil
-}
 
 type tokenSource struct {
 	roleARN          string
@@ -48,27 +27,21 @@ type Opt func(*tokenSource)
 // WithRoleARN sets the ARN of the role to assume.
 func WithRoleARN(roleARN string) Opt {
 	return func(ts *tokenSource) {
-		if roleARN != "" {
-			ts.roleARN = roleARN
-		}
+		ts.roleARN = roleARN
 	}
 }
 
 // WithRoleSessionName sets the session name for the assumed role.
 func WithRoleSessionName(sessionName string) Opt {
 	return func(ts *tokenSource) {
-		if sessionName != "" {
-			ts.roleSessionName = sessionName
-		}
+		ts.roleSessionName = sessionName
 	}
 }
 
 // WithWebIdentityToken sets the web identity token (OIDC token) to use for assuming the role.
 func WithWebIdentityToken(token string) Opt {
 	return func(ts *tokenSource) {
-		if token != "" {
-			ts.webIdentityToken = token
-		}
+		ts.webIdentityToken = token
 	}
 }
 
@@ -166,7 +139,7 @@ func encodeCredentials(creds *types.Credentials) (*oauth2.Token, error) {
 	}
 
 	return &oauth2.Token{
-		AccessToken: strings.TrimSpace(encodedToken),
+		AccessToken: encodedToken,
 		Expiry:      expiry,
 		TokenType:   "aws-credentials",
 	}, nil

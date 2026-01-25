@@ -1,7 +1,6 @@
 package aws
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -88,14 +87,6 @@ func TestTokenSource_MissingWebIdentityToken(t *testing.T) {
 	_, err := ts.Token()
 	if err == nil {
 		t.Error("expected error for missing web identity token, got nil")
-	}
-}
-
-func TestClaimsValidate(t *testing.T) {
-	claims := &Claims{}
-	err := claims.Validate(context.Background())
-	if err != nil {
-		t.Errorf("Validate() should not return error, got: %v", err)
 	}
 }
 
