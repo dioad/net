@@ -141,3 +141,21 @@ jobs:
 
     - name: Fuzz DecodeTokenData
       run: go test -fuzz FuzzDecodeTokenData -fuzztime 10s ./oidc
+
+    - name: Output Fuzzing Crashers
+      if: failure()
+      run: |
+        echo "Fuzzing failed. Checking for crashers..."
+        find . -path "*/testdata/fuzz/*" -type f | head -n 10 | while read crasher; do
+          echo "Crasher: $crasher"
+          cat "$crasher"
+          echo ""
+        done
+
+    - name: Upload Fuzzing Crashers
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: fuzz-crashers
+        path: "**/testdata/fuzz/**"
+        if-no-files-found: ignore
