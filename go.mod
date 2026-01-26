@@ -14,7 +14,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/pires/go-proxyproto v0.9.0
+	github.com/pires/go-proxyproto v0.9.1
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.5 // indirect
