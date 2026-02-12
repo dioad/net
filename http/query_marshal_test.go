@@ -27,10 +27,10 @@ func TestMarshalQueryWithPrefixAndStructName(t *testing.T) {
 	assert.NoErrorf(t, err, "URL parse should not fail")
 
 	// Check fieldSet one
-	assert.Equal(t, "value1", values.Get("X-example-fieldSet-one"))
+	assert.Equal(t, "value1", values.Get("X-example-field-one"))
 
 	// Check fieldSet two (multiple values)
-	assert.Equalf(t, []string{"value2", "value3"}, values["X-example-fieldSet-two"], "X-example-fieldSet-two mismatch")
+	assert.Equalf(t, []string{"value2", "value3"}, values["X-example-field-two"], "X-example-field-two mismatch")
 }
 
 // TestMarshalQueryWithoutStructName tests encoding without struct name
@@ -96,9 +96,9 @@ func TestUnmarshalQuery(t *testing.T) {
 // TestUnmarshalQueryWithPrefixAndStructName tests decoding with prefix and struct name
 func TestUnmarshalQueryWithPrefixAndStructName(t *testing.T) {
 	values := url.Values{}
-	values.Set("X-example-fieldSet-one", "value1")
-	values.Add("X-example-fieldSet-two", "value2")
-	values.Add("X-example-fieldSet-two", "value3")
+	values.Set("X-example-field-one", "value1")
+	values.Add("X-example-field-two", "value2")
+	values.Add("X-example-field-two", "value3")
 
 	opts := HTTPMarshalOptions{
 		Prefix:            "X",
@@ -118,8 +118,8 @@ func TestUnmarshalQueryWithPrefixAndStructName(t *testing.T) {
 // TestUnmarshalQueryWithoutStructName tests decoding without struct name
 func TestUnmarshalQueryWithoutStructName(t *testing.T) {
 	values := url.Values{}
-	values.Set("X-fieldSet-one", "value1")
-	values.Set("X-fieldSet-two", "value2")
+	values.Set("X-field-one", "value1")
+	values.Set("X-field-two", "value2")
 
 	opts := HTTPMarshalOptions{
 		Prefix:            "X",
@@ -241,7 +241,7 @@ func TestMarshalQueryPointerToStruct(t *testing.T) {
 // TestUnmarshalQueryInvalidDestination tests error handling for invalid destinations
 func TestUnmarshalQueryInvalidDestination(t *testing.T) {
 	values := url.Values{}
-	values.Set("fieldSet-one", "value1")
+	values.Set("field-one", "value1")
 
 	opts := DefaultHTTPMarshalOptions()
 
@@ -364,9 +364,9 @@ func TestEmptyQuerySlice(t *testing.T) {
 // TestRFC3986MultipleQueryOccurrences verifies repeated query params are unmarshaled into a slice
 func TestRFC3986MultipleQueryOccurrences(t *testing.T) {
 	values := url.Values{}
-	values.Add("X-example-fieldSet-two", "value1")
-	values.Add("X-example-fieldSet-two", "value2")
-	values.Add("X-example-fieldSet-two", "value3")
+	values.Add("X-example-field-two", "value1")
+	values.Add("X-example-field-two", "value2")
+	values.Add("X-example-field-two", "value3")
 
 	opts := HTTPMarshalOptions{
 		Prefix:            "X",
@@ -387,7 +387,7 @@ func TestRFC3986MultipleQueryOccurrences(t *testing.T) {
 	parsed, err := url.ParseQuery(query)
 	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
 
-	assert.Equalf(t, []string{"value1", "value2", "value3"}, parsed["X-example-fieldSet-two"], "Multiple values not marshaled correctly")
+	assert.Equalf(t, []string{"value1", "value2", "value3"}, parsed["X-example-field-two"], "Multiple values not marshaled correctly")
 }
 
 // TestQueryValuesWithCommas tests that values containing commas are preserved

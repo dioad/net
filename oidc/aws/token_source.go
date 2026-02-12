@@ -1,3 +1,7 @@
+// Package aws provides functionality to retrieve OIDC tokens from AWS STS GetWebIdentityToken API.
+// It defines a token source that implements oauth2.TokenSource, allowing for easy integration with
+// OAuth2 libraries and frameworks. The package also includes support for custom claims and configurable
+// options for audience, signing algorithm, and AWS configuration.
 package aws
 
 import (
@@ -12,10 +16,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// Opt defines a functional option for configuring the token source. It allows for setting various parameters such as audience, signing algorithm, and AWS configuration when creating a new token source.
+// Opt defines a functional option for configuring the token source. It allows for setting various parameters such as
+// audience, signing algorithm, and AWS configuration when creating a new token source.
 type Opt func(*tokenSource)
 
-// CustomClaims represents the custom claims included in the JWT token returned by AWS STS GetWebIdentityToken API. These claims provide additional information about the AWS environment and the context of the token issuance.
+// CustomClaims represents the custom claims included in the JWT token returned by AWS STS GetWebIdentityToken API.
+// These claims provide additional information about the AWS environment and the context of the token issuance.
 type CustomClaims struct {
 	HttpsStsAmazonawsCom struct {
 		Ec2InstanceSourceVpc         string    `json:"ec2_instance_source_vpc"`
@@ -31,7 +37,8 @@ type CustomClaims struct {
 	} `json:"https://sts.amazonaws.com/"`
 }
 
-// Claims represents the JWT claims returned by the GitHub Actions OIDC provider, including both standard registered claims and custom AWS-specific claims.
+// Claims represents the JWT claims returned by the AWS OIDC provider, including both standard registered claims and
+// custom AWS-specific claims.
 type Claims struct {
 	jwtvalidator.RegisteredClaims
 	CustomClaims
@@ -47,14 +54,15 @@ type tokenSource struct {
 	awsConfig        *aws.Config
 }
 
-// Token retrieves a new OIDC token from the GitHub Actions OIDC provider using AWS STS GetWebIdentityToken API
+// Token retrieves a new OIDC token from the AWS STS GetWebIdentityToken API
 func (c *tokenSource) Token() (*oauth2.Token, error) {
 	var awsConfig aws.Config
 	var err error
 	if c.awsConfig != nil {
 		awsConfig = *c.awsConfig
 	} else {
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 		awsConfig, err = config.LoadDefaultConfig(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load AWS config: %w", err)
@@ -67,7 +75,9 @@ func (c *tokenSource) Token() (*oauth2.Token, error) {
 		SigningAlgorithm: aws.String(c.signingAlgorithm),
 	}
 
-	response, err := stsClient.GetWebIdentityToken(context.Background(), params)
+	stsCtx, stsCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer stsCancel()
+	response, err := stsClient.GetWebIdentityToken(stsCtx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get web identity token: %w", err)
 	}
@@ -114,9 +124,10 @@ func WithAWSConfig(cfg aws.Config) Opt {
 	}
 }
 
-// NewTokenSource creates a new token source for GitHub Actions OIDC
-// It retrieves tokens from the GitHub Actions OIDC provider using environment variables
-// See: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect
+// NewTokenSource creates a new token source configured with the provided options.
+// It returns an oauth2.TokenSource that can be used to retrieve OIDC tokens from AWS.
+// The token source is wrapped with oauth2.ReuseTokenSource to ensure that tokens are cached and reused until they
+// expire, minimizing unnecessary API calls to AWS STS.
 func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 	source := &tokenSource{}
 	for _, opt := range opts {

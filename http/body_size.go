@@ -38,6 +38,7 @@ func WithMaxBodyBytes(maxBytesSize int64) BodySizeLimiterOpt {
 func NewBodySizeLimiter(opts ...BodySizeLimiterOpt) *BodySizeLimiter {
 	l := &BodySizeLimiter{
 		MaxBodyBytes: DefaultMaxBodyBytes,
+		Logger:       zerolog.Nop(),
 	}
 
 	for _, opt := range opts {

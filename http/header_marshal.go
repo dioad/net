@@ -63,14 +63,14 @@ func UnmarshalHeader(header http.Header, v interface{}, opts HTTPMarshalOptions)
 
 	err := unmarshalFields(header, v, tagName, opts)
 	if err != nil {
-		return fmt.Errorf("UnmarshalQuery: %w", err)
+		return fmt.Errorf("UnmarshalHeader: %w", err)
 	}
 
 	return nil
 }
 
-// UnmarshalHeaderFunc is a helper function that extracts headers from an http.Request and unmarshals them into a s
+// UnmarshalHeaderFromRequest is a helper function that extracts headers from an http.Request and unmarshals them into a
 // struct using the provided options.
-func UnmarshalHeaderFunc(req *http.Request, v interface{}, opts HTTPMarshalOptions) error {
+func UnmarshalHeaderFromRequest(req *http.Request, v interface{}, opts HTTPMarshalOptions) error {
 	return UnmarshalHeader(req.Header, v, opts)
 }

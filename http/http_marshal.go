@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 type HTTPMarshalOptions struct {
@@ -13,7 +14,7 @@ type HTTPMarshalOptions struct {
 	Prefix string
 	// IncludeStructName includes the struct type name in the parameter (e.g., "X-Example-Field-Name")
 	IncludeStructName bool
-	// DefaultKebabCase converts fieldSet names to kebab-case by default (e.g., "FieldName" becomes "fieldSet-name")
+	// DefaultKebabCase converts fieldSet names to kebab-case by default (e.g., "FieldName" becomes "field-name")
 	DefaultKebabCase bool
 }
 
@@ -156,22 +157,26 @@ func buildFieldName(fieldName string, structName string, opts HTTPMarshalOptions
 
 // toKebabCase converts CamelCase to kebab-case
 // It inserts a hyphen before each uppercase letter (except the first)
-// Examples: "FieldOne" -> "fieldSet-one", "UserID" -> "user-i-d", "HTTPServer" -> "h-t-t-p-server"
+// Examples: "FieldOne" -> "field-one", "UserID" -> "user-i-d", "HTTPServer" -> "h-t-t-p-server"
 func toKebabCase(s string) string {
 	if s == "" {
 		return ""
 	}
 
+	runes := []rune(s)
 	var result strings.Builder
 
-	for i, r := range s {
-		if i > 0 && r >= 'A' && r <= 'Z' {
-			// Insert hyphen before uppercase letters (except at start)
-			result.WriteRune('-')
+	for i, r := range runes {
+		if i > 0 && unicode.IsUpper(r) {
+			prev := runes[i-1]
+			nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+			if unicode.IsLower(prev) || unicode.IsDigit(prev) || (unicode.IsUpper(prev) && nextIsLower) {
+				result.WriteRune('-')
+			}
 		}
-		// Convert to lowercase
-		if r >= 'A' && r <= 'Z' {
-			result.WriteRune(r + ('a' - 'A'))
+
+		if unicode.IsUpper(r) {
+			result.WriteRune(unicode.ToLower(r))
 		} else {
 			result.WriteRune(r)
 		}

@@ -319,12 +319,12 @@ func TestKebabCase(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"FieldOne", "fieldSet-one"},
-		{"FieldTwo", "fieldSet-two"},
-		{"HTTPHeader", "h-t-t-p-header"},
+		{"FieldOne", "field-one"},
+		{"FieldTwo", "field-two"},
+		{"HTTPHeader", "http-header"},
 		{"Example", "example"},
-		{"APIKey", "a-p-i-key"},
-		{"UserID", "user-i-d"},
+		{"APIKey", "api-key"},
+		{"UserID", "user-id"},
 		{"", ""},
 		{"lowercase", "lowercase"},
 	}

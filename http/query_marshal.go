@@ -50,7 +50,7 @@ func MarshalQuery(v interface{}, opts HTTPMarshalOptions) (string, error) {
 
 	err := marshalFields(v, QueryMarshalTagName, valueWrapper, opts)
 	if err != nil {
-		return "", fmt.Errorf("marshal header: %w", err)
+		return "", fmt.Errorf("marshal query: %w", err)
 	}
 
 	return values.Encode(), nil
