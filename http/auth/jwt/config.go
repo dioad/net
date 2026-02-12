@@ -1,7 +1,7 @@
 package jwt
 
 import (
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 )
 
 // ServerConfig contains configuration for a JWT authentication server.

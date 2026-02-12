@@ -38,13 +38,13 @@ require (
 	github.com/dioad/generics v0.0.8
 	github.com/dioad/util v0.7.0
 	github.com/emersion/go-msgauth v0.7.0
+	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/markbates/goth v1.82.0
 	github.com/miekg/dns v1.1.70
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/rs/cors v1.11.1
 	github.com/stretchr/testify v1.11.1
 	github.com/weaveworks/common v0.0.0-20230728070032-dd9e68f319d5
