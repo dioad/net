@@ -84,33 +84,33 @@ func TestRateLimiter_RetryAfterHeaderAccuracy(t *testing.T) {
 	logger := zerolog.Nop()
 
 	tests := []struct {
-		name              string
-		requestsPerSecond float64
-		burst             int
+		name               string
+		requestsPerSecond  float64
+		burst              int
 		expectedRetryAfter string
 	}{
 		{
-			name:              "1 request per second",
-			requestsPerSecond: 1,
-			burst:             1,
+			name:               "1 request per second",
+			requestsPerSecond:  1,
+			burst:              1,
 			expectedRetryAfter: "1",
 		},
 		{
-			name:              "10 requests per second",
-			requestsPerSecond: 10,
-			burst:             1,
+			name:               "10 requests per second",
+			requestsPerSecond:  10,
+			burst:              1,
 			expectedRetryAfter: "1", // ceil(0.1) = 1
 		},
 		{
-			name:              "0.5 requests per second (1 per 2 seconds)",
-			requestsPerSecond: 0.5,
-			burst:             1,
+			name:               "0.5 requests per second (1 per 2 seconds)",
+			requestsPerSecond:  0.5,
+			burst:              1,
 			expectedRetryAfter: "2",
 		},
 		{
-			name:              "100 requests per second",
-			requestsPerSecond: 100,
-			burst:             1,
+			name:               "100 requests per second",
+			requestsPerSecond:  100,
+			burst:              1,
 			expectedRetryAfter: "1", // ceil(0.01) = 1
 		},
 	}
@@ -138,4 +138,3 @@ func TestRateLimiter_RetryAfterHeaderAccuracy(t *testing.T) {
 		})
 	}
 }
-

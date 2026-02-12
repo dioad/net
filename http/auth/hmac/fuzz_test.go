@@ -16,7 +16,10 @@ func FuzzCanonicalData(f *testing.F) {
 		req.URL.RawQuery = query
 		req.Header.Set(headerName, "some-value")
 
-		_ = CanonicalData(req, principal, timestamp, []string{headerName}, body)
+		got := CanonicalData(req, principal, timestamp, []string{headerName}, body)
+		if got == "" {
+			t.Errorf("CanonicalData returned empty string")
+		}
 	})
 }
 

@@ -16,11 +16,11 @@ func TestHeaderCaseNormalization(t *testing.T) {
 
 	// Test with various case combinations
 	testCases := []struct {
-		name                 string
-		clientHeaders        []string
-		serverHeaders        []string
-		headerValues         map[string]string
-		shouldAuthenticate   bool
+		name               string
+		clientHeaders      []string
+		serverHeaders      []string
+		headerValues       map[string]string
+		shouldAuthenticate bool
 	}{
 		{
 			name:          "Same case - uppercase",

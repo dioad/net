@@ -25,7 +25,7 @@ func Example() {
 	}
 
 	// Configure marshaling with a prefix and struct name
-	opts := dhttp.HeaderMarshalOptions{
+	opts := dhttp.HTTPMarshalOptions{
 		Prefix:            "X",
 		IncludeStructName: true,
 	}
@@ -80,10 +80,9 @@ func ExampleMarshalHeader() {
 		ID:    12345,
 	}
 
-	// Use DefaultHeaderMarshalOptions which doesn't add any prefix or struct name.
+	// Use DefaultHTTPMarshalOptions which doesn't add any prefix, struct name or change case.
 	// Field names will be determined by the `header` tag if present,
-	// or automatically converted to kebab-case.
-	header, err := dhttp.MarshalHeader(user, dhttp.DefaultHeaderMarshalOptions())
+	header, err := dhttp.MarshalHeader(user, dhttp.DefaultHTTPMarshalOptions())
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
@@ -114,7 +113,7 @@ func ExampleUnmarshalHeader() {
 	header.Set("X-User-ID", "67890")
 
 	var user UserInfo
-	err := dhttp.UnmarshalHeader(header, &user, dhttp.DefaultHeaderMarshalOptions())
+	err := dhttp.UnmarshalHeader(header, &user, dhttp.DefaultHTTPMarshalOptions())
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
@@ -144,7 +143,7 @@ func ExampleMarshalHeader_options() {
 
 	// Using options to add a prefix and include struct name in header names.
 	// Field names are automatically converted to kebab-case.
-	opts := dhttp.HeaderMarshalOptions{
+	opts := dhttp.HTTPMarshalOptions{
 		Prefix:            "X-App",
 		IncludeStructName: true,
 	}
@@ -178,7 +177,7 @@ func ExampleMarshalHeader_withoutStructName() {
 	}
 
 	// Configure without struct name
-	opts := dhttp.HeaderMarshalOptions{
+	opts := dhttp.HTTPMarshalOptions{
 		Prefix:            "X",
 		IncludeStructName: false,
 	}
@@ -189,12 +188,12 @@ func ExampleMarshalHeader_withoutStructName() {
 	}
 
 	fmt.Println("Headers without struct name:")
-	fmt.Printf("  X-Api-Key: %s\n", headers.Get("X-Api-Key"))
+	fmt.Printf("  X-ApiKey: %s\n", headers.Get("X-ApiKey"))
 	fmt.Printf("  X-Region: %s\n", headers.Get("X-Region"))
 
 	// Output:
 	// Headers without struct name:
-	//   X-Api-Key: secret-key
+	//   X-ApiKey: secret-key
 	//   X-Region: us-west-2
 }
 
@@ -203,7 +202,7 @@ func ExampleMarshalHeader_customTags() {
 	type Metadata struct {
 		RequestID string `header:"request-id"`
 		TraceID   string `header:"trace-id"`
-		Internal  string `header:"-"` // This field will be ignored
+		Internal  string `header:"-"` // This fieldSet will be ignored
 	}
 
 	metadata := Metadata{
@@ -212,7 +211,7 @@ func ExampleMarshalHeader_customTags() {
 		Internal:  "should-not-appear",
 	}
 
-	opts := dhttp.DefaultHeaderMarshalOptions()
+	opts := dhttp.DefaultHTTPMarshalOptions()
 
 	headers, err := dhttp.MarshalHeader(metadata, opts)
 	if err != nil {
@@ -241,7 +240,7 @@ func ExampleUnmarshalHeader_middleware() {
 	// Create a middleware that decodes headers into a struct
 	middleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			opts := dhttp.HeaderMarshalOptions{
+			opts := dhttp.HTTPMarshalOptions{
 				Prefix:            "X-Context",
 				IncludeStructName: false,
 			}
@@ -268,8 +267,8 @@ func ExampleUnmarshalHeader_middleware() {
 
 	// Simulate a request with headers
 	req, _ := http.NewRequest("GET", "/api/data", nil)
-	req.Header.Set("X-Context-Tenant-Id", "tenant-123")
-	req.Header.Set("X-Context-User-Role", "admin")
+	req.Header.Set("X-Context-TenantId", "tenant-123")
+	req.Header.Set("X-Context-UserRole", "admin")
 
 	// Create a response recorder
 	w := httptest.NewRecorder()
@@ -293,7 +292,7 @@ func ExampleMarshalHeader_rfc9110Compliance() {
 		Items: []string{"item1", "item2,with,comma", "item3"},
 	}
 
-	opts := dhttp.DefaultHeaderMarshalOptions()
+	opts := dhttp.DefaultHTTPMarshalOptions()
 
 	// Marshal to headers
 	headers, _ := dhttp.MarshalHeader(data, opts)

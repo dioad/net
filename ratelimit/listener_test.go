@@ -25,7 +25,7 @@ func TestListener_Accept(t *testing.T) {
 
 	// Start a goroutine to accept connections
 	var acceptedCount int32 // use int32 so we can safely update it with atomic.AddInt32 / atomic.LoadInt32 across goroutines
-	
+
 	go func() {
 		for {
 			conn, err := rlListener.Accept()

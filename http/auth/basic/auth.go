@@ -29,10 +29,10 @@ func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
 }
 
 type ClientAuth struct {
-	Config         ClientConfig
-	user           string
-	password       string
-	netrcProvider  *NetrcProvider
+	Config        ClientConfig
+	user          string
+	password      string
+	netrcProvider *NetrcProvider
 }
 
 func (a *ClientAuth) HTTPClient() *http.Client {

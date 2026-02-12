@@ -53,9 +53,8 @@ func (c *Claims) Validate(_ context.Context) error {
 }
 
 type tokenSource struct {
-	audience     string
-	client       *http.Client
-	currentToken *oauth2.Token
+	audience string
+	client   *http.Client
 }
 
 // Opt is a function option for configuring the token source
@@ -90,7 +89,7 @@ func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 		opt(source)
 	}
 
-	return oauth2.ReuseTokenSource(nil, source)
+	return source
 }
 
 // Token retrieves an OIDC token from GitHub Actions

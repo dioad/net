@@ -36,7 +36,7 @@ func main() {
 
 	// Use as middleware for premium users
 	premiumHandler := limiter.Middleware("premium")(myHandler)
-	
+
 	// Use as middleware for standard users
 	standardHandler := limiter.Middleware("standard")(myHandler)
 

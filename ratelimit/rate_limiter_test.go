@@ -128,7 +128,7 @@ func TestRateLimiter_WithSourceAndFallback(t *testing.T) {
 	// In production, consider having the source always return ok=true
 	rl := NewRateLimiterWithConfig(5, 5, 5*time.Minute, 30*time.Minute, logger)
 	defer rl.Stop()
-	
+
 	// Note: Setting LimitSource after construction can be done, but the source
 	// should be set before any Allow() calls to avoid race conditions
 	rl.LimitSource = source
@@ -335,7 +335,7 @@ func TestRateLimiter_StopMultipleTimes(t *testing.T) {
 func TestRateLimiter_WithContext(t *testing.T) {
 	logger := zerolog.Nop()
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	rl := NewRateLimiterWithContext(ctx, 1, 1, logger)
 
 	// Use the rate limiter
@@ -406,12 +406,12 @@ func TestRateLimiter_BackgroundCleanup(t *testing.T) {
 	maxWait := 200 * time.Millisecond
 	pollInterval := 10 * time.Millisecond
 	startTime := time.Now()
-	
+
 	for time.Since(startTime) < maxWait {
 		rl.mu.Lock()
 		count := len(rl.limiters)
 		rl.mu.Unlock()
-		
+
 		if count == 0 {
 			// Cleanup succeeded
 			return
@@ -423,7 +423,7 @@ func TestRateLimiter_BackgroundCleanup(t *testing.T) {
 	rl.mu.Lock()
 	count := len(rl.limiters)
 	rl.mu.Unlock()
-	
+
 	t.Fatalf("Expected limiters to be cleaned up, but found %d limiters after %v", count, maxWait)
 }
 
