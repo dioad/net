@@ -47,7 +47,7 @@ type Claims struct {
 // Validate implements the jwtvalidator.Claims interface. It can be used to perform custom validation on the claims if needed.
 func (c *Claims) Validate(_ context.Context) error { return nil }
 
-// tokenSource implements oauth2.TokenSource to retrieve OIDC tokens from GitHub Actions
+// tokenSource implements oauth2.TokenSource to retrieve OIDC tokens from AWS STS
 type tokenSource struct {
 	audience         string
 	signingAlgorithm string
