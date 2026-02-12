@@ -53,9 +53,8 @@ func (c *Claims) Validate(_ context.Context) error {
 }
 
 type tokenSource struct {
-	audience     string
-	client       *http.Client
-	currentToken *oauth2.Token
+	audience string
+	client   *http.Client
 }
 
 // Opt is a function option for configuring the token source
