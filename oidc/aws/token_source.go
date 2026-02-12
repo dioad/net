@@ -126,13 +126,11 @@ func WithAWSConfig(cfg aws.Config) Opt {
 
 // NewTokenSource creates a new token source configured with the provided options.
 // It returns an oauth2.TokenSource that can be used to retrieve OIDC tokens from AWS.
-// The token source is wrapped with oauth2.ReuseTokenSource to ensure that tokens are cached and reused until they
-// expire, minimizing unnecessary API calls to AWS STS.
 func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 	source := &tokenSource{}
 	for _, opt := range opts {
 		opt(source)
 	}
 
-	return oauth2.ReuseTokenSource(nil, source)
+	return source
 }

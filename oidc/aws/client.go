@@ -17,5 +17,8 @@ func NewHTTPClient(ctx context.Context, opts ...Opt) (*http.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting token: %w", err)
 	}
-	return oauth2.NewClient(ctx, ts), nil
+
+	rts := oauth2.ReuseTokenSource(nil, ts)
+
+	return oauth2.NewClient(ctx, rts), nil
 }

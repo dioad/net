@@ -9,5 +9,8 @@ import (
 
 // NewHTTPClient creates an HTTP client configured with GitHub Actions OIDC authentication
 func NewHTTPClient(ctx context.Context, opts ...Opt) *http.Client {
-	return oauth2.NewClient(ctx, NewTokenSource(opts...))
+	ts := NewTokenSource(opts...)
+	rts := oauth2.ReuseTokenSource(nil, ts)
+
+	return oauth2.NewClient(ctx, rts)
 }

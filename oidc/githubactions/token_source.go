@@ -89,7 +89,7 @@ func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 		opt(source)
 	}
 
-	return oauth2.ReuseTokenSource(nil, source)
+	return source
 }
 
 // Token retrieves an OIDC token from GitHub Actions
