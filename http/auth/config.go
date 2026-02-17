@@ -4,6 +4,7 @@ import (
 	"github.com/dioad/net/http/auth/basic"
 	"github.com/dioad/net/http/auth/github"
 	"github.com/dioad/net/http/auth/hmac"
+	"github.com/dioad/net/http/auth/jwt"
 )
 
 // ClientConfig represents the authentication configuration for an HTTP client.
@@ -24,6 +25,7 @@ type ServerConfig struct {
 	BasicAuthConfig  basic.ServerConfig  `mapstructure:"basic"`
 	GitHubAuthConfig github.ServerConfig `mapstructure:"github"`
 	HMACAuthConfig   hmac.ServerConfig   `mapstructure:"hmac"`
+	JWTAuthConfig    jwt.ServerConfig    `mapstructure:"jwt"`
 
 	Providers []string `mapstructure:"providers"`
 }

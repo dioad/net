@@ -69,7 +69,7 @@ func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 		opt(source)
 	}
 
-	return oauth2.ReuseTokenSource(nil, source)
+	return source
 }
 
 func (ts *tokenSource) Token() (*oauth2.Token, error) {

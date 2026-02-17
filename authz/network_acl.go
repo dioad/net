@@ -123,7 +123,7 @@ func parseTCPNet(n string) (*net.IPNet, error) {
 		if ip == nil {
 			return nil, fmt.Errorf("invalid IP address: %s", n)
 		}
-		
+
 		// Check if it's IPv6 (fails to convert to IPv4)
 		if ip.To4() == nil {
 			// IPv6 address

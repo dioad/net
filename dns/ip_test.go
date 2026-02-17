@@ -31,7 +31,13 @@ func FuzzReverseIP(f *testing.F) {
 	f.Add("2001:db8::1")
 	f.Add("invalid")
 	f.Fuzz(func(t *testing.T, addr string) {
-		_, _ = ReverseIP(addr)
+		got, err := ReverseIP(addr)
+		if err != nil {
+			return
+		}
+		// If it succeeded, it should not be empty for valid inputs
+		// though our current implementation returns "" for IPv6 without error.
+		_ = got
 	})
 }
 

@@ -14,6 +14,10 @@ import (
 	"github.com/dioad/net/http/auth/context"
 )
 
+type TokenAuthenticator interface {
+	AuthenticateToken(accessToken string) (*UserInfo, error)
+}
+
 // NewHandler creates a new GitHub authentication handler with the provided configuration.
 func NewHandler(cfg ServerConfig) *Handler {
 	return &Handler{
@@ -21,9 +25,15 @@ func NewHandler(cfg ServerConfig) *Handler {
 	}
 }
 
+func NewHandlerWithAuthenticator(authenticator TokenAuthenticator) *Handler {
+	return &Handler{
+		Authenticator: authenticator,
+	}
+}
+
 // Handler implements GitHub token authentication.
 type Handler struct {
-	Authenticator *Authenticator
+	Authenticator TokenAuthenticator
 }
 
 // AuthRequest authenticates an HTTP request using a GitHub token.

@@ -20,7 +20,7 @@ func TestMarshalHeaderWithPrefixAndStructName(t *testing.T) {
 		FieldTwo: []string{"value2", "value3"},
 	}
 
-	opts := HeaderMarshalOptions{
+	opts := HTTPMarshalOptions{
 		Prefix:            "X",
 		IncludeStructName: true,
 	}
@@ -30,16 +30,16 @@ func TestMarshalHeaderWithPrefixAndStructName(t *testing.T) {
 		t.Fatalf("MarshalHeader failed: %v", err)
 	}
 
-	// Check field one
-	if got := header.Get("X-Example-Field-One"); got != "value1" {
-		t.Errorf("X-Example-Field-One = %q, want %q", got, "value1")
+	// Check fieldSet one
+	if got := header.Get("X-Example-FieldOne"); got != "value1" {
+		t.Errorf("X-Example-FieldOne = %q, want %q", got, "value1")
 	}
 
-	// Check field two (multiple values)
-	values := header.Values("X-Example-Field-Two")
+	// Check fieldSet two (multiple values)
+	values := header.Values("X-Example-FieldTwo")
 	want := []string{"value2", "value3"}
 	if diff := cmp.Diff(want, values); diff != "" {
-		t.Errorf("X-Example-Field-Two mismatch (-want +got):\n%s", diff)
+		t.Errorf("X-Example-FieldTwo mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -50,7 +50,7 @@ func TestMarshalHeaderWithoutStructName(t *testing.T) {
 		FieldTwo: []string{"value2"},
 	}
 
-	opts := HeaderMarshalOptions{
+	opts := HTTPMarshalOptions{
 		Prefix:            "X",
 		IncludeStructName: false,
 	}
@@ -60,14 +60,14 @@ func TestMarshalHeaderWithoutStructName(t *testing.T) {
 		t.Fatalf("MarshalHeader failed: %v", err)
 	}
 
-	// Check field one (without struct name)
-	if got := header.Get("X-Field-One"); got != "value1" {
-		t.Errorf("X-Field-One = %q, want %q", got, "value1")
+	// Check fieldSet one (without struct name)
+	if got := header.Get("X-FieldOne"); got != "value1" {
+		t.Errorf("X-FieldOne = %q, want %q", got, "value1")
 	}
 
-	// Check field two
-	if got := header.Get("X-Field-Two"); got != "value2" {
-		t.Errorf("X-Field-Two = %q, want %q", got, "value2")
+	// Check fieldSet two
+	if got := header.Get("X-FieldTwo"); got != "value2" {
+		t.Errorf("X-FieldTwo = %q, want %q", got, "value2")
 	}
 }
 
@@ -78,32 +78,32 @@ func TestMarshalHeaderNoPrefix(t *testing.T) {
 		FieldTwo: []string{"value2"},
 	}
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	header, err := MarshalHeader(example, opts)
 	if err != nil {
 		t.Fatalf("MarshalHeader failed: %v", err)
 	}
 
-	// Check field one (no prefix, no struct name)
-	if got := header.Get("field-one"); got != "value1" {
-		t.Errorf("field-one = %q, want %q", got, "value1")
+	// Check fieldSet one (no prefix, no struct name)
+	if got := header.Get("FieldOne"); got != "value1" {
+		t.Errorf("FieldOne = %q, want %q", got, "value1")
 	}
 
-	// Check field two
-	if got := header.Get("field-two"); got != "value2" {
-		t.Errorf("field-two = %q, want %q", got, "value2")
+	// Check fieldSet two
+	if got := header.Get("FieldTwo"); got != "value2" {
+		t.Errorf("FieldTwo = %q, want %q", got, "value2")
 	}
 }
 
 // TestUnmarshalHeaderWithPrefixAndStructName tests decoding with prefix and struct name
 func TestUnmarshalHeaderWithPrefixAndStructName(t *testing.T) {
 	header := http.Header{}
-	header.Set("X-Example-Field-One", "value1")
-	header.Add("X-Example-Field-Two", "value2")
-	header.Add("X-Example-Field-Two", "value3")
+	header.Set("X-Example-FieldOne", "value1")
+	header.Add("X-Example-FieldTwo", "value2")
+	header.Add("X-Example-FieldTwo", "value3")
 
-	opts := HeaderMarshalOptions{
+	opts := HTTPMarshalOptions{
 		Prefix:            "X",
 		IncludeStructName: true,
 	}
@@ -127,10 +127,10 @@ func TestUnmarshalHeaderWithPrefixAndStructName(t *testing.T) {
 // TestUnmarshalHeaderWithoutStructName tests decoding without struct name
 func TestUnmarshalHeaderWithoutStructName(t *testing.T) {
 	header := http.Header{}
-	header.Set("X-Field-One", "value1")
-	header.Set("X-Field-Two", "value2")
+	header.Set("X-FieldOne", "value1")
+	header.Set("X-FieldTwo", "value2")
 
-	opts := HeaderMarshalOptions{
+	opts := HTTPMarshalOptions{
 		Prefix:            "X",
 		IncludeStructName: false,
 	}
@@ -158,7 +158,7 @@ func TestMarshalUnmarshalRoundTrip(t *testing.T) {
 		FieldTwo: []string{"a", "b", "c"},
 	}
 
-	opts := HeaderMarshalOptions{
+	opts := HTTPMarshalOptions{
 		Prefix:            "X",
 		IncludeStructName: true,
 	}
@@ -196,7 +196,7 @@ func TestStructWithTags(t *testing.T) {
 		Field3: "ignored",
 	}
 
-	opts := HeaderMarshalOptions{
+	opts := HTTPMarshalOptions{
 		Prefix:            "X",
 		IncludeStructName: false,
 	}
@@ -225,7 +225,7 @@ func TestStructWithTags(t *testing.T) {
 func TestMarshalEmptyStruct(t *testing.T) {
 	example := Example{}
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	header, err := MarshalHeader(example, opts)
 	if err != nil {
@@ -242,7 +242,7 @@ func TestMarshalEmptyStruct(t *testing.T) {
 func TestMarshalNilPointer(t *testing.T) {
 	var example *Example
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	header, err := MarshalHeader(example, opts)
 	if err != nil {
@@ -261,15 +261,15 @@ func TestMarshalPointerToStruct(t *testing.T) {
 		FieldTwo: []string{"value2"},
 	}
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	header, err := MarshalHeader(example, opts)
 	if err != nil {
 		t.Fatalf("MarshalHeader failed: %v", err)
 	}
 
-	if got := header.Get("field-one"); got != "value1" {
-		t.Errorf("field-one = %q, want %q", got, "value1")
+	if got := header.Get("FieldOne"); got != "value1" {
+		t.Errorf("FieldOne = %q, want %q", got, "value1")
 	}
 }
 
@@ -278,7 +278,7 @@ func TestUnmarshalInvalidDestination(t *testing.T) {
 	header := http.Header{}
 	header.Set("field-one", "value1")
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	// Test with non-pointer
 	var example Example
@@ -305,7 +305,7 @@ func TestUnmarshalInvalidDestination(t *testing.T) {
 func TestMarshalNonStruct(t *testing.T) {
 	notAStruct := "string"
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	_, err := MarshalHeader(notAStruct, opts)
 	if err == nil {
@@ -321,10 +321,10 @@ func TestKebabCase(t *testing.T) {
 	}{
 		{"FieldOne", "field-one"},
 		{"FieldTwo", "field-two"},
-		{"HTTPHeader", "h-t-t-p-header"},
+		{"HTTPHeader", "http-header"},
 		{"Example", "example"},
-		{"APIKey", "a-p-i-key"},
-		{"UserID", "user-i-d"},
+		{"APIKey", "api-key"},
+		{"UserID", "user-id"},
 		{"", ""},
 		{"lowercase", "lowercase"},
 	}
@@ -339,7 +339,7 @@ func TestKebabCase(t *testing.T) {
 	}
 }
 
-// TestMultipleTypes tests marshaling different field types
+// TestMultipleTypes tests marshaling different fieldSet types
 func TestMultipleTypes(t *testing.T) {
 	type MultiTypeStruct struct {
 		StringField string
@@ -357,33 +357,33 @@ func TestMultipleTypes(t *testing.T) {
 		SliceField:  []string{"a", "b"},
 	}
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	header, err := MarshalHeader(mt, opts)
 	if err != nil {
 		t.Fatalf("MarshalHeader failed: %v", err)
 	}
 
-	if got := header.Get("string-field"); got != "test" {
-		t.Errorf("string-field = %q, want %q", got, "test")
+	if got := header.Get("StringField"); got != "test" {
+		t.Errorf("StringField = %q, want %q", got, "test")
 	}
 
-	if got := header.Get("int-field"); got != "42" {
-		t.Errorf("int-field = %q, want %q", got, "42")
+	if got := header.Get("IntField"); got != "42" {
+		t.Errorf("IntField = %q, want %q", got, "42")
 	}
 
-	if got := header.Get("uint-field"); got != "100" {
-		t.Errorf("uint-field = %q, want %q", got, "100")
+	if got := header.Get("UintField"); got != "100" {
+		t.Errorf("UintField = %q, want %q", got, "100")
 	}
 
-	if got := header.Get("bool-field"); got != "true" {
-		t.Errorf("bool-field = %q, want %q", got, "true")
+	if got := header.Get("BoolField"); got != "true" {
+		t.Errorf("BoolField = %q, want %q", got, "true")
 	}
 
-	values := header.Values("slice-field")
+	values := header.Values("SliceField")
 	want := []string{"a", "b"}
 	if diff := cmp.Diff(want, values); diff != "" {
-		t.Errorf("slice-field mismatch (-want +got):\n%s", diff)
+		t.Errorf("SliceField mismatch (-want +got):\n%s", diff)
 	}
 
 	// Test unmarshal
@@ -410,21 +410,21 @@ func TestUnexportedFields(t *testing.T) {
 		unexportedField: "hidden",
 	}
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	header, err := MarshalHeader(s, opts)
 	if err != nil {
 		t.Fatalf("MarshalHeader failed: %v", err)
 	}
 
-	// Only exported field should be present
-	if got := header.Get("exported-field"); got != "visible" {
-		t.Errorf("exported-field = %q, want %q", got, "visible")
+	// Only exported fieldSet should be present
+	if got := header.Get("ExportedField"); got != "visible" {
+		t.Errorf("ExportedField = %q, want %q", got, "visible")
 	}
 
-	// Unexported field should not be present
-	if _, ok := header["unexported-field"]; ok {
-		t.Error("unexported-field should not be present")
+	// Unexported fieldSet should not be present
+	if _, ok := header["UnexportedField"]; ok {
+		t.Error("UnexportedField should not be present")
 	}
 }
 
@@ -440,7 +440,7 @@ func TestEmptySlice(t *testing.T) {
 		NilSlice:   nil,
 	}
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	header, err := MarshalHeader(s, opts)
 	if err != nil {
@@ -454,17 +454,17 @@ func TestEmptySlice(t *testing.T) {
 }
 
 // TestRFC9110MultipleHeaderOccurrences verifies RFC 9110 Section 5.5 compliance
-// Multiple header field occurrences should be unmarshaled into a slice
+// Multiple header fieldSet occurrences should be unmarshaled into a slice
 func TestRFC9110MultipleHeaderOccurrences(t *testing.T) {
 	// Simulate receiving headers with multiple occurrences
 	// RFC 9110 allows: X-Field: value1
 	//                  X-Field: value2
 	header := http.Header{}
-	header.Add("X-Example-Field-Two", "value1")
-	header.Add("X-Example-Field-Two", "value2")
-	header.Add("X-Example-Field-Two", "value3")
+	header.Add("X-Example-FieldTwo", "value1")
+	header.Add("X-Example-FieldTwo", "value2")
+	header.Add("X-Example-FieldTwo", "value3")
 
-	opts := HeaderMarshalOptions{
+	opts := HTTPMarshalOptions{
 		Prefix:            "X",
 		IncludeStructName: true,
 	}
@@ -486,7 +486,7 @@ func TestRFC9110MultipleHeaderOccurrences(t *testing.T) {
 		t.Fatalf("MarshalHeader failed: %v", err)
 	}
 
-	values := header2.Values("X-Example-Field-Two")
+	values := header2.Values("X-Example-FieldTwo")
 	if diff := cmp.Diff(want, values); diff != "" {
 		t.Errorf("Multiple values not marshaled correctly (-want +got):\n%s", diff)
 	}
@@ -505,7 +505,7 @@ func TestValuesWithCommas(t *testing.T) {
 		Values: []string{"simple", "value,with,comma", "another,one", "normal"},
 	}
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	header, err := MarshalHeader(cs, opts)
 	if err != nil {
@@ -550,7 +550,7 @@ func TestValuesWithSpecialCharacters(t *testing.T) {
 		},
 	}
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	header, err := MarshalHeader(ss, opts)
 	if err != nil {
@@ -579,7 +579,7 @@ func TestRFC9110OrderPreservation(t *testing.T) {
 		Ordered: []string{"first", "second", "third", "fourth", "fifth"},
 	}
 
-	opts := DefaultHeaderMarshalOptions()
+	opts := DefaultHTTPMarshalOptions()
 
 	// Marshal
 	header, err := MarshalHeader(os, opts)
