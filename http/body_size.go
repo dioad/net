@@ -49,8 +49,8 @@ func NewBodySizeLimiter(opts ...BodySizeLimiterOpt) *BodySizeLimiter {
 }
 
 // Wrap wraps an http.HandlerFunc to limit the request body size.
-func (l *BodySizeLimiter) Wrap(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (l *BodySizeLimiter) Wrap(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check Content-Length header first for early rejection
 		if r.ContentLength > l.MaxBodyBytes {
 			l.Logger.Warn().
@@ -66,6 +66,6 @@ func (l *BodySizeLimiter) Wrap(next http.HandlerFunc) http.HandlerFunc {
 		// Wrap the body with a size limiter
 		r.Body = http.MaxBytesReader(w, r.Body, l.MaxBodyBytes)
 
-		next(w, r)
-	}
+		next.ServeHTTP(w, r)
+	})
 }
