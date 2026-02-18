@@ -11,7 +11,17 @@ type Resource interface{}
 
 // StatusResource is an interface for resources that can report their status.
 type StatusResource interface {
-	Status() (interface{}, error)
+	Status() (any, error)
+}
+
+// LivenessResource is an interface for resources that can report their liveness.
+type LivenessResource interface {
+	Live() error
+}
+
+// ReadinessResource is an interface for resources that can report their readiness.
+type ReadinessResource interface {
+	Ready() (any, error)
 }
 
 // UseResource is an interface for resources that support applying middleware.

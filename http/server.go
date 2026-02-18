@@ -4,7 +4,6 @@ package http
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"io"
 	stdlog "log"
@@ -28,6 +27,7 @@ import (
 
 	"github.com/dioad/net/http/auth"
 	"github.com/dioad/net/http/authz/jwt"
+	diojson "github.com/dioad/net/http/json"
 	"github.com/dioad/net/http/pprof"
 	"github.com/dioad/net/oidc"
 )
@@ -48,6 +48,8 @@ type Config struct {
 	TLSConfig *tls.Config
 	// AuthConfig is the authentication configuration for the server
 	AuthConfig auth.ServerConfig
+	// EnableHealth enables the /health/live and /health/ready endpoints for health checks
+	EnableHealth bool
 }
 
 // Server represents an HTTP server with various features like metrics, authentication, and resources
@@ -300,6 +302,10 @@ func (s *Server) addDefaultHandlers() {
 	if s.Config.EnableStatus {
 		s.AddHandler("/status", s.aggregateStatusHandler())
 	}
+	if s.Config.EnableHealth {
+		s.AddHandler("/health/live", s.aggregateLivenessHandler())
+		s.AddHandler("/health/ready", s.aggregateReadinessHandler())
+	}
 }
 
 // Use adds middleware to the server's router
@@ -312,6 +318,54 @@ func (s *Server) Use(middlewares ...mux.MiddlewareFunc) {
 // These items will be included in the "Metadata" section of the status response
 func (s *Server) AddStatusStaticMetadataItem(key string, value any) {
 	s.metadataStatusMap[key] = value
+}
+
+func (s *Server) aggregateLivenessHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		httpStatus := http.StatusOK
+
+		for path, resource := range s.ResourceMap {
+			if sr, ok := resource.(LivenessResource); ok {
+				err := sr.Live()
+				if err != nil {
+					httpStatus = http.StatusInternalServerError
+					s.Logger.Error().Err(err).Str("path", path).Msg("resource not alive")
+					break
+				}
+			}
+		}
+
+		res := diojson.NewResponseWithLogger(w, r, s.Logger)
+		res.Data(httpStatus, map[string]interface{}{
+			"live": httpStatus == http.StatusOK,
+		})
+	}
+}
+
+func (s *Server) aggregateReadinessHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		httpStatus := http.StatusOK
+		readinessMap := make(map[string]any)
+
+		for path, resource := range s.ResourceMap {
+			if rr, ok := resource.(ReadinessResource); ok {
+				ready, err := rr.Ready()
+				if err != nil {
+					httpStatus = http.StatusServiceUnavailable
+					s.Logger.Error().Err(err).Str("path", path).Msg("error checking resource readiness")
+				}
+				readinessMap[path] = ready
+			}
+		}
+
+		res := diojson.NewResponseWithLogger(w, r, s.Logger)
+		res.Data(httpStatus, map[string]interface{}{
+			"ready":   httpStatus == http.StatusOK,
+			"details": readinessMap,
+		})
+	}
 }
 
 // aggregateStatusHandler returns a handler that aggregates status information from all resources
@@ -337,18 +391,8 @@ func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 		statusMap["Routes"] = routeStatusMap
 		statusMap["Metadata"] = s.metadataStatusMap
 
-		// Set appropriate content type for JSON
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(httpStatus)
-
-		// Encode the status map as JSON
-		encoder := json.NewEncoder(w)
-		err := encoder.Encode(statusMap)
-		if err != nil {
-			s.Logger.Error().Err(err).Msg("error encoding status response")
-			// We've already written the status code, so we can't change it now
-			// Just log the error and return
-		}
+		res := diojson.NewResponseWithLogger(w, r, s.Logger)
+		res.Data(httpStatus, statusMap)
 
 		// Log a summary of the status request
 		logEvent := s.Logger.Info()
