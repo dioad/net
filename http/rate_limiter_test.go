@@ -1,7 +1,6 @@
 package http
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,9 +12,13 @@ import (
 func TestRateLimiter_Middleware(t *testing.T) {
 	logger := zerolog.New(zerolog.NewConsoleWriter())
 	// 1 token per second, burst of 1
-	rl := NewRateLimiter(1, 1, logger)
+	rl := NewRateLimiter(
+		WithStaticRateLimit(1, 1),
+		WithRateLimitLogger(logger),
+		WithPrincipalFunc(StaticPrincipalFunc("user1")),
+	)
 
-	handler := rl.Middleware("user1")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -28,54 +31,6 @@ func TestRateLimiter_Middleware(t *testing.T) {
 	// Second request - rate limited
 	rr = httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusTooManyRequests, rr.Code)
-	assert.Equal(t, "1", rr.Header().Get("Retry-After"), "Retry-After should be 1 second for 1 req/sec limiter")
-}
-
-func TestRateLimiter_MiddlewareFromContext(t *testing.T) {
-	logger := zerolog.New(zerolog.NewConsoleWriter())
-	rl := NewRateLimiter(1, 1, logger)
-
-	type contextKey string
-	key := contextKey("principal")
-
-	handler := rl.MiddlewareFromContext(key)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-
-	// Request with principal in context
-	req := httptest.NewRequest("GET", "/", nil)
-	req = req.WithContext(context.WithValue(req.Context(), key, "user1"))
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-
-	// Request without principal in context
-	req = httptest.NewRequest("GET", "/", nil)
-	rr = httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-
-	// Request with empty principal
-	req = httptest.NewRequest("GET", "/", nil)
-	req = req.WithContext(context.WithValue(req.Context(), key, ""))
-	rr = httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-
-	// Request with principal that gets rate limited
-	rl2 := NewRateLimiter(1, 1, logger)
-	handler2 := rl2.MiddlewareFromContext(key)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	req = httptest.NewRequest("GET", "/", nil)
-	req = req.WithContext(context.WithValue(req.Context(), key, "user1"))
-	rr = httptest.NewRecorder()
-	handler2.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-
-	rr = httptest.NewRecorder()
-	handler2.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusTooManyRequests, rr.Code)
 	assert.Equal(t, "1", rr.Header().Get("Retry-After"), "Retry-After should be 1 second for 1 req/sec limiter")
 }
@@ -117,9 +72,12 @@ func TestRateLimiter_RetryAfterHeaderAccuracy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rl := NewRateLimiter(tt.requestsPerSecond, tt.burst, logger)
+			rl := NewRateLimiter(
+				WithStaticRateLimit(tt.requestsPerSecond, tt.burst),
+				WithRateLimitLogger(logger),
+				WithPrincipalFunc(StaticPrincipalFunc("user1")))
 
-			handler := rl.Middleware("user1")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
 

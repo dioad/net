@@ -18,15 +18,27 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var rateLimitRequests = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: "eventbroker",
+		Subsystem: "http",
+		Name:      "dioad_net_http_rate_limit_requests_total",
+		Help:      "Count of requests evaluated by rate limiter",
+	},
+	[]string{"result"},
+)
+
 type MetricSet struct {
-	RequestCounter  *prometheus.CounterVec
-	RequestDuration *prometheus.HistogramVec
-	RequestSize     *prometheus.HistogramVec
-	ResponseSize    *prometheus.HistogramVec
-	InFlightGauge   prometheus.Gauge
+	RequestCounter    *prometheus.CounterVec
+	RequestDuration   *prometheus.HistogramVec
+	RequestSize       *prometheus.HistogramVec
+	ResponseSize      *prometheus.HistogramVec
+	InFlightGauge     prometheus.Gauge
+	RateLimitRequests *prometheus.CounterVec
 }
 
 func NewMetricSet(r *prometheus.Registry) *MetricSet {
@@ -68,6 +80,7 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 				Help: "Gauge of requests currently being served by the wrapped handler.",
 			},
 		),
+		RateLimitRequests: rateLimitRequests,
 	}
 
 	return m
@@ -80,7 +93,13 @@ func (m *MetricSet) Register(r prometheus.Registerer) {
 		m.RequestDuration,
 		m.ResponseSize,
 		m.RequestSize,
-		m.InFlightGauge)
+		m.InFlightGauge,
+	)
+	if err := r.Register(m.RateLimitRequests); err != nil {
+		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+			panic(err)
+		}
+	}
 	// }
 }
 
@@ -90,16 +109,17 @@ func (m *MetricSet) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		route := mux.CurrentRoute(r)
 		path, _ := route.GetPathTemplate()
+		labels := prometheus.Labels{"handler": path}
 		promhttp.InstrumentHandlerInFlight(
 			m.InFlightGauge,
 			promhttp.InstrumentHandlerCounter(
-				m.RequestCounter.MustCurryWith(prometheus.Labels{"handler": path}),
+				m.RequestCounter.MustCurryWith(labels),
 				promhttp.InstrumentHandlerDuration(
-					m.RequestDuration.MustCurryWith(prometheus.Labels{"handler": path}),
+					m.RequestDuration.MustCurryWith(labels),
 					promhttp.InstrumentHandlerResponseSize(
-						m.ResponseSize.MustCurryWith(prometheus.Labels{"handler": path}),
+						m.ResponseSize.MustCurryWith(labels),
 						promhttp.InstrumentHandlerRequestSize(
-							m.RequestSize.MustCurryWith(prometheus.Labels{"handler": path}),
+							m.RequestSize.MustCurryWith(labels),
 							next),
 					),
 				),

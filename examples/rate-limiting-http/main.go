@@ -9,15 +9,20 @@ import (
 	"os/signal"
 	"syscall"
 
-	diohttp "github.com/dioad/net/http"
 	"github.com/rs/zerolog"
+
+	diohttp "github.com/dioad/net/http"
 )
 
 func main() {
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	// Create rate limiter (1 request per second, burst of 5)
-	limiter := diohttp.NewRateLimiter(1.0, 5, logger)
+	limiter := diohttp.NewRateLimiter(
+		diohttp.WithStaticRateLimit(1.0, 5),
+		diohttp.WithPrincipalFunc(diohttp.StaticPrincipalFunc("user1")), // For demo, all requests are from "user1"
+		diohttp.WithRateLimitLogger(logger),
+	)
 
 	// Create a simple handler
 	myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +30,7 @@ func main() {
 	})
 
 	// Use as middleware for a specific principal
-	handler := limiter.Middleware("user1")(myHandler)
+	handler := limiter.Middleware(myHandler)
 
 	// Create server
 	config := diohttp.Config{ListenAddress: ":8080"}
