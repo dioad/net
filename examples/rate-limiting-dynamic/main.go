@@ -9,8 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	diohttp "github.com/dioad/net/http"
 	"github.com/rs/zerolog"
+
+	diohttp "github.com/dioad/net/http"
 )
 
 // mySource implements RateLimitSource for dynamic rate limiting.
@@ -23,11 +24,22 @@ func (s *mySource) GetLimit(principal string) (float64, int, bool) {
 	return 1.0, 5, true
 }
 
+func myPrincipalFunc(r *http.Request) (string, error) {
+	if r.URL.Path == "/premium" {
+		return "premium", nil
+	}
+	return "standard", nil
+}
+
 func main() {
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-	// Create rate limiter with custom source
-	limiter := diohttp.NewRateLimiterWithSource(&mySource{}, logger)
+	// Create rate limiter with dynamic source
+	limiter := diohttp.NewRateLimiter(
+		diohttp.WithRateLimitSource(&mySource{}),
+		diohttp.WithPrincipalFunc(myPrincipalFunc),
+		diohttp.WithRateLimitLogger(logger),
+	)
 
 	// Create a simple handler
 	myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -35,16 +47,16 @@ func main() {
 	})
 
 	// Use as middleware for premium users
-	premiumHandler := limiter.Middleware("premium")(myHandler)
+	handler := limiter.Middleware(myHandler)
 
-	// Use as middleware for standard users
-	standardHandler := limiter.Middleware("standard")(myHandler)
+	// // Use as middleware for standard users
+	// standardHandler := limiter.Middleware(myHandler)
 
 	// Create server
 	config := diohttp.Config{ListenAddress: ":8080"}
 	server := diohttp.NewServer(config)
-	server.AddHandler("/premium", premiumHandler)
-	server.AddHandler("/standard", standardHandler)
+	server.AddHandler("/premium", handler)
+	server.AddHandler("/standard", handler)
 
 	// Create listener
 	ln, err := net.Listen("tcp", ":8080")
