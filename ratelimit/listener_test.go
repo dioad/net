@@ -42,7 +42,7 @@ func TestListener_Accept(t *testing.T) {
 	dialer := &net.Dialer{Timeout: 100 * time.Millisecond}
 
 	// First two should be allowed (burst = 2)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		conn, err := dialer.Dial("tcp", ln.Addr().String())
 		assert.NoError(t, err)
 		if err == nil {

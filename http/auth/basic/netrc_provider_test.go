@@ -193,7 +193,7 @@ func TestNetrcProviderConcurrency(t *testing.T) {
 
 	// Simulate multiple goroutines trying to initialize the provider
 	done := make(chan bool, 10)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			req, _ := http.NewRequest("GET", "http://example.com", nil)
 			AddCredentialsWithProvider(req, provider)
@@ -202,7 +202,7 @@ func TestNetrcProviderConcurrency(t *testing.T) {
 	}
 
 	// Wait for all goroutines to complete
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 

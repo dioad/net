@@ -67,7 +67,7 @@ func (r *Record) SetPercent(pct uint8) error {
 	return nil
 }
 
-func renderList(values []string, data interface{}) ([]string, error) {
+func renderList(values []string, data any) ([]string, error) {
 	if values == nil {
 		return nil, nil
 	}
@@ -90,7 +90,7 @@ func renderList(values []string, data interface{}) ([]string, error) {
 	return ret, nil
 }
 
-func (r *Record) Render(data interface{}) error {
+func (r *Record) Render(data any) error {
 	var err error
 
 	r.ReportURIAggregate, err = renderList(r.ReportURIAggregate, data)

@@ -121,7 +121,7 @@ func decodeToken(accessToken string) (*oauth2.Token, error) {
 		return nil, fmt.Errorf("failed to decode token payload: %w", err)
 	}
 
-	var tokenData map[string]interface{}
+	var tokenData map[string]any
 	if err := json.Unmarshal(payload, &tokenData); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal token payload: %w", err)
 	}

@@ -102,7 +102,7 @@ func TestRateLimiter_WithSource(t *testing.T) {
 	defer rl.Stop()
 
 	// Premium user
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		assert.True(t, rl.Allow("premium"))
 	}
 
@@ -134,7 +134,7 @@ func TestRateLimiter_WithSourceAndFallback(t *testing.T) {
 	rl.LimitSource = source
 
 	// Premium user should use source limits
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		assert.True(t, rl.Allow("premium"))
 	}
 
@@ -143,7 +143,7 @@ func TestRateLimiter_WithSourceAndFallback(t *testing.T) {
 	assert.False(t, rl.Allow("free"))
 
 	// Unknown user should use fallback limits (5 rps, 5 burst)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		assert.True(t, rl.Allow("unknown"))
 	}
 	assert.False(t, rl.Allow("unknown"))
@@ -439,11 +439,11 @@ func TestRateLimiter_ConcurrentAccess(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	// Run multiple goroutines concurrently accessing the rate limiter
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(id int) {
 			defer wg.Done()
 			principal := "user" + strconv.Itoa(id%10)
-			for j := 0; j < numIterations; j++ {
+			for range numIterations {
 				rl.Allow(principal)
 			}
 		}(i)

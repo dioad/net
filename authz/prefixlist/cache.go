@@ -288,8 +288,8 @@ func (f *CachingFetcher[T]) parseCacheControl(cacheControl string, now time.Time
 		}
 
 		// Extract max-age value
-		if strings.HasPrefix(directive, "max-age=") {
-			maxAgeStr := strings.TrimPrefix(directive, "max-age=")
+		if after, ok := strings.CutPrefix(directive, "max-age="); ok {
+			maxAgeStr := after
 			// Handle quoted values
 			maxAgeStr = strings.Trim(maxAgeStr, "\"")
 			if duration, err := time.ParseDuration(maxAgeStr + "s"); err == nil {

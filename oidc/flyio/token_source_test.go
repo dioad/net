@@ -12,7 +12,7 @@ import (
 
 func TestDecodeToken(t *testing.T) {
 	now := time.Now().Unix()
-	claims := map[string]interface{}{
+	claims := map[string]any{
 		"sub":    "fly-machine-123",
 		"exp":    float64(now + 3600),
 		"app_id": "my-app",

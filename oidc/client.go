@@ -477,7 +477,7 @@ func (c *Client) TokenSource(t *oauth2.Token) (oauth2.TokenSource, error) {
 	return oauth2Config.TokenSource(context.Background(), t), nil
 }
 
-func ExtractClaims[T jwtvalidator.CustomClaims](claims interface{}) (jwtvalidator.RegisteredClaims, T, error) {
+func ExtractClaims[T jwtvalidator.CustomClaims](claims any) (jwtvalidator.RegisteredClaims, T, error) {
 	var zeroCustomClaims T
 	var zeroRegisteredClaims jwtvalidator.RegisteredClaims
 

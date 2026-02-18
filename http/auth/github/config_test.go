@@ -32,7 +32,7 @@ func TestResolveAccessToken(t *testing.T) {
 }
 
 func TestFromMap(t *testing.T) {
-	m := map[string]interface{}{
+	m := map[string]any{
 		"client-id":     "id123",
 		"client-secret": "secret123",
 	}

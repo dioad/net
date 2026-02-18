@@ -196,7 +196,7 @@ func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
 	const goroutines = 10
 	results := make(chan testData, goroutines)
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			data, _, err := fetcher.Get(ctx)
 			require.NoError(t, err)
@@ -205,7 +205,7 @@ func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Collect results
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		<-results
 	}
 

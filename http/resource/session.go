@@ -33,7 +33,7 @@ func (dr *SessionResource) RegisterRoutes(parentRouter *mux.Router) {
 }
 
 // Status returns the status of the session resource.
-func (dr *SessionResource) Status() (interface{}, error) {
+func (dr *SessionResource) Status() (any, error) {
 	return SessionResourceStatus{
 		Status: "OK",
 	}, nil
