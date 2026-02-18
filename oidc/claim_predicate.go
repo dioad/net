@@ -4,6 +4,7 @@ import (
 	// "reflect"
 
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -104,7 +105,7 @@ func (o *orPredicate) String() string {
 // ClaimKey is a claim key predicate
 type ClaimKey struct {
 	Key   string
-	Value interface{}
+	Value any
 }
 
 // Validate validates the input against the claim key
@@ -113,13 +114,8 @@ type ClaimKey struct {
 func (c *ClaimKey) Validate(claims jwt.MapClaims) bool {
 	if v, ok := claims[c.Key]; ok {
 		switch v := v.(type) {
-		case []interface{}:
-			for _, item := range v {
-				if item == c.Value {
-					return true
-				}
-			}
-			return false
+		case []any:
+			return slices.Contains(v, c.Value)
 		default:
 			return v == c.Value
 		}
@@ -131,10 +127,10 @@ func (c *ClaimKey) String() string {
 	return fmt.Sprintf("%s == %v", c.Key, c.Value)
 }
 
-func parseClaimPredicateList(predicateList []interface{}, combine Combinator) ClaimPredicate {
+func parseClaimPredicateList(predicateList []any, combine Combinator) ClaimPredicate {
 	result := make([]ClaimPredicate, 0, len(predicateList))
 	for _, predicate := range predicateList {
-		if p, ok := predicate.(map[string]interface{}); ok {
+		if p, ok := predicate.(map[string]any); ok {
 			result = append(result, ParseClaimPredicates(p))
 		}
 	}
@@ -155,18 +151,18 @@ func (p *staticPredicate) String() string {
 
 // ParseClaimPredicates parses the input into a claim predicate
 // The input can be a map[string]interface{} or a []map[string]interface{}
-func ParseClaimPredicates(input interface{}) ClaimPredicate {
+func ParseClaimPredicates(input any) ClaimPredicate {
 	switch v := input.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		return parseClaimPredicateMap(v)
-	case []interface{}:
+	case []any:
 		return parseClaimPredicateList(v, And)
 	default:
 		return &staticPredicate{result: true}
 	}
 }
 
-func parseClaimPredicateMap(predicateMap map[string]interface{}) ClaimPredicate {
+func parseClaimPredicateMap(predicateMap map[string]any) ClaimPredicate {
 	if len(predicateMap) == 0 {
 		return &staticPredicate{result: true}
 	}
@@ -177,11 +173,11 @@ func parseClaimPredicateMap(predicateMap map[string]interface{}) ClaimPredicate 
 
 		switch key {
 		case "and":
-			if children, ok := value.([]interface{}); ok {
+			if children, ok := value.([]any); ok {
 				predicates = append(predicates, parseClaimPredicateList(children, And))
 			}
 		case "or":
-			if children, ok := value.([]interface{}); ok {
+			if children, ok := value.([]any); ok {
 				predicates = append(predicates, parseClaimPredicateList(children, Or))
 			}
 		default:

@@ -35,7 +35,7 @@ func (dr *Resource) RegisterRoutes(parentRouter *mux.Router) {
 }
 
 // Status returns the status of the pprof resource.
-func (dr *Resource) Status() (interface{}, error) {
+func (dr *Resource) Status() (any, error) {
 	return Status{Status: "OK"}, nil
 }
 

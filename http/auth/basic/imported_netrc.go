@@ -45,7 +45,7 @@ func parseNetrc(data string) []netrcLine {
 	var nrc []netrcLine
 	var l netrcLine
 	inMacro := false
-	for _, line := range strings.Split(data, "\n") {
+	for line := range strings.SplitSeq(data, "\n") {
 		if inMacro {
 			if line == "" {
 				inMacro = false

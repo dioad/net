@@ -16,8 +16,8 @@ type ClientConfig struct {
 
 // GenericAuthConfig represents a generic authentication configuration.
 type GenericAuthConfig struct {
-	Name   string                 `mapstructure:"name"`
-	Config map[string]interface{} `mapstructure:"config"`
+	Name   string         `mapstructure:"name"`
+	Config map[string]any `mapstructure:"config"`
 }
 
 // ServerConfig represents the authentication configuration for an HTTP server.

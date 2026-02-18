@@ -133,7 +133,7 @@ func (dr *LogLevelResource) RegisterRoutes(parentRouter *mux.Router) {
 }
 
 // Status returns the status of the log level resource.
-func (dr *LogLevelResource) Status() (interface{}, error) {
+func (dr *LogLevelResource) Status() (any, error) {
 	return LogLevelResourceStatus{
 		Status: "OK",
 	}, nil

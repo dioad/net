@@ -48,7 +48,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var claims map[string]interface{}
+	var claims map[string]any
 	if err := json.Unmarshal(payload, &claims); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to unmarshal claims: %v\n", err)
 		os.Exit(1)

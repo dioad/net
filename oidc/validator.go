@@ -27,7 +27,7 @@ type PredicateValidator struct {
 
 // TokenValidator defines the interface for validating tokens.
 type TokenValidator interface {
-	ValidateToken(ctx context.Context, tokenString string) (interface{}, error)
+	ValidateToken(ctx context.Context, tokenString string) (any, error)
 	String() string
 }
 
@@ -53,7 +53,7 @@ func NewPredicateValidator(validator TokenValidator, predicate ClaimPredicate) *
 	}
 }
 
-func (v *PredicateValidator) ValidateToken(ctx context.Context, tokenString string) (interface{}, error) {
+func (v *PredicateValidator) ValidateToken(ctx context.Context, tokenString string) (any, error) {
 	claims, err := v.parentValidator.ValidateToken(ctx, tokenString)
 	if err != nil {
 		return nil, fmt.Errorf("error validating token: %w", err)
@@ -75,7 +75,7 @@ func (v *PredicateValidator) String() string {
 	return fmt.Sprintf("PredicateValidator(validator:%v, predicate:%v)", v.parentValidator, v.predicate)
 }
 
-func decodeTokenData(accessToken string) (interface{}, error) {
+func decodeTokenData(accessToken string) (any, error) {
 	// Decode Access Token and extract expiry andPredicate any other details necessary from the token
 	tokenParts := strings.Split(accessToken, ".")
 	if len(tokenParts) != 3 {
@@ -87,7 +87,7 @@ func decodeTokenData(accessToken string) (interface{}, error) {
 		return nil, fmt.Errorf("failed to decode token payload: %w", err)
 	}
 
-	var tokenData map[string]interface{}
+	var tokenData map[string]any
 	if err := json.Unmarshal(payload, &tokenData); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal token payload: %w", err)
 	}
@@ -119,7 +119,7 @@ func NewValidatorDebugger(validator TokenValidator, opts ...ValidatorDebugOpts) 
 	return v
 }
 
-func (v *ValidatorDebugger) ValidateToken(ctx context.Context, tokenString string) (interface{}, error) {
+func (v *ValidatorDebugger) ValidateToken(ctx context.Context, tokenString string) (any, error) {
 	tokenDetails, err := decodeTokenData(tokenString)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding token data: %w", err)
@@ -145,9 +145,9 @@ type MultiValidator struct {
 	validators []TokenValidator
 }
 
-func (v *MultiValidator) ValidateToken(ctx context.Context, tokenString string) (interface{}, error) {
+func (v *MultiValidator) ValidateToken(ctx context.Context, tokenString string) (any, error) {
 	var err error
-	var claims interface{}
+	var claims any
 	var errs []string
 	for _, vtor := range v.validators {
 		claims, err = vtor.ValidateToken(ctx, tokenString)
@@ -191,7 +191,7 @@ type jwtValidator struct {
 	allowedClockSkew   time.Duration
 }
 
-func (v *jwtValidator) ValidateToken(ctx context.Context, tokenString string) (interface{}, error) {
+func (v *jwtValidator) ValidateToken(ctx context.Context, tokenString string) (any, error) {
 	return v.jwtValidator.ValidateToken(ctx, tokenString)
 }
 

@@ -33,7 +33,7 @@ type ServerConfig struct {
 }
 
 // FromMap creates a ServerConfig from a map.
-func FromMap(m map[string]interface{}) ServerConfig {
+func FromMap(m map[string]any) ServerConfig {
 	var c ServerConfig
 	_ = mapstructure.Decode(m, &c)
 	return c

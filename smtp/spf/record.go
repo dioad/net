@@ -109,7 +109,7 @@ func resolveValues(mech Mechanism, data any) []string {
 	return values
 }
 
-func (r *Record) Render(data interface{}) error {
+func (r *Record) Render(data any) error {
 	for i := range r.Mechanisms {
 		r.Mechanisms[i].Values = resolveValues(r.Mechanisms[i], data)
 	}

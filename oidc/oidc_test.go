@@ -39,7 +39,7 @@ func TestExtractClaimsMap_Invalid(t *testing.T) {
 
 func TestDecodeTokenData(t *testing.T) {
 	now := time.Now().Unix()
-	claims := map[string]interface{}{
+	claims := map[string]any{
 		"sub": "1234567890",
 		"exp": float64(now + 3600),
 		"iat": float64(now),
@@ -53,7 +53,7 @@ func TestDecodeTokenData(t *testing.T) {
 	data, err := decodeTokenData(tokenString)
 	assert.NoError(t, err)
 
-	dataMap, ok := data.(map[string]interface{})
+	dataMap, ok := data.(map[string]any)
 	require.True(t, ok)
 
 	assert.Equal(t, "1234567890", dataMap["sub"])
@@ -64,7 +64,7 @@ func TestDecodeTokenData(t *testing.T) {
 
 func TestPredicateValidator(t *testing.T) {
 	mockParent := &mockValidator{
-		claims: map[string]interface{}{"sub": "123"},
+		claims: map[string]any{"sub": "123"},
 	}
 
 	predicate := &ClaimKey{Key: "org", Value: "my-org"}
@@ -129,11 +129,11 @@ func TestOIDCEndpoint_Discovery(t *testing.T) {
 }
 
 type mockValidator struct {
-	claims interface{}
+	claims any
 	err    error
 }
 
-func (m *mockValidator) ValidateToken(ctx context.Context, tokenString string) (interface{}, error) {
+func (m *mockValidator) ValidateToken(ctx context.Context, tokenString string) (any, error) {
 	return m.claims, m.err
 }
 

@@ -33,8 +33,8 @@ type CertificateSubject struct {
 
 // SelfSignedConfig specifies parameters for generating a self-signed certificate.
 type SelfSignedConfig struct {
-	Subject        CertificateSubject `mapstructure:"subject" json:"subject,omitempty"`
-	SANConfig      SANConfig          `mapstructure:"san-config" json:"san_config,omitempty"`
+	Subject        CertificateSubject `mapstructure:"subject" json:"subject"`
+	SANConfig      SANConfig          `mapstructure:"san-config" json:"san_config"`
 	Duration       string             `mapstructure:"duration" json:"duration,omitempty"`
 	IsCA           bool               `mapstructure:"ca" json:"is_ca,omitempty"`
 	Bits           int                `mapstructure:"bits" json:"bits,omitempty"`
@@ -47,7 +47,7 @@ type LocalConfig struct {
 	SinglePEMFile  string         `mapstructure:"single-pem-file" json:",omitempty"`
 	Certificate    string         `mapstructure:"cert" json:",omitempty"`
 	Key            string         `mapstructure:"key" json:",omitempty"`
-	FileWaitConfig FileWaitConfig `mapstructure:"file-wait-config,squash" json:",omitempty,squash"`
+	FileWaitConfig FileWaitConfig `mapstructure:"file-wait-config,squash" json:",squash"`
 }
 
 // FileWaitConfig specifies wait parameters for loading certificate files.
@@ -60,13 +60,13 @@ type FileWaitConfig struct {
 type ServerConfig struct {
 	ServerName string `mapstructure:"server-name"`
 
-	AutoCertConfig AutoCertConfig `mapstructure:"auto-cert-config" json:",omitempty"`
+	AutoCertConfig AutoCertConfig `mapstructure:"auto-cert-config"`
 	// EnableAutoCertManager       bool     `mapstructure:"enable-auto-cert-manager" json:",omitempty"`
 	// AutoCertManagerAllowedHosts []string `mapstructure:"" json:",omitempty"`
 
-	SelfSignedConfig SelfSignedConfig `mapstructure:"self-signed-config" json:",omitempty"`
+	SelfSignedConfig SelfSignedConfig `mapstructure:"self-signed-config"`
 
-	LocalConfig LocalConfig `mapstructure:"local" json:",omitempty"`
+	LocalConfig LocalConfig `mapstructure:"local"`
 
 	ClientAuthType string `mapstructure:"client-auth-type" json:",omitempty"`
 	ClientCAFile   string `mapstructure:"client-ca-file" json:",omitempty"`

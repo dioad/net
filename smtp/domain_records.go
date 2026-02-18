@@ -17,7 +17,7 @@ type DomainRecords struct {
 	SPF    spf.Record    `mapstructure:"spf"`
 }
 
-func (r *DomainRecords) Render(data interface{}) error {
+func (r *DomainRecords) Render(data any) error {
 	if err := r.DMARC.Render(data); err != nil {
 		return err
 	}
@@ -31,6 +31,6 @@ func (r *DomainRecords) Render(data interface{}) error {
 
 // TemplatedRecord defines an interface for domain records that support templating.
 type TemplatedRecord interface {
-	Render(data interface{}) error
+	Render(data any) error
 	Empty() bool
 }

@@ -11,7 +11,7 @@ import (
 )
 
 type TokenValidator interface {
-	ValidateToken(ctx context.Context, tokenString string) (interface{}, error)
+	ValidateToken(ctx context.Context, tokenString string) (any, error)
 }
 
 type Handler struct {

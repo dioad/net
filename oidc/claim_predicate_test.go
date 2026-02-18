@@ -7,13 +7,13 @@ import (
 )
 
 func TestParseSingleKeyValueClaimPredicate(t *testing.T) {
-	input := map[string]interface{}{
+	input := map[string]any{
 		"key": "value",
 	}
 
 	cp := ParseClaimPredicates(input)
 
-	claims := map[string]interface{}{
+	claims := map[string]any{
 		"key": "value",
 	}
 
@@ -25,37 +25,37 @@ func TestParseSingleKeyValueClaimPredicate(t *testing.T) {
 func TestParseSingleKeyListClaimPredicate(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    map[string]interface{}
+		input    map[string]any
 		claims   jwt.MapClaims
 		expected bool
 	}{
 		{
 			name: "string value",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"key": "value",
 			},
 			claims: jwt.MapClaims{
-				"key": []interface{}{"value"},
+				"key": []any{"value"},
 			},
 			expected: true,
 		},
 		{
 			name: "string value second",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"key": "value",
 			},
 			claims: jwt.MapClaims{
-				"key": []interface{}{"value2", "value"},
+				"key": []any{"value2", "value"},
 			},
 			expected: true,
 		},
 		{
 			name: "string list contains value",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"key": "value3",
 			},
 			claims: jwt.MapClaims{
-				"key": []interface{}{"value1", "value2"},
+				"key": []any{"value1", "value2"},
 			},
 			expected: false,
 		},
@@ -73,7 +73,7 @@ func TestParseSingleKeyListClaimPredicate(t *testing.T) {
 }
 
 func TestParseClaimPredicateMap(t *testing.T) {
-	input := map[string]interface{}{
+	input := map[string]any{
 		"key":  "value",
 		"key2": "value2",
 	}
@@ -91,8 +91,8 @@ func TestParseClaimPredicateMap(t *testing.T) {
 }
 
 func TestParseAndClaimPredicate(t *testing.T) {
-	input := map[string]interface{}{
-		"and": []map[string]interface{}{
+	input := map[string]any{
+		"and": []map[string]any{
 			{
 				"key": "value",
 			},
@@ -115,8 +115,8 @@ func TestParseAndClaimPredicate(t *testing.T) {
 }
 
 func TestParseOrClaimPredicate(t *testing.T) {
-	input := map[string]interface{}{
-		"or": []map[string]interface{}{
+	input := map[string]any{
+		"or": []map[string]any{
 			{
 				"key": "value",
 			},
@@ -139,13 +139,13 @@ func TestParseOrClaimPredicate(t *testing.T) {
 }
 
 func TestParseOrWithEmbeddedAnyClaimPredicate(t *testing.T) {
-	input := map[string]interface{}{
-		"or": []map[string]interface{}{
+	input := map[string]any{
+		"or": []map[string]any{
 			{
 				"key": "value",
 			},
 			{
-				"and": []map[string]interface{}{
+				"and": []map[string]any{
 					{
 						"key2": "value2",
 					},
@@ -170,13 +170,13 @@ func TestParseOrWithEmbeddedAnyClaimPredicate(t *testing.T) {
 }
 
 func TestParseOrWithEmbeddedAnyClaimPredicate2(t *testing.T) {
-	input := map[string]interface{}{
-		"or": []map[string]interface{}{
+	input := map[string]any{
+		"or": []map[string]any{
 			{
 				"key": "value",
 			},
 			{
-				"and": []map[string]interface{}{
+				"and": []map[string]any{
 					{
 						"key2": "value2",
 					},
