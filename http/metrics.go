@@ -24,7 +24,6 @@ import (
 
 var rateLimitRequests = promauto.NewCounterVec(
 	prometheus.CounterOpts{
-		Namespace: "eventbroker",
 		Subsystem: "http",
 		Name:      "dioad_net_http_rate_limit_requests_total",
 		Help:      "Count of requests evaluated by rate limiter",
@@ -87,7 +86,6 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 }
 
 func (m *MetricSet) Register(r prometheus.Registerer) {
-	// if r != nil {
 	r.MustRegister(
 		m.RequestCounter,
 		m.RequestDuration,
@@ -100,7 +98,6 @@ func (m *MetricSet) Register(r prometheus.Registerer) {
 			panic(err)
 		}
 	}
-	// }
 }
 
 // Middleware - to make it a middleware for mux probably a better way.

@@ -337,9 +337,17 @@ func (s *Server) aggregateLivenessHandler() http.HandlerFunc {
 		}
 
 		res := diojson.NewResponseWithLogger(w, r, s.Logger)
-		res.Data(httpStatus, map[string]interface{}{
+		res.Data(httpStatus, map[string]any{
 			"live": httpStatus == http.StatusOK,
 		})
+
+		// Log a summary of the liveness request
+		logEvent := s.Logger.Debug()
+		logEvent.Int("status_code", httpStatus).
+			Bool("live", httpStatus == http.StatusOK).
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Msg("liveness request processed")
 	}
 }
 
@@ -347,7 +355,8 @@ func (s *Server) aggregateReadinessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		httpStatus := http.StatusOK
-		readinessMap := make(map[string]any)
+		resourceReadiness := make(map[string]any)
+		resourceErrors := make(map[string]string)
 
 		for path, resource := range s.ResourceMap {
 			if rr, ok := resource.(ReadinessResource); ok {
@@ -355,16 +364,26 @@ func (s *Server) aggregateReadinessHandler() http.HandlerFunc {
 				if err != nil {
 					httpStatus = http.StatusServiceUnavailable
 					s.Logger.Error().Err(err).Str("path", path).Msg("error checking resource readiness")
+					resourceErrors[path] = err.Error()
+					continue
 				}
-				readinessMap[path] = ready
+				resourceReadiness[path] = ready
 			}
 		}
 
 		res := diojson.NewResponseWithLogger(w, r, s.Logger)
-		res.Data(httpStatus, map[string]interface{}{
+		res.Data(httpStatus, map[string]any{
 			"ready":   httpStatus == http.StatusOK,
-			"details": readinessMap,
+			"details": resourceReadiness,
+			"errors":  resourceErrors,
 		})
+		// Log a summary of the status request
+		logEvent := s.Logger.Debug()
+		logEvent.Int("status_code", httpStatus).
+			Int("resource_count", len(resourceReadiness)).
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Msg("readiness request processed")
 	}
 }
 
@@ -373,34 +392,33 @@ func (s *Server) aggregateStatusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		statusMap := make(map[string]any)
 		httpStatus := http.StatusOK
-		var statusErrors []error
 
 		// Collect status from all resources that implement StatusResource
-		routeStatusMap := make(map[string]any)
+		resourceStatus := make(map[string]any)
+		resourceErrors := make(map[string]string)
 		for path, resource := range s.ResourceMap {
 			if sr, ok := resource.(StatusResource); ok {
 				status, err := sr.Status()
 				if err != nil {
 					httpStatus = http.StatusInternalServerError
-					statusErrors = append(statusErrors, err)
 					s.Logger.Error().Err(err).Str("path", path).Msg("error getting resource status")
+					resourceErrors[path] = err.Error()
+					continue
 				}
-				routeStatusMap[path] = status
+				resourceStatus[path] = status
 			}
 		}
-		statusMap["Routes"] = routeStatusMap
+		statusMap["Routes"] = resourceStatus
 		statusMap["Metadata"] = s.metadataStatusMap
+		statusMap["Errors"] = resourceErrors
 
 		res := diojson.NewResponseWithLogger(w, r, s.Logger)
 		res.Data(httpStatus, statusMap)
 
 		// Log a summary of the status request
-		logEvent := s.Logger.Info()
-		if len(statusErrors) > 0 {
-			logEvent = s.Logger.Error().Int("error_count", len(statusErrors))
-		}
+		logEvent := s.Logger.Debug()
 		logEvent.Int("status_code", httpStatus).
-			Int("resource_count", len(routeStatusMap)).
+			Int("resource_count", len(resourceStatus)).
 			Str("method", r.Method).
 			Str("path", r.URL.Path).
 			Msg("status request processed")
