@@ -36,6 +36,7 @@ func WithPrincipalFunc(getPrincipal PrincipalFunc) func(*RateLimiter) {
 }
 
 // WithRateLimitSource allows configuring a dynamic rate limit source that can provide rate limits based on the principal or other factors.
+// Note: WithRateLimitSource and WithStaticRateLimit are mutually exclusive. If both are configured, the source takes precedence.
 func WithRateLimitSource(source ratelimit.RateLimitSource) func(*RateLimiter) {
 	return func(rl *RateLimiter) {
 		rl.source = source
@@ -43,6 +44,7 @@ func WithRateLimitSource(source ratelimit.RateLimitSource) func(*RateLimiter) {
 }
 
 // WithStaticRateLimit allows configuring static rate limits with a specified number of requests per second and burst size.
+// Note: WithStaticRateLimit and WithRateLimitSource are mutually exclusive. If both are configured, static limits are ignored.
 func WithStaticRateLimit(requestsPerSecond float64, burst int) func(*RateLimiter) {
 	return func(rl *RateLimiter) {
 		rl.requestsPerSecond = requestsPerSecond
@@ -98,11 +100,9 @@ func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 // setRetryAfterHeader calculates and sets the Retry-After header based on the rate limiter state.
 func (rl *RateLimiter) setRetryAfterHeader(w http.ResponseWriter, principal string) {
 	retryAfter := rl.limiter.RetryAfter(principal)
-	retryAfterSeconds := int(math.Ceil(retryAfter.Seconds()))
-	// Ensure a minimum of 1 second for Retry-After
-	if retryAfterSeconds < 1 {
-		retryAfterSeconds = 1
-	}
+	retryAfterSeconds := max(
+		// Ensure a minimum of 1 second for Retry-After
+		int(math.Ceil(retryAfter.Seconds())), 1)
 	w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
 }
 
@@ -123,5 +123,4 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		rateLimitRequests.WithLabelValues("allowed").Inc()
 		next.ServeHTTP(w, r)
 	})
-
 }

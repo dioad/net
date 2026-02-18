@@ -43,7 +43,7 @@ func (f *urlValuesWrapper) Values(key string) []string {
 // queryString, err := MarshalQuery(params, opts)
 //
 
-func MarshalQuery(v interface{}, opts HTTPMarshalOptions) (string, error) {
+func MarshalQuery(v any, opts HTTPMarshalOptions) (string, error) {
 	values := url.Values{}
 
 	valueWrapper := &urlValuesWrapper{values: values}
@@ -67,7 +67,7 @@ func MarshalQuery(v interface{}, opts HTTPMarshalOptions) (string, error) {
 // err := UnmarshalQuery("search=example&tags=go&tags=http", &params, opts)
 //
 // Results in: params.Search = "example", params.Tags = []string{"go", "http"}
-func UnmarshalQuery(rawQuery string, v interface{}, opts HTTPMarshalOptions) error {
+func UnmarshalQuery(rawQuery string, v any, opts HTTPMarshalOptions) error {
 	tagName := QueryMarshalTagName
 
 	values, err := url.ParseQuery(rawQuery)
@@ -85,6 +85,6 @@ func UnmarshalQuery(rawQuery string, v interface{}, opts HTTPMarshalOptions) err
 	return nil
 }
 
-func UnmarshalQueryFromRequest(req *http.Request, v interface{}, opts HTTPMarshalOptions) error {
+func UnmarshalQueryFromRequest(req *http.Request, v any, opts HTTPMarshalOptions) error {
 	return UnmarshalQuery(req.URL.RawQuery, v, opts)
 }

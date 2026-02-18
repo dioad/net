@@ -27,7 +27,7 @@ const (
 //	// Produces:
 //	// X-Values: val1
 //	// X-Values: val2,with,comma
-func MarshalHeader(v interface{}, opts HTTPMarshalOptions) (http.Header, error) {
+func MarshalHeader(v any, opts HTTPMarshalOptions) (http.Header, error) {
 	header := http.Header{}
 
 	err := marshalFields(v, HeaderMarshalTagName, header, opts)
@@ -58,7 +58,7 @@ func MarshalHeader(v interface{}, opts HTTPMarshalOptions) (http.Header, error) 
 //	err := UnmarshalHeader(headers, &ex, opts)
 //
 // Results in: ex.Values = []string{"val1", "val2,with,comma"}
-func UnmarshalHeader(header http.Header, v interface{}, opts HTTPMarshalOptions) error {
+func UnmarshalHeader(header http.Header, v any, opts HTTPMarshalOptions) error {
 	tagName := HeaderMarshalTagName
 
 	err := unmarshalFields(header, v, tagName, opts)
@@ -71,6 +71,6 @@ func UnmarshalHeader(header http.Header, v interface{}, opts HTTPMarshalOptions)
 
 // UnmarshalHeaderFromRequest is a helper function that extracts headers from an http.Request and unmarshals them into a
 // struct using the provided options.
-func UnmarshalHeaderFromRequest(req *http.Request, v interface{}, opts HTTPMarshalOptions) error {
+func UnmarshalHeaderFromRequest(req *http.Request, v any, opts HTTPMarshalOptions) error {
 	return UnmarshalHeader(req.Header, v, opts)
 }

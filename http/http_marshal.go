@@ -76,28 +76,77 @@ func getTagDetails(tagName string, field reflect.StructField) tagDetails {
 	return details
 }
 
-func marshalFields(v interface{}, tagName string, set fieldSet, opts HTTPMarshalOptions) error {
-	if v == nil {
+func marshalFields(v any, tagName string, set fieldSet, opts HTTPMarshalOptions) error {
+	val, typ, err := normalizeStructValue(v, "marshal", false, false)
+	if err != nil {
+		return err
+	}
+
+	return walkStructFields(val, typ, tagName, opts, func(field reflect.Value, fieldType reflect.StructField, fieldName string) error {
+		if err := marshalField(set, fieldName, field); err != nil {
+			return fmt.Errorf("fieldSet %s: %w", fieldType.Name, err)
+		}
 		return nil
+	})
+}
+
+// unmarshalFields unmarshals values from a fieldSet into a struct based on struct tags and options
+func unmarshalFields(set fieldSet, v any, tagName string, opts HTTPMarshalOptions) error {
+	val, typ, err := normalizeStructValue(v, "unmarshal", true, false)
+	if err != nil {
+		return err
+	}
+
+	return walkStructFields(val, typ, tagName, opts, func(field reflect.Value, fieldType reflect.StructField, fieldName string) error {
+		if err := unmarshalField(set, fieldName, field); err != nil {
+			return fmt.Errorf("fieldSet %s: %w", fieldType.Name, err)
+		}
+		return nil
+	})
+}
+
+func normalizeStructValue(v any, op string, requirePointer bool, allowNil bool) (reflect.Value, reflect.Type, error) {
+	if v == nil {
+		if allowNil {
+			return reflect.Value{}, nil, nil
+		}
+		return reflect.Value{}, nil, fmt.Errorf("%s: nil destination", op)
 	}
 
 	val := reflect.ValueOf(v)
-	typ := reflect.TypeOf(v)
 
-	// Dereference pointer if necessary
-	if val.Kind() == reflect.Ptr {
+	if requirePointer {
+		if val.Kind() != reflect.Pointer {
+			return reflect.Value{}, nil, fmt.Errorf("%s: expected pointer to struct, got %s", op, val.Kind())
+		}
 		if val.IsNil() {
-			return nil
+			if allowNil {
+				return reflect.Value{}, nil, nil
+			}
+			return reflect.Value{}, nil, fmt.Errorf("%s: nil pointer", op)
 		}
 		val = val.Elem()
-		typ = typ.Elem()
+	} else if val.Kind() == reflect.Pointer {
+		if val.IsNil() {
+			if allowNil {
+				return reflect.Value{}, nil, nil
+			}
+			return reflect.Value{}, nil, fmt.Errorf("%s: nil pointer", op)
+		}
+		val = val.Elem()
 	}
 
-	// Only structs can be marshaled
 	if val.Kind() != reflect.Struct {
-		return fmt.Errorf("expected struct, got %s", val.Kind())
+		if requirePointer {
+			return reflect.Value{}, nil, fmt.Errorf("%s: expected pointer to struct, got pointer to %s", op, val.Kind())
+		}
+		return reflect.Value{}, nil, fmt.Errorf("%s: expected struct, got %s", op, val.Kind())
 	}
 
+	return val, val.Type(), nil
+}
+
+func walkStructFields(val reflect.Value, typ reflect.Type, tagName string, opts HTTPMarshalOptions, fn func(field reflect.Value, fieldType reflect.StructField, fieldName string) error) error {
 	structName := typ.Name()
 
 	for i := 0; i < val.NumField(); i++ {
@@ -112,9 +161,8 @@ func marshalFields(v interface{}, tagName string, set fieldSet, opts HTTPMarshal
 		// Get the field name from struct tag or fieldSet name
 		fieldName := getFieldName(tagName, fieldType, structName, opts)
 
-		// Marshal the fieldSet value
-		if err := marshalField(set, fieldName, field); err != nil {
-			return fmt.Errorf("fieldSet %s: %w", fieldType.Name, err)
+		if err := fn(field, fieldType, fieldName); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -247,52 +295,6 @@ func marshalUintField(set fieldSet, fieldName string, field reflect.Value) error
 // marshalBoolField marshals a boolean field to the fieldSet
 func marshalBoolField(set fieldSet, fieldName string, field reflect.Value) error {
 	set.Set(fieldName, fmt.Sprintf("%t", field.Bool()))
-	return nil
-}
-
-// unmarshalFields unmarshals values from a fieldSet into a struct based on struct tags and options
-func unmarshalFields(set fieldSet, v interface{}, tagName string, opts HTTPMarshalOptions) error {
-	if v == nil {
-		return fmt.Errorf("nil destination")
-	}
-
-	val := reflect.ValueOf(v)
-
-	// Must be a pointer to a struct
-	if val.Kind() != reflect.Ptr {
-		return fmt.Errorf("expected pointer to struct, got %s", val.Kind())
-	}
-
-	if val.IsNil() {
-		return fmt.Errorf("nil pointer")
-	}
-
-	val = val.Elem()
-	typ := val.Type()
-
-	if val.Kind() != reflect.Struct {
-		return fmt.Errorf("expected pointer to struct, got pointer to %s", val.Kind())
-	}
-
-	structName := typ.Name()
-
-	for i := 0; i < val.NumField(); i++ {
-		f := val.Field(i)
-		fieldType := typ.Field(i)
-
-		// Skip unexported fields
-		if !fieldType.IsExported() {
-			continue
-		}
-
-		// Get the query name from struct tag or fieldSet name
-		parameterName := getFieldName(tagName, fieldType, structName, opts)
-
-		// Unmarshal the fieldSet value
-		if err := unmarshalField(set, parameterName, f); err != nil {
-			return fmt.Errorf("fieldSet %s: %w", fieldType.Name, err)
-		}
-	}
 	return nil
 }
 

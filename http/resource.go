@@ -7,7 +7,7 @@ import (
 )
 
 // Resource is a marker interface for HTTP resources.
-type Resource interface{}
+type Resource any
 
 // StatusResource is an interface for resources that can report their status.
 type StatusResource interface {

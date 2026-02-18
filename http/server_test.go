@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	dnt "github.com/dioad/net/tls"
 
 	"github.com/gorilla/mux"
@@ -210,7 +213,7 @@ type MockStatusResource struct {
 	StatusError  bool
 }
 
-func (m *MockStatusResource) Status() (interface{}, error) {
+func (m *MockStatusResource) Status() (any, error) {
 	m.StatusCalled = true
 	if m.StatusError {
 		return nil, io.ErrUnexpectedEOF
@@ -226,54 +229,161 @@ func TestStatusEndpoint(t *testing.T) {
 	server := NewServer(config)
 	mockResource := &MockStatusResource{}
 
+	resourceRoute := "/api"
+
 	// Add the resource
-	server.AddResource("/api", mockResource)
+	server.AddResource(resourceRoute, mockResource)
 
 	// Add a static metadata item
 	server.AddStatusStaticMetadataItem("version", "1.0.0")
 
-	// Create a test request
-	req := httptest.NewRequest("GET", "/status", nil)
-	w := httptest.NewRecorder()
+	// Helper function to get status response
+	getStatus := func(t *testing.T) (int, map[string]any) {
+		t.Helper()
+		req := httptest.NewRequest("GET", "/status", nil)
+		w := httptest.NewRecorder()
+		server.handler().ServeHTTP(w, req)
 
-	// Serve the request
-	server.handler().ServeHTTP(w, req)
-
-	// Check the response
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
+		var statusResponse map[string]any
+		err := json.Unmarshal(w.Body.Bytes(), &statusResponse)
+		require.NoError(t, err)
+		return w.Code, statusResponse
 	}
 
-	// Parse the response
-	var statusResponse map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &statusResponse); err != nil {
-		t.Fatalf("Failed to parse status response: %v", err)
+	getMap := func(t *testing.T, obj map[string]any, key string) map[string]any {
+		t.Helper()
+		value, ok := obj[key].(map[string]any)
+		require.True(t, ok, "%s not found in status response", key)
+		return value
 	}
 
-	// Check that the resource status is included
-	routes, ok := statusResponse["Routes"].(map[string]interface{})
-	if !ok {
-		t.Error("Routes not found in status response")
-	} else {
-		apiStatus, ok := routes["/api"].(map[string]interface{})
-		if !ok {
-			t.Error("API status not found in routes")
-		} else {
-			if apiStatus["status"] != "ok" {
-				t.Errorf("Expected status %q, got %q", "ok", apiStatus["status"])
+	cases := []struct {
+		name          string
+		statusError   bool
+		wantStatus    int
+		wantRouteStat string
+		wantError     bool
+	}{
+		{
+			name:          "healthy",
+			statusError:   false,
+			wantStatus:    http.StatusOK,
+			wantRouteStat: "ok",
+			wantError:     false,
+		},
+		{
+			name:        "unhealthy",
+			statusError: true,
+			wantStatus:  http.StatusInternalServerError,
+			wantError:   true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockResource.StatusError = tc.statusError
+			status, statusResponse := getStatus(t)
+			assert.Equal(t, tc.wantStatus, status)
+
+			metadata := getMap(t, statusResponse, "Metadata")
+			assert.Equal(t, "1.0.0", metadata["version"])
+
+			if tc.wantError {
+				errors := getMap(t, statusResponse, "Errors")
+				_, ok := errors[resourceRoute].(string)
+				require.True(t, ok, "API error not found in errors")
+				return
 			}
-		}
+
+			routes := getMap(t, statusResponse, "Routes")
+			apiStatus := getMap(t, routes, resourceRoute)
+			assert.Equal(t, tc.wantRouteStat, apiStatus["status"])
+		})
+	}
+}
+
+// MockStatusResource implements StatusResource for testing
+type MockHealthResource struct {
+	MockResource
+	LiveCalled  bool
+	LiveError   bool
+	ReadyCalled bool
+	ReadyError  bool
+}
+
+func (m *MockHealthResource) Live() error {
+	m.LiveCalled = true
+	if m.LiveError {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+
+func (m *MockHealthResource) Ready() (any, error) {
+	m.ReadyCalled = true
+	if m.ReadyError {
+		return nil, io.ErrUnexpectedEOF
+	}
+	return map[string]string{"status": "ok"}, nil
+}
+
+// TestStatusEndpoint tests the status endpoint
+func TestLiveEndpoint(t *testing.T) {
+	config := Config{
+		EnableHealth: true,
+	}
+	server := NewServer(config)
+	mockResource := &MockHealthResource{}
+
+	// Add the resource
+	server.AddResource("/api", mockResource)
+
+	expectLive := func(t *testing.T, wantLive bool, wantStatus int) {
+		t.Helper()
+		req := httptest.NewRequest("GET", "/health/live", nil)
+		w := httptest.NewRecorder()
+		server.handler().ServeHTTP(w, req)
+		assert.Equal(t, wantStatus, w.Code)
+
+		var liveResponse map[string]bool
+		err := json.Unmarshal(w.Body.Bytes(), &liveResponse)
+		require.NoError(t, err)
+		assert.Equal(t, wantLive, liveResponse["live"])
 	}
 
-	// Check that the metadata is included
-	metadata, ok := statusResponse["Metadata"].(map[string]interface{})
-	if !ok {
-		t.Error("Metadata not found in status response")
-	} else {
-		if metadata["version"] != "1.0.0" {
-			t.Errorf("Expected version %q, got %q", "1.0.0", metadata["version"])
-		}
+	expectLive(t, true, http.StatusOK)
+
+	mockResource.LiveError = true
+	expectLive(t, false, http.StatusInternalServerError)
+}
+
+func TestReadyEndpoint(t *testing.T) {
+	config := Config{
+		EnableHealth: true,
 	}
+	server := NewServer(config)
+	mockResource := &MockHealthResource{}
+
+	// Add the resource
+	server.AddResource("/api", mockResource)
+
+	expectReady := func(t *testing.T, wantReady bool, wantStatus int) {
+		t.Helper()
+		req := httptest.NewRequest("GET", "/health/ready", nil)
+		w := httptest.NewRecorder()
+		server.handler().ServeHTTP(w, req)
+		assert.Equal(t, wantStatus, w.Code)
+
+		var readyResponse map[string]any
+		err := json.Unmarshal(w.Body.Bytes(), &readyResponse)
+		require.NoError(t, err)
+		assert.Equal(t, wantReady, readyResponse["ready"])
+	}
+
+	expectReady(t, true, http.StatusOK)
+
+	mockResource.ReadyError = true
+	expectReady(t, false, http.StatusServiceUnavailable)
 }
 
 // TestMiddleware tests adding middleware to the server
