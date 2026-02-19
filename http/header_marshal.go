@@ -28,7 +28,12 @@ const (
 //	// X-Values: val1
 //	// X-Values: val2,with,comma
 func MarshalHeader(v any, opts HTTPMarshalOptions) (http.Header, error) {
+
 	header := http.Header{}
+
+	if isNilAny(v) {
+		return header, nil
+	}
 
 	err := marshalFields(v, HeaderMarshalTagName, header, opts)
 	if err != nil {

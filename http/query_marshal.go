@@ -41,10 +41,11 @@ func (f *urlValuesWrapper) Values(key string) []string {
 // }
 // params := QueryParams{Search: "example", Tags: []string{"go", "http"}}
 // queryString, err := MarshalQuery(params, opts)
-//
-
 func MarshalQuery(v any, opts HTTPMarshalOptions) (string, error) {
 	values := url.Values{}
+	if isNilAny(v) {
+		return "", nil
+	}
 
 	valueWrapper := &urlValuesWrapper{values: values}
 
