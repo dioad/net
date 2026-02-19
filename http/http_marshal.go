@@ -59,6 +59,20 @@ func (d tagDetails) Skip() bool {
 	return d.skip
 }
 
+func isNilAny(v any) bool {
+	if v == nil {
+		return true
+	}
+
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Pointer, reflect.Slice, reflect.Map, reflect.Func, reflect.Interface, reflect.Chan:
+		return rv.IsNil()
+	default:
+		return false
+	}
+}
+
 func getTagDetails(tagName string, field reflect.StructField) tagDetails {
 	details := tagDetails{}
 	t := field.Tag.Get(tagName)
@@ -77,7 +91,7 @@ func getTagDetails(tagName string, field reflect.StructField) tagDetails {
 }
 
 func marshalFields(v any, tagName string, set fieldSet, opts HTTPMarshalOptions) error {
-	val, typ, err := normalizeStructValue(v, "marshal", false, false)
+	val, typ, err := normalizeStructValue(v, false, false)
 	if err != nil {
 		return err
 	}
@@ -92,7 +106,7 @@ func marshalFields(v any, tagName string, set fieldSet, opts HTTPMarshalOptions)
 
 // unmarshalFields unmarshals values from a fieldSet into a struct based on struct tags and options
 func unmarshalFields(set fieldSet, v any, tagName string, opts HTTPMarshalOptions) error {
-	val, typ, err := normalizeStructValue(v, "unmarshal", true, false)
+	val, typ, err := normalizeStructValue(v, true, false)
 	if err != nil {
 		return err
 	}
@@ -105,25 +119,25 @@ func unmarshalFields(set fieldSet, v any, tagName string, opts HTTPMarshalOption
 	})
 }
 
-func normalizeStructValue(v any, op string, requirePointer bool, allowNil bool) (reflect.Value, reflect.Type, error) {
+func normalizeStructValue(v any, requirePointer bool, allowNil bool) (reflect.Value, reflect.Type, error) {
 	if v == nil {
 		if allowNil {
 			return reflect.Value{}, nil, nil
 		}
-		return reflect.Value{}, nil, fmt.Errorf("%s: nil destination", op)
+		return reflect.Value{}, nil, fmt.Errorf("nil destination")
 	}
 
 	val := reflect.ValueOf(v)
 
 	if requirePointer {
 		if val.Kind() != reflect.Pointer {
-			return reflect.Value{}, nil, fmt.Errorf("%s: expected pointer to struct, got %s", op, val.Kind())
+			return reflect.Value{}, nil, fmt.Errorf("expected pointer to struct, got %s", val.Kind())
 		}
 		if val.IsNil() {
 			if allowNil {
 				return reflect.Value{}, nil, nil
 			}
-			return reflect.Value{}, nil, fmt.Errorf("%s: nil pointer", op)
+			return reflect.Value{}, nil, fmt.Errorf("nil pointer")
 		}
 		val = val.Elem()
 	} else if val.Kind() == reflect.Pointer {
@@ -131,16 +145,16 @@ func normalizeStructValue(v any, op string, requirePointer bool, allowNil bool) 
 			if allowNil {
 				return reflect.Value{}, nil, nil
 			}
-			return reflect.Value{}, nil, fmt.Errorf("%s: nil pointer", op)
+			return reflect.Value{}, nil, fmt.Errorf("nil pointer")
 		}
 		val = val.Elem()
 	}
 
 	if val.Kind() != reflect.Struct {
 		if requirePointer {
-			return reflect.Value{}, nil, fmt.Errorf("%s: expected pointer to struct, got pointer to %s", op, val.Kind())
+			return reflect.Value{}, nil, fmt.Errorf("expected pointer to struct, got pointer to %s", val.Kind())
 		}
-		return reflect.Value{}, nil, fmt.Errorf("%s: expected struct, got %s", op, val.Kind())
+		return reflect.Value{}, nil, fmt.Errorf("expected struct, got %s", val.Kind())
 	}
 
 	return val, val.Type(), nil
