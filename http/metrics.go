@@ -16,7 +16,6 @@ package http
 import (
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -38,16 +37,18 @@ type MetricSet struct {
 	ResponseSize      *prometheus.HistogramVec
 	InFlightGauge     prometheus.Gauge
 	RateLimitRequests *prometheus.CounterVec
+	registry          *prometheus.Registry
 }
 
 func NewMetricSet(r *prometheus.Registry) *MetricSet {
 	m := &MetricSet{
+		registry: r,
 		RequestCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "dioad_net_http_requests_total",
 				Help: "Counter of HTTP requests.",
 			},
-			[]string{"handler", "code"},
+			[]string{"route", "code", "method"},
 		),
 		RequestDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -55,7 +56,7 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 				Help:    "Histogram of latencies for HTTP requests.",
 				Buckets: []float64{.1, .2, .4, 1, 3, 8, 20, 60, 120},
 			},
-			[]string{"handler"},
+			[]string{"route", "method"},
 		),
 		RequestSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -63,7 +64,7 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 				Help:    "Histogram of request size for HTTP requests.",
 				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
 			},
-			[]string{"handler"},
+			[]string{"route", "method"},
 		),
 		ResponseSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -71,7 +72,7 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 				Help:    "Histogram of response size for HTTP requests.",
 				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
 			},
-			[]string{"handler"},
+			[]string{"route", "method"},
 		),
 		InFlightGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
@@ -100,13 +101,21 @@ func (m *MetricSet) Register(r prometheus.Registerer) {
 	}
 }
 
-// Middleware - to make it a middleware for mux probably a better way.
-// TODO: need to extract this from this struct to remove the coupling with mux
+// Middleware instruments the handler withprometheus metrics.
 func (m *MetricSet) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		route := mux.CurrentRoute(r)
-		path, _ := route.GetPathTemplate()
-		labels := prometheus.Labels{"handler": path}
+		// In Go 1.22, r.Pattern contains the matched route pattern if available.
+		// Fallback to URL.Path if no specific pattern was matched by the multiplexer.
+		// Note that r.Pattern is only populated *after* the mux routes it, so
+		// wrapping handlers globally might see an empty pattern in some server setups.
+		path := r.URL.Path
+		if r.Pattern != "" {
+			path = r.Pattern
+		}
+
+		labels := prometheus.Labels{
+			"route": path,
+		}
 		promhttp.InstrumentHandlerInFlight(
 			m.InFlightGauge,
 			promhttp.InstrumentHandlerCounter(

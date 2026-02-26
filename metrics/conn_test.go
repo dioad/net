@@ -16,20 +16,16 @@ func TestConnDuration(t *testing.T) {
 	wg := sync.WaitGroup{}
 
 	// startTime := time.Now()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		controlBytes := make([]byte, 1)
 		controlConn.Write([]byte("a"))
 		controlConn.Read(controlBytes)
-	}()
+	})
 
 	var midDuration time.Duration
 	var endDuration time.Duration
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 
 		dest := make([]byte, 1)
 		time.Sleep(50 * time.Millisecond)
@@ -43,7 +39,7 @@ func TestConnDuration(t *testing.T) {
 		c.Write([]byte("b"))
 
 		endDuration = c.(*Conn).Duration()
-	}()
+	})
 
 	wg.Wait()
 

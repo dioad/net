@@ -1,7 +1,8 @@
 package resource
 
 import (
-	"github.com/gorilla/mux"
+	"net/http"
+
 	"github.com/rs/zerolog"
 
 	"github.com/dioad/net/http/auth/oidc"
@@ -18,18 +19,20 @@ type SessionResourceStatus struct {
 	Status string
 }
 
-// RegisterRoutes registers the session resource routes on the provided router.
-func (dr *SessionResource) RegisterRoutes(parentRouter *mux.Router) {
-	logoutHandler := dr.AuthHandler.LogoutHandler
-	// authHandler := dr.AuthHandler.AuthWrapper
-	callbackHandler := dr.AuthHandler.Callback
-	authStartHandler := dr.AuthHandler.AuthStart
+// Handler returns the HTTP handler for the session resource.
+func (dr *SessionResource) Handler() http.Handler {
+	mux := http.NewServeMux()
 
-	// `provider` path parameter is required by the gothic library
-	// parentRouter.HandleFunc("/auth/{provider}/logout", dr.LogoutGet()).Methods("GET")
-	parentRouter.HandleFunc("/logout", logoutHandler()).Methods("GET")
-	parentRouter.HandleFunc("/auth/{provider}/callback", callbackHandler()).Methods("GET")
-	parentRouter.HandleFunc("/auth/{provider}", authStartHandler()).Methods("GET")
+	logoutHandler := dr.AuthHandler.LogoutHandler()
+	callbackHandler := dr.AuthHandler.Callback()
+	authStartHandler := dr.AuthHandler.AuthStart()
+
+	// Go 1.22 routing patterns
+	mux.HandleFunc("GET /logout", logoutHandler)
+	mux.HandleFunc("GET /auth/{provider}/callback", callbackHandler)
+	mux.HandleFunc("GET /auth/{provider}", authStartHandler)
+
+	return mux
 }
 
 // Status returns the status of the session resource.

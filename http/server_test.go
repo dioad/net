@@ -15,7 +15,6 @@ import (
 
 	dnt "github.com/dioad/net/tls"
 
-	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"golang.org/x/net/nettest"
 )
@@ -159,17 +158,19 @@ func TestServerWithTLS(t *testing.T) {
 	}
 }
 
-// MockResource implements DefaultResource for testing
+// MockResource implements Resource for testing
 type MockResource struct {
-	RegisterRoutesCalled bool
+	HandlerCalled bool
 }
 
-func (m *MockResource) RegisterRoutes(router *mux.Router) {
-	m.RegisterRoutesCalled = true
-	router.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+func (m *MockResource) Handler() http.Handler {
+	m.HandlerCalled = true
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("test"))
 	})
+	return mux
 }
 
 // TestAddResource tests adding a resource to the server
@@ -181,8 +182,8 @@ func TestAddResource(t *testing.T) {
 	server.AddResource("/api", mockResource)
 
 	// Check that the resource was added
-	if !mockResource.RegisterRoutesCalled {
-		t.Error("RegisterRoutes was not called")
+	if !mockResource.HandlerCalled {
+		t.Error("Handler was not called")
 	}
 
 	// Check that the resource is in the resource map
@@ -240,6 +241,7 @@ func TestStatusEndpoint(t *testing.T) {
 	// Helper function to get status response
 	getStatus := func(t *testing.T) (int, map[string]any) {
 		t.Helper()
+		server.initialiseServer()
 		req := httptest.NewRequest("GET", "/status", nil)
 		w := httptest.NewRecorder()
 		server.handler().ServeHTTP(w, req)
@@ -340,6 +342,7 @@ func TestLiveEndpoint(t *testing.T) {
 
 	expectLive := func(t *testing.T, wantLive bool, wantStatus int) {
 		t.Helper()
+		server.initialiseServer()
 		req := httptest.NewRequest("GET", "/health/live", nil)
 		w := httptest.NewRecorder()
 		server.handler().ServeHTTP(w, req)
@@ -369,6 +372,7 @@ func TestReadyEndpoint(t *testing.T) {
 
 	expectReady := func(t *testing.T, wantReady bool, wantStatus int) {
 		t.Helper()
+		server.initialiseServer()
 		req := httptest.NewRequest("GET", "/health/ready", nil)
 		w := httptest.NewRecorder()
 		server.handler().ServeHTTP(w, req)

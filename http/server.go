@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/pires/go-proxyproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -27,7 +26,6 @@ import (
 
 	"github.com/dioad/net/http/auth"
 	"github.com/dioad/net/http/authz/jwt"
-	diojson "github.com/dioad/net/http/json"
 	"github.com/dioad/net/http/pprof"
 	"github.com/dioad/net/oidc"
 )
@@ -56,8 +54,8 @@ type Config struct {
 type Server struct {
 	// Config is the server configuration
 	Config Config
-	// Router is the main router for the server
-	Router *mux.Router
+	// Mux is the main router for the server
+	Mux *http.ServeMux
 	// Logger is the logger for the server
 	Logger zerolog.Logger
 	// ResourceMap maps path prefixes to resources
@@ -66,27 +64,31 @@ type Server struct {
 	ListenAddr net.Addr
 	// LogHandler is the handler wrapper for logging requests
 	LogHandler HandlerWrapper
+	// HealthRegistry aggregates internal server health endpoints and metadata
+	HealthRegistry *HealthRegistry
 
 	// Private fields
-	server            *http.Server
-	serverInitOnce    sync.Once
-	metricSet         *MetricSet
-	instrument        *middleware.Instrument
-	rootResource      RootResource
-	metadataStatusMap map[string]any
+	server         *http.Server
+	serverInitOnce sync.Once
+	metricSet      *MetricSet
+	instrument     *middleware.Instrument
+	rootResource   RootResource
+	middlewares    []Middleware
 }
 
 func newDefaultServer(config Config) *Server {
 	r := prometheus.NewRegistry()
 	m := NewMetricSet(r)
-	rtr := mux.NewRouter()
+	m.Register(r)
+	mux := http.NewServeMux()
 
 	server := &Server{
-		Config:            config,
-		Router:            rtr,
-		ResourceMap:       make(map[string]Resource),
-		metricSet:         m,
-		metadataStatusMap: make(map[string]any),
+		Config:         config,
+		Mux:            mux,
+		ResourceMap:    make(map[string]Resource),
+		metricSet:      m,
+		HealthRegistry: NewHealthRegistry(log.Logger),
+		middlewares:    make([]Middleware, 0),
 	}
 
 	return server
@@ -110,23 +112,30 @@ func WithLogWriter(w io.Writer) ServerOption {
 func WithLogger(l zerolog.Logger) ServerOption {
 	return func(s *Server) {
 		s.Logger = l
-		s.LogHandler = ZerologStructuredLogHandler(l)
+		if s.LogHandler == nil {
+			s.LogHandler = ZerologStructuredLogHandler(l)
+		}
+		s.HealthRegistry.logger = l
 	}
 }
 
 // OAuth2ValidatorHandler returns a middleware that validates OAuth2 tokens using the provided configurations.
-func OAuth2ValidatorHandler(v []oidc.ValidatorConfig) (mux.MiddlewareFunc, error) {
+func OAuth2ValidatorHandler(v []oidc.ValidatorConfig) (Middleware, error) {
 	validator, err := oidc.NewMultiValidatorFromConfig(v)
 	if err != nil {
 		return nil, err
 	}
 
 	authHandler := jwt.NewHandler(validator, "auth_token")
-	return authHandler.Wrap, nil
+
+	// Convert from common generic wrapper standard back to pure http.Handler middleware
+	return func(next http.Handler) http.Handler {
+		return authHandler.Wrap(next)
+	}, nil
 }
 
 // CORSHandler returns a middleware that handles Cross-Origin Resource Sharing (CORS).
-func CORSHandler(options cors.Options) (mux.MiddlewareFunc, error) {
+func CORSHandler(options cors.Options) (Middleware, error) {
 	corsMiddleware := cors.New(options)
 	return corsMiddleware.Handler, nil
 }
@@ -143,23 +152,6 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
 		}
 	}
 }
-
-// // wrapWithOptionsMethodBypass creates middleware that allows OPTIONS requests to pass through
-// // without authentication, while still applying the authentication middleware to other methods.
-// func wrapWithOptionsMethodBypass(authMiddleware auth.Middleware) mux.MiddlewareFunc {
-// 	return func(next http.Handler) http.Handler {
-// 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 			if r.Method == http.MethodOptions || authMiddleware == nil {
-// 				// If the request is an OPTIONS request, we bypass authentication
-// 				// and just call the next handler directly.
-// 				next.ServeHTTP(w, r)
-// 				return
-// 			}
-//
-// 			authMiddleware.Wrap(next).ServeHTTP(w, r)
-// 		})
-// 	}
-// }
 
 // CORSAllowLocalhostOrigin returns true if the given origin is a localhost origin.
 func CORSAllowLocalhostOrigin(origin string) bool {
@@ -196,7 +188,9 @@ func WithServerAuth(cfg auth.ServerConfig) ServerOption {
 			return
 		}
 
-		s.Use(h.Wrap)
+		s.Use(func(next http.Handler) http.Handler {
+			return h.Wrap(next)
+		})
 	}
 }
 
@@ -216,9 +210,16 @@ func NewServer(config Config, opts ...ServerOption) *Server {
 // telemetry instrument for metrics collection
 func WithTelemetryInstrument(i middleware.Instrument) ServerOption {
 	return func(s *Server) {
-		s.instrument = &i
-		s.Use(s.instrument.Wrap)
+		s.ConfigureTelemetryInstrument(i)
 	}
+}
+
+// ConfigureTelemetryInstrument configures the server with the given telemetry instrument
+func (s *Server) ConfigureTelemetryInstrument(i middleware.Instrument) {
+	s.instrument = &i
+	s.Use(func(next http.Handler) http.Handler {
+		return s.instrument.Wrap(next)
+	})
 }
 
 // WithPrometheusRegistry returns a ServerOption that configures the server to register
@@ -230,204 +231,124 @@ func WithPrometheusRegistry(r prometheus.Registerer) ServerOption {
 }
 
 // filterNilMiddlewares removes nil middlewares from the slice
-func filterNilMiddlewares(middlewares []mux.MiddlewareFunc) []mux.MiddlewareFunc {
-	return filter.FilterSlice(middlewares, func(m mux.MiddlewareFunc) bool {
+func filterNilMiddlewares(middlewares []Middleware) []Middleware {
+	return filter.FilterSlice(middlewares, func(m Middleware) bool {
 		return m != nil
 	})
 }
 
 // AddResource adds a resource to the server at the specified path prefix
-// The resource can implement either PathResource or DefaultResource to register its routes
-// Optional middlewares can be provided to be applied to the resource's routes
-func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...mux.MiddlewareFunc) {
-	subrouter := s.Router.PathPrefix(pathPrefix).Subrouter()
-	subrouter.Use(filterNilMiddlewares(middlewares)...)
-
-	if rp, ok := r.(PathResource); ok {
-		rp.RegisterRoutesWithPrefix(subrouter, pathPrefix)
-	} else if rp, ok := r.(DefaultResource); ok {
-		rp.RegisterRoutes(subrouter)
-	}
+// Optional middlewares can be provided to be applied exclusively to the resource's routes.
+func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middleware) {
 	s.ResourceMap[pathPrefix] = r
+	s.HealthRegistry.Register(pathPrefix, r)
+
+	validMiddlewares := filterNilMiddlewares(middlewares)
+	resourceHandler := Chain(r.Handler(), validMiddlewares...)
+
+	// We strip the prefix to make the resource's routes relative to its mount point.
+	// We handle both trailing and non-trailing slash versions to avoid unexpected
+	// 404s or redirects for clients that don't support them (e.g. some POST clients).
+	prefixToStrip := strings.TrimSuffix(pathPrefix, "/")
+
+	// We use a custom handler to ensure that a leading slash is always present
+	// for the inner resource handler, even if the stripped path is empty.
+	h := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		p := strings.TrimPrefix(req.URL.Path, prefixToStrip)
+		if p == "" || p[0] != '/' {
+			req.URL.Path = "/" + p
+		} else {
+			req.URL.Path = p
+		}
+		resourceHandler.ServeHTTP(w, req)
+	})
+
+	s.Mux.Handle(prefixToStrip+"/", h)
+	if prefixToStrip != "" {
+		s.Mux.Handle(prefixToStrip, h)
+	}
 }
 
 // AddRootResource sets the root resource for the server
 // The root resource's Index method will be called for any path that doesn't match other routes
 func (s *Server) AddRootResource(r RootResource) {
 	s.rootResource = r
-	// s.AddResource("/", r)
 }
 
 // handler returns the HTTP handler for the server
 // It adds default handlers and the root resource handler if configured
 func (s *Server) handler() http.Handler {
-	s.addDefaultHandlers()
+	var handler http.Handler = s.Mux
+	handler = Chain(handler, s.middlewares...)
 
-	if s.rootResource != nil {
-		s.AddHandler("/{path:.*}", s.rootResource.Index())
+	if s.Config.EnablePrometheusMetrics && s.metricSet != nil {
+		handler = s.metricSet.Middleware(handler)
 	}
-
-	var router http.Handler
-	router = s.Router
 
 	if s.LogHandler != nil {
-		router = s.LogHandler(router)
+		handler = s.LogHandler(handler)
 	}
 
-	// uncomment if ensure that 404's get picked up by metrics
-	// s.Router.NotFoundHandler = s.Router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
-	return router
+	return handler
 }
 
 // AddHandler adds a handler for the specified path
 func (s *Server) AddHandler(path string, handler http.Handler) {
-	s.AddHandlerFunc(path, handler.ServeHTTP)
+	s.Mux.Handle(path, handler)
 }
 
 // AddHandlerFunc adds a handler function for the specified path
 func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
-	s.Router.HandleFunc(path, handler)
+	s.Mux.HandleFunc(path, handler)
 }
 
 // addDefaultHandlers adds default handlers to the server based on configuration
 func (s *Server) addDefaultHandlers() {
 	if s.Config.EnablePrometheusMetrics {
-		s.Router.Handle("/metrics", promhttp.Handler())
+		// Combine the server's private registry with the global prometheus.DefaultGatherer
+		// This ensures that both internal metrics and any globally registered metrics are served.
+		gatherers := prometheus.Gatherers{
+			s.metricSet.registry,
+			prometheus.DefaultGatherer,
+		}
+		s.Mux.Handle("/metrics", promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{}))
 	}
 
 	if s.Config.EnableDebug {
 		s.AddResource("/debug", pprof.NewResource(log.Logger))
 	}
 
+	// Mount the health registry handlers directly
 	if s.Config.EnableStatus {
-		s.AddHandler("/status", s.aggregateStatusHandler())
+		s.AddHandlerFunc("GET /status", s.HealthRegistry.aggregateStatusHandler())
 	}
 	if s.Config.EnableHealth {
-		s.AddHandler("/health/live", s.aggregateLivenessHandler())
-		s.AddHandler("/health/ready", s.aggregateReadinessHandler())
+		s.AddHandlerFunc("GET /health/live", s.HealthRegistry.aggregateLivenessHandler())
+		s.AddHandlerFunc("GET /health/ready", s.HealthRegistry.aggregateReadinessHandler())
 	}
 }
 
-// Use adds middleware to the server's router
-// Any nil middlewares will be filtered out
-func (s *Server) Use(middlewares ...mux.MiddlewareFunc) {
-	s.Router.Use(filterNilMiddlewares(middlewares)...)
+// Use adds middleware to the server's global middleware chain.
+// Any nil middlewares will be filtered out. Middlewares are executed in the order added.
+func (s *Server) Use(middlewares ...Middleware) {
+	s.middlewares = append(s.middlewares, filterNilMiddlewares(middlewares)...)
 }
 
 // AddStatusStaticMetadataItem adds a static metadata item to the status endpoint
 // These items will be included in the "Metadata" section of the status response
 func (s *Server) AddStatusStaticMetadataItem(key string, value any) {
-	s.metadataStatusMap[key] = value
-}
-
-func (s *Server) aggregateLivenessHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		httpStatus := http.StatusOK
-
-		for path, resource := range s.ResourceMap {
-			if sr, ok := resource.(LivenessResource); ok {
-				err := sr.Live()
-				if err != nil {
-					httpStatus = http.StatusInternalServerError
-					s.Logger.Error().Err(err).Str("path", path).Msg("resource not alive")
-					break
-				}
-			}
-		}
-
-		res := diojson.NewResponseWithLogger(w, r, s.Logger)
-		res.Data(httpStatus, map[string]any{
-			"live": httpStatus == http.StatusOK,
-		})
-
-		// Log a summary of the liveness request
-		logEvent := s.Logger.Debug()
-		logEvent.Int("status_code", httpStatus).
-			Bool("live", httpStatus == http.StatusOK).
-			Str("method", r.Method).
-			Str("path", r.URL.Path).
-			Msg("liveness request processed")
-	}
-}
-
-func (s *Server) aggregateReadinessHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		httpStatus := http.StatusOK
-		resourceReadiness := make(map[string]any)
-		resourceErrors := make(map[string]string)
-
-		for path, resource := range s.ResourceMap {
-			if rr, ok := resource.(ReadinessResource); ok {
-				ready, err := rr.Ready()
-				if err != nil {
-					httpStatus = http.StatusServiceUnavailable
-					s.Logger.Error().Err(err).Str("path", path).Msg("error checking resource readiness")
-					resourceErrors[path] = err.Error()
-					continue
-				}
-				resourceReadiness[path] = ready
-			}
-		}
-
-		res := diojson.NewResponseWithLogger(w, r, s.Logger)
-		res.Data(httpStatus, map[string]any{
-			"ready":   httpStatus == http.StatusOK,
-			"details": resourceReadiness,
-			"errors":  resourceErrors,
-		})
-		// Log a summary of the status request
-		logEvent := s.Logger.Debug()
-		logEvent.Int("status_code", httpStatus).
-			Int("resource_count", len(resourceReadiness)).
-			Str("method", r.Method).
-			Str("path", r.URL.Path).
-			Msg("readiness request processed")
-	}
-}
-
-// aggregateStatusHandler returns a handler that aggregates status information from all resources
-func (s *Server) aggregateStatusHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		statusMap := make(map[string]any)
-		httpStatus := http.StatusOK
-
-		// Collect status from all resources that implement StatusResource
-		resourceStatus := make(map[string]any)
-		resourceErrors := make(map[string]string)
-		for path, resource := range s.ResourceMap {
-			if sr, ok := resource.(StatusResource); ok {
-				status, err := sr.Status()
-				if err != nil {
-					httpStatus = http.StatusInternalServerError
-					s.Logger.Error().Err(err).Str("path", path).Msg("error getting resource status")
-					resourceErrors[path] = err.Error()
-					continue
-				}
-				resourceStatus[path] = status
-			}
-		}
-		statusMap["Routes"] = resourceStatus
-		statusMap["Metadata"] = s.metadataStatusMap
-		statusMap["Errors"] = resourceErrors
-
-		res := diojson.NewResponseWithLogger(w, r, s.Logger)
-		res.Data(httpStatus, statusMap)
-
-		// Log a summary of the status request
-		logEvent := s.Logger.Debug()
-		logEvent.Int("status_code", httpStatus).
-			Int("resource_count", len(resourceStatus)).
-			Str("method", r.Method).
-			Str("path", r.URL.Path).
-			Msg("status request processed")
-	}
+	s.HealthRegistry.AddStaticMetadata(key, value)
 }
 
 // initialiseServer initializes the HTTP server if it hasn't been initialized yet
 func (s *Server) initialiseServer() {
 	s.serverInitOnce.Do(func() {
+		s.addDefaultHandlers()
+
+		if s.rootResource != nil {
+			s.AddHandler("/", s.rootResource.Index())
+		}
+
 		// Create a standard logger that writes to our zerolog logger
 		errorLogger := stdlog.New(s.Logger.With().Str("level", "error").Logger(), "", stdlog.Lshortfile)
 
