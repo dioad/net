@@ -2,9 +2,9 @@
 package pprof
 
 import (
+	"net/http"
 	"net/http/pprof"
 
-	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 )
 
@@ -18,20 +18,23 @@ type Status struct {
 	Status string
 }
 
-// RegisterRoutes registers the pprof endpoints on the provided router.
-func (dr *Resource) RegisterRoutes(parentRouter *mux.Router) {
-	parentRouter.HandleFunc("/", pprof.Index)
-	parentRouter.HandleFunc("/cmdline", pprof.Cmdline)
-	parentRouter.HandleFunc("/profile", pprof.Profile)
-	parentRouter.HandleFunc("/symbol", pprof.Symbol)
+// Handler returns the HTTP handler containing the pprof endpoints.
+func (dr *Resource) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", pprof.Index)
+	mux.HandleFunc("/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/profile", pprof.Profile)
+	mux.HandleFunc("/symbol", pprof.Symbol)
 
 	// Manually add support for paths linked to by index page at /debug/pprof/
-	parentRouter.Handle("/goroutine", pprof.Handler("goroutine"))
-	parentRouter.Handle("/heap", pprof.Handler("heap"))
-	parentRouter.Handle("/threadcreate", pprof.Handler("threadcreate"))
-	parentRouter.Handle("/block", pprof.Handler("block"))
-	parentRouter.Handle("/trace", pprof.Handler("trace"))
-	parentRouter.Handle("/mutex", pprof.Handler("mutex"))
+	mux.Handle("/goroutine", pprof.Handler("goroutine"))
+	mux.Handle("/heap", pprof.Handler("heap"))
+	mux.Handle("/threadcreate", pprof.Handler("threadcreate"))
+	mux.Handle("/block", pprof.Handler("block"))
+	mux.Handle("/trace", pprof.Handler("trace"))
+	mux.Handle("/mutex", pprof.Handler("mutex"))
+
+	return mux
 }
 
 // Status returns the status of the pprof resource.

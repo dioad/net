@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
 	dnh "github.com/dioad/net/http"
@@ -117,19 +116,14 @@ func (dr *LogLevelResource) GetIndex() http.HandlerFunc {
 	}
 }
 
-// func (dr *LogLevelResource) Mux() *http.ServeMux {
-// 	m := http.NewServeMux()
-// 	m.HandleFunc("GET /{$}", dr.GetIndex())
-// 	m.HandleFunc("POST /{$}", dr.PostIndex())
-// 	return m
-// }
-
-// RegisterRoutes registers the log level resource routes on the provided router.
-func (dr *LogLevelResource) RegisterRoutes(parentRouter *mux.Router) {
-	parentRouter.HandleFunc("", dr.GetIndex()).Methods("GET")
-	parentRouter.HandleFunc("/", dr.GetIndex()).Methods("GET")
-	parentRouter.HandleFunc("", dr.PostIndex()).Methods("POST")
-	parentRouter.HandleFunc("/", dr.PostIndex()).Methods("POST")
+// Handler returns the HTTP handler containing the log level resource endpoints.
+func (dr *LogLevelResource) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", dr.GetIndex())
+	mux.HandleFunc("GET /", dr.GetIndex())
+	mux.HandleFunc("POST /{$}", dr.PostIndex())
+	mux.HandleFunc("POST /", dr.PostIndex())
+	return mux
 }
 
 // Status returns the status of the log level resource.

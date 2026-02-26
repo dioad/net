@@ -12,8 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dioad/net/authz"
 	"github.com/rs/zerolog"
+
+	"github.com/dioad/net/authz"
 )
 
 func main() {
@@ -94,18 +95,14 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Start accepting on allow listener
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		acceptConnections(aclAllowListener, "ALLOW", logger)
-	}()
+	})
 
 	// Start accepting on deny listener
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		acceptConnections(aclDenyListener, "DENY", logger)
-	}()
+	})
 
 	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)

@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
@@ -123,8 +122,7 @@ func (h *Handler) handleCallback(w http.ResponseWriter, req *http.Request) (stri
 	if err != nil {
 		return "", err
 	}
-	params := mux.Vars(req)
-	provider := params["provider"]
+	provider := req.PathValue("provider")
 
 	user.RawData = nil
 
