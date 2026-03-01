@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	authhttp "github.com/dioad/auth/http/context"
 	"github.com/dioad/net/authz"
-	"github.com/dioad/net/http/auth/context"
 )
 
 func TestHandlerFunc(t *testing.T) {
@@ -23,7 +23,7 @@ func TestHandlerFunc(t *testing.T) {
 
 	// Test allowed principal
 	req := httptest.NewRequest("GET", "/test", nil)
-	ctx := context.NewContextWithAuthenticatedPrincipal(req.Context(), "user@example.com")
+	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "user@example.com")
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
@@ -64,7 +64,7 @@ func TestAuthRequest_Authorized(t *testing.T) {
 	handler := NewHandler(cfg)
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	ctx := context.NewContextWithAuthenticatedPrincipal(req.Context(), "alice@example.com")
+	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "alice@example.com")
 	req = req.WithContext(ctx)
 
 	resultCtx, err := handler.AuthRequest(req)
@@ -85,7 +85,7 @@ func TestAuthRequest_Unauthorised(t *testing.T) {
 	handler := NewHandler(cfg)
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	ctx := context.NewContextWithAuthenticatedPrincipal(req.Context(), "eve@example.com")
+	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "eve@example.com")
 	req = req.WithContext(ctx)
 
 	_, err := handler.AuthRequest(req)
@@ -120,7 +120,7 @@ func TestAuthRequest_DenyList(t *testing.T) {
 	handler := NewHandler(cfg)
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	ctx := context.NewContextWithAuthenticatedPrincipal(req.Context(), "banned@example.com")
+	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "banned@example.com")
 	req = req.WithContext(ctx)
 
 	_, err := handler.AuthRequest(req)
@@ -145,7 +145,7 @@ func TestWrap_Authorised(t *testing.T) {
 	wrappedHandler := handler.Wrap(nextHandler)
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	ctx := context.NewContextWithAuthenticatedPrincipal(req.Context(), "admin@example.com")
+	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "admin@example.com")
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
@@ -174,7 +174,7 @@ func TestWrap_Forbidden(t *testing.T) {
 	wrappedHandler := handler.Wrap(nextHandler)
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	ctx := context.NewContextWithAuthenticatedPrincipal(req.Context(), "user@example.com")
+	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "user@example.com")
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 

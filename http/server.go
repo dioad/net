@@ -24,10 +24,11 @@ import (
 
 	"github.com/dioad/filter"
 
-	"github.com/dioad/net/http/auth"
-	"github.com/dioad/net/http/authz/jwt"
+	auth "github.com/dioad/auth/http"
+	"github.com/dioad/auth/http/middleware/jwt"
+	authjwt "github.com/dioad/auth/jwt"
+	"github.com/dioad/auth/oidc"
 	"github.com/dioad/net/http/pprof"
-	"github.com/dioad/net/oidc"
 )
 
 // Config represents the configuration for an HTTP server
@@ -121,12 +122,17 @@ func WithLogger(l zerolog.Logger) ServerOption {
 
 // OAuth2ValidatorHandler returns a middleware that validates OAuth2 tokens using the provided configurations.
 func OAuth2ValidatorHandler(v []oidc.ValidatorConfig) (Middleware, error) {
-	validator, err := oidc.NewMultiValidatorFromConfig(v)
-	if err != nil {
-		return nil, err
+	var validators []authjwt.TokenValidator
+	for _, cfg := range v {
+		validator, err := oidc.NewValidatorFromConfig(&cfg)
+		if err != nil {
+			return nil, err
+		}
+		validators = append(validators, validator)
 	}
 
-	authHandler := jwt.NewHandler(validator, "auth_token")
+	multiValidator := &authjwt.MultiValidator{Validators: validators}
+	authHandler := jwt.NewHandler(multiValidator, "auth_token", log.Logger)
 
 	// Convert from common generic wrapper standard back to pure http.Handler middleware
 	return func(next http.Handler) http.Handler {

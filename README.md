@@ -84,7 +84,7 @@ server.AddHandler("/protected", authHandler.Wrap(myHandler))
 ```go
 import (
 	"github.com/dioad/net/http"
-	"github.com/dioad/net/oidc"
+	"github.com/dioad/auth/oidc"
 )
 
 // Create OIDC validator configuration

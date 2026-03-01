@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/dioad/net/http/auth/oidc"
+	"github.com/dioad/auth/http/middleware/oidc"
 )
 
 // SessionResource is an HTTP resource that manages authentication sessions.
@@ -23,7 +23,7 @@ type SessionResourceStatus struct {
 func (dr *SessionResource) Handler() http.Handler {
 	mux := http.NewServeMux()
 
-	logoutHandler := dr.AuthHandler.LogoutHandler()
+	logoutHandler := dr.AuthHandler.Logout()
 	callbackHandler := dr.AuthHandler.Callback()
 	authStartHandler := dr.AuthHandler.AuthStart()
 

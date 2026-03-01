@@ -133,15 +133,6 @@ jobs:
     - name: Fuzz ParseParams
       run: go test -fuzz FuzzParseParams -fuzztime 10s ./smtp/dkim
 
-    - name: Fuzz CanonicalData
-      run: go test -fuzz FuzzCanonicalData -fuzztime 10s ./http/auth/hmac
-
-    - name: Fuzz AuthRequest
-      run: go test -fuzz FuzzAuthRequest -fuzztime 10s ./http/auth/hmac
-
-    - name: Fuzz DecodeTokenData
-      run: go test -fuzz FuzzDecodeTokenData -fuzztime 10s ./oidc
-
     - name: Output Fuzzing Crashers
       if: failure()
       run: |

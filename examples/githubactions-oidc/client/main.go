@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dioad/net/oidc/githubactions"
+	"github.com/dioad/auth/oidc/githubactions"
 )
 
 func main() {
