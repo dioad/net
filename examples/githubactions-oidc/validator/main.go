@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dioad/net/oidc"
-	"github.com/dioad/net/oidc/githubactions"
+	"github.com/dioad/auth/oidc"
+	"github.com/dioad/auth/oidc/githubactions"
 )
 
 func main() {

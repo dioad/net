@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	authhttp "github.com/dioad/auth/http/context"
 	"github.com/dioad/net/authz"
-	"github.com/dioad/net/http/auth/context"
 )
 
 // HandlerFunc creates a principal-based authorization-wrapped HTTP handler function.
@@ -28,9 +28,9 @@ func NewHandler(cfg authz.PrincipalACLConfig) *Handler {
 
 // AuthRequest checks if the authenticated principal in the request context is authorized.
 func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
-	principal := context.AuthenticatedPrincipalFromContext(r.Context())
+	principal, ok := authhttp.AuthenticatedPrincipalFromContext(r.Context())
 
-	if principal == "" {
+	if !ok {
 		return r.Context(), fmt.Errorf("no principal found in context")
 	}
 

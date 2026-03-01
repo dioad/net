@@ -7,8 +7,8 @@ import (
 
 	"github.com/dioad/generics"
 
-	"github.com/dioad/net/http/auth"
-	"github.com/dioad/net/http/auth/basic"
+	auth "github.com/dioad/auth/http"
+	"github.com/dioad/auth/http/basic"
 )
 
 // Client describes an HTTP client for making requests to a base URL.

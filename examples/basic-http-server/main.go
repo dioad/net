@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/dioad/auth/http/basic"
 	diohttp "github.com/dioad/net/http"
-	"github.com/dioad/net/http/auth/basic"
 )
 
 func main() {
