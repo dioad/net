@@ -288,7 +288,7 @@ func (s *Server) handler() http.Handler {
 	handler = Chain(handler, s.middlewares...)
 
 	if s.Config.EnablePrometheusMetrics && s.metricSet != nil {
-		handler = s.metricSet.Middleware(handler)
+		handler = s.metricSet.Middleware(s.Mux, handler)
 	}
 
 	if s.LogHandler != nil {
