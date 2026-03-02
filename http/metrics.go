@@ -101,20 +101,24 @@ func (m *MetricSet) Register(r prometheus.Registerer) {
 	}
 }
 
-// Middleware instruments the handler withprometheus metrics.
-func (m *MetricSet) Middleware(next http.Handler) http.Handler {
+// Middleware instruments the handler with prometheus metrics.
+// It uses the provided ServeMux to derive the matched route pattern for the
+// "route" label, preventing high-cardinality Prometheus series that would
+// result from using raw URL paths.
+func (m *MetricSet) Middleware(mux *http.ServeMux, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// In Go 1.22, r.Pattern contains the matched route pattern if available.
-		// Fallback to URL.Path if no specific pattern was matched by the multiplexer.
-		// Note that r.Pattern is only populated *after* the mux routes it, so
-		// wrapping handlers globally might see an empty pattern in some server setups.
-		path := r.URL.Path
-		if r.Pattern != "" {
-			path = r.Pattern
+		// Use mux.Handler to derive the matched pattern before the mux routes
+		// the request. This avoids high-cardinality label values that would occur
+		// if we fell back to r.URL.Path (r.Pattern is empty outside the mux).
+		route := r.URL.Path
+		if mux != nil {
+			if _, pattern := mux.Handler(r); pattern != "" {
+				route = pattern
+			}
 		}
 
 		labels := prometheus.Labels{
-			"route": path,
+			"route": route,
 		}
 		promhttp.InstrumentHandlerInFlight(
 			m.InFlightGauge,
