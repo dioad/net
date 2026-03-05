@@ -55,22 +55,6 @@ func LoadKeyPairFromFiles(certPath, keyPath string) (*tls.Certificate, error) {
 	return &cert, nil
 }
 
-// LoadCertPoolFromFile loads a certificate pool from a PEM file.
-func LoadCertPoolFromFile(certPoolPath string) (*x509.CertPool, error) {
-	certPoolPathClean := filepath.Clean(certPoolPath)
-	certPoolPEM, err := os.ReadFile(certPoolPathClean)
-	if err != nil {
-		return nil, err
-	}
-
-	certPool := x509.NewCertPool()
-	if ok := certPool.AppendCertsFromPEM(certPoolPEM); !ok {
-		return nil, fmt.Errorf("failed to append certificates from PEM file: %s", certPoolPath)
-	}
-
-	return certPool, nil
-}
-
 func saveBlockToPEMFile(filename string, perm int, blockType string, data []byte) error {
 	filenameClean := filepath.Clean(filename)
 
