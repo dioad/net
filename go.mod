@@ -28,7 +28,7 @@ require (
 )
 
 require (
-	github.com/coredns/coredns v1.14.1
+	github.com/coredns/coredns v1.14.2
 	github.com/dioad/filter v0.6.0
 	github.com/dioad/generics v0.0.8
 	github.com/dioad/util v0.7.0
@@ -88,14 +88,14 @@ require (
 	github.com/yeqown/go-qrcode/v2 v2.2.5 // indirect
 	github.com/yeqown/go-qrcode/writer/terminal v1.1.2 // indirect
 	github.com/yeqown/reedsolomon v1.0.0 // indirect
-	go.opentelemetry.io/otel v1.40.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.40.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
-	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260217215200-42d3e9bedb6d // indirect
 	google.golang.org/grpc v1.79.1 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
