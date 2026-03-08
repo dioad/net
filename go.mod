@@ -2,8 +2,6 @@ module github.com/dioad/net
 
 go 1.25.0
 
-replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto v0.0.0-20260223185530-2f722ef697dc
-
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cli/oauth v1.2.2 // indirect
