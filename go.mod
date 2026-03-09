@@ -39,7 +39,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/weaveworks/common v0.0.0-20230728070032-dd9e68f319d5
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
-	golang.org/x/time v0.14.0
+	golang.org/x/time v0.15.0
 )
 
 require (
