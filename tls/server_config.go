@@ -34,7 +34,7 @@ type CertificateSubject struct {
 // SelfSignedConfig specifies parameters for generating a self-signed certificate.
 type SelfSignedConfig struct {
 	Subject        CertificateSubject `mapstructure:"subject" json:"subject"`
-	SANConfig      SANConfig          `mapstructure:"san-config" json:"san_config"`
+	SAN            SANConfig          `mapstructure:"san" json:"san"`
 	Duration       string             `mapstructure:"duration" json:"duration,omitempty"`
 	IsCA           bool               `mapstructure:"ca" json:"is_ca,omitempty"`
 	Bits           int                `mapstructure:"bits" json:"bits,omitempty"`
@@ -44,10 +44,10 @@ type SelfSignedConfig struct {
 
 // LocalConfig specifies local certificate and key file locations.
 type LocalConfig struct {
-	SinglePEMFile  string         `mapstructure:"single-pem-file" json:",omitempty"`
-	Certificate    string         `mapstructure:"cert" json:",omitempty"`
-	Key            string         `mapstructure:"key" json:",omitempty"`
-	FileWaitConfig FileWaitConfig `mapstructure:"file-wait-config,squash" json:",squash"`
+	SinglePEMFile string         `mapstructure:"single-pem-file" json:",omitempty"`
+	Certificate   string         `mapstructure:"cert" json:",omitempty"`
+	Key           string         `mapstructure:"key" json:",omitempty"`
+	FileWait      FileWaitConfig `mapstructure:"file-wait,squash" json:",squash"`
 }
 
 // FileWaitConfig specifies wait parameters for loading certificate files.
@@ -60,11 +60,11 @@ type FileWaitConfig struct {
 type ServerConfig struct {
 	ServerName string `mapstructure:"server-name"`
 
-	AutoCertConfig AutoCertConfig `mapstructure:"auto-cert-config"`
+	AutoCert AutoCertConfig `mapstructure:"auto-cert"`
 	// EnableAutoCertManager       bool     `mapstructure:"enable-auto-cert-manager" json:",omitempty"`
 	// AutoCertManagerAllowedHosts []string `mapstructure:"" json:",omitempty"`
 
-	SelfSignedConfig SelfSignedConfig `mapstructure:"self-signed-config"`
+	SelfSigned SelfSignedConfig `mapstructure:"self-signed"`
 
 	LocalConfig LocalConfig `mapstructure:"local"`
 
@@ -79,10 +79,10 @@ type ServerConfig struct {
 type ConfigFunc func() (*tls.Config, error)
 
 func configFuncFromConfig(ctx context.Context, c ServerConfig) ConfigFunc {
-	if !generics.IsZeroValue(c.AutoCertConfig) {
-		return NewAutocertTLSConfigFunc(c.AutoCertConfig)
-	} else if !generics.IsZeroValue(c.SelfSignedConfig) {
-		return NewSelfSignedTLSConfigFunc(c.SelfSignedConfig)
+	if !generics.IsZeroValue(c.AutoCert) {
+		return NewAutocertTLSConfigFunc(c.AutoCert)
+	} else if !generics.IsZeroValue(c.SelfSigned) {
+		return NewSelfSignedTLSConfigFunc(c.SelfSigned)
 	} else if !generics.IsZeroValue(c.LocalConfig) {
 		return NewLocalTLSConfigFunc(ctx, c.LocalConfig)
 	}
@@ -146,7 +146,7 @@ func NewLocalTLSConfig(ctx context.Context, config LocalConfig) (*tls.Config, er
 		return nil, nil
 	}
 	if config.SinglePEMFile != "" {
-		certs, err := CertificatesFromSinglePEMFile(ctx, config.SinglePEMFile, config.FileWaitConfig)
+		certs, err := CertificatesFromSinglePEMFile(ctx, config.SinglePEMFile, config.FileWait)
 		if err != nil {
 			return nil, fmt.Errorf("error loading certificates from single pem file: %w", err)
 		}
@@ -163,7 +163,7 @@ func NewLocalTLSConfig(ctx context.Context, config LocalConfig) (*tls.Config, er
 
 	cert, err := CertificateFromKeyAndCertificateFiles(ctx, config.Key,
 		config.Certificate,
-		config.FileWaitConfig)
+		config.FileWait)
 	if err != nil {
 		return nil, fmt.Errorf("error loading key pair and certs from files: %w", err)
 	}

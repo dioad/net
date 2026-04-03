@@ -86,7 +86,7 @@ func helperCreateSelfSignedKeyPair(t *testing.T, tempDir string) (*tls.Certifica
 	config := SelfSignedConfig{
 		CacheDirectory: tempDir,
 		Subject:        CertificateSubject{CommonName: t.Name()},
-		SANConfig: SANConfig{
+		SAN: SANConfig{
 			DNSNames:    []string{"localhost"},
 			IPAddresses: []string{"127.0.0.1"},
 		},
@@ -274,10 +274,10 @@ func TestNewServerTLSConfig(t *testing.T) {
 		{
 			name: "with self-signed config",
 			c: ServerConfig{
-				SelfSignedConfig: SelfSignedConfig{
+				SelfSigned: SelfSignedConfig{
 					CacheDirectory: tempDir,
 					Subject:        CertificateSubject{CommonName: "test"},
-					SANConfig: SANConfig{
+					SAN: SANConfig{
 						DNSNames: []string{"localhost"},
 					},
 					Duration: "1h",

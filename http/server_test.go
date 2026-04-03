@@ -111,14 +111,14 @@ func TestServerWithTLS(t *testing.T) {
 	}
 
 	tlsConfig, _ := dnt.NewServerTLSConfig(context.Background(), dnt.ServerConfig{
-		SelfSignedConfig: dnt.SelfSignedConfig{
+		SelfSigned: dnt.SelfSignedConfig{
 			CacheDirectory: t.TempDir(),
 			Subject: dnt.CertificateSubject{
 				CommonName:   "TestServerWithTLS",
 				Organization: []string{"TestOrg"},
 				Country:      []string{"GB"},
 			},
-			SANConfig: dnt.SANConfig{
+			SAN: dnt.SANConfig{
 				DNSNames:    []string{"localhost"},
 				IPAddresses: []string{"127.0.0.1"},
 			},
