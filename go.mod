@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cli/oauth v1.2.2 // indirect
-	github.com/dioad/auth v0.2.1
+	github.com/dioad/auth v0.3.1
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.7.0

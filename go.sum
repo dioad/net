@@ -474,8 +474,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dioad/auth v0.2.1 h1:BPVPP/vM3a1CCkjA+qF1jG1/XYKai0o9n8zGsE/Mohs=
-github.com/dioad/auth v0.2.1/go.mod h1:6CbPKDSpUiLiBfzzjMrtN6IgwdBoZuaIymhZIoHFGKg=
+github.com/dioad/auth v0.3.1 h1:xMoVa/UPpN+7AKKN1FYi/ptOtK8pGahH67s5s63diU4=
+github.com/dioad/auth v0.3.1/go.mod h1:QMFI7XBFf5pJXxHniI62nbGjjbT0zz+r7fG4ivmXmUY=
 github.com/dioad/filter v0.6.0 h1:5f0zKmKxvtO1XvF9V7uuLi5fgA7SFdugMlWaQSfUGY0=
 github.com/dioad/filter v0.6.0/go.mod h1:s8x3fpSsovtPo0tM8YEpzA3Y3bQtGAZwsHpzAVT1qBA=
 github.com/dioad/generics v0.0.8 h1:16B4qDVZZP+wsTeDT+9ecmIyF8GuFrwdrvm5a9l3Qa4=
