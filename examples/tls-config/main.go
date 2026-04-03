@@ -33,7 +33,7 @@ func main() {
 		Subject: diotls.CertificateSubject{
 			CommonName: "localhost",
 		},
-		SANConfig: diotls.SANConfig{
+		SAN: diotls.SANConfig{
 			DNSNames: []string{"localhost"},
 		},
 		Bits:     2048,  // RSA key size

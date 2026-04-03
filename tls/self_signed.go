@@ -48,7 +48,7 @@ func convertConfigToX509CertificateTemplate(config SelfSignedConfig) (*x509.Cert
 			return nil, fmt.Errorf("error parsing ip address: %s", ip)
 		}
 		return parsedIP, nil
-	}, config.SANConfig.IPAddresses)
+	}, config.SAN.IPAddresses)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing ip addresses: %w", err)
 	}
@@ -72,7 +72,7 @@ func convertConfigToX509CertificateTemplate(config SelfSignedConfig) (*x509.Cert
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
-		DNSNames:              config.SANConfig.DNSNames,
+		DNSNames:              config.SAN.DNSNames,
 		IPAddresses:           ipAddresses,
 	}, nil
 }
@@ -111,7 +111,7 @@ func CreateSelfSignedKeyPair(config SelfSignedConfig) (*tls.Certificate, *x509.C
 
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(cert.Bytes()) {
-		return nil, nil, fmt.Errorf("failed to add cert %q to pool", config.SANConfig.DNSNames)
+		return nil, nil, fmt.Errorf("failed to add cert %q to pool", config.SAN.DNSNames)
 	}
 
 	return &tlsCert, pool, nil
