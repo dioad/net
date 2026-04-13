@@ -435,3 +435,35 @@ func (m *mockAuthMiddleware) Wrap(_ http.Handler) http.Handler {
 		w.Write([]byte("unauthorized"))
 	})
 }
+
+func TestDefaultReadHeaderTimeout(t *testing.T) {
+	c := Config{}
+	s := newDefaultServer(c)
+
+	// Force initialisation synchronously so we can inspect server fields
+	// without racing the Serve goroutine.
+	s.initialiseServer()
+
+	assert.Equal(t, defaultReadHeaderTimeout, s.server.ReadHeaderTimeout,
+		"zero-value Config.ReadHeaderTimeout should result in the default being applied")
+}
+
+func TestCustomReadHeaderTimeout(t *testing.T) {
+	custom := 3 * time.Second
+	c := Config{ReadHeaderTimeout: custom}
+	s := newDefaultServer(c)
+	s.initialiseServer()
+
+	assert.Equal(t, custom, s.server.ReadHeaderTimeout,
+		"explicit Config.ReadHeaderTimeout should be used as-is")
+}
+
+func TestIdleTimeoutPassthrough(t *testing.T) {
+	idle := 30 * time.Second
+	c := Config{IdleTimeout: idle}
+	s := newDefaultServer(c)
+	s.initialiseServer()
+
+	assert.Equal(t, idle, s.server.IdleTimeout,
+		"Config.IdleTimeout should be passed through to the underlying http.Server")
+}

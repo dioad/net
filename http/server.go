@@ -49,7 +49,22 @@ type Config struct {
 	AuthConfig auth.ServerConfig
 	// EnableHealth enables the /health/live and /health/ready endpoints for health checks
 	EnableHealth bool
+	// ReadHeaderTimeout is the maximum duration for reading request headers.
+	// If zero, defaults to defaultReadHeaderTimeout.
+	// Setting this prevents ghost TCP connections (accepted but no HTTP request sent)
+	// from blocking graceful shutdown for up to 5 seconds.
+	ReadHeaderTimeout time.Duration
+	// IdleTimeout is the maximum duration an idle (keep-alive) connection will
+	// remain open before being closed. If zero, Go's http.Server defaults to
+	// ReadTimeout.
+	IdleTimeout time.Duration
 }
+
+// defaultReadHeaderTimeout is applied when Config.ReadHeaderTimeout is zero.
+// It prevents ghost TCP connections (accepted but headers never sent) from
+// blocking graceful Shutdown for up to 5 seconds due to Go's net/http
+// StateNew→StateIdle promotion logic.
+const defaultReadHeaderTimeout = 10 * time.Second
 
 // Server represents an HTTP server with various features like metrics, authentication, and resources
 type Server struct {
@@ -358,12 +373,19 @@ func (s *Server) initialiseServer() {
 		// Create a standard logger that writes to our zerolog logger
 		errorLogger := stdlog.New(s.Logger.With().Str("level", "error").Logger(), "", stdlog.Lshortfile)
 
+		readHeaderTimeout := s.Config.ReadHeaderTimeout
+		if readHeaderTimeout == 0 {
+			readHeaderTimeout = defaultReadHeaderTimeout
+		}
+
 		server := &http.Server{
-			ReadTimeout:  time.Minute,
-			WriteTimeout: time.Minute,
-			Handler:      s.handler(),
-			Addr:         s.Config.ListenAddress,
-			ErrorLog:     errorLogger,
+			ReadTimeout:       time.Minute,
+			ReadHeaderTimeout: readHeaderTimeout,
+			WriteTimeout:      time.Minute,
+			IdleTimeout:       s.Config.IdleTimeout,
+			Handler:           s.handler(),
+			Addr:              s.Config.ListenAddress,
+			ErrorLog:          errorLogger,
 		}
 
 		s.server = server
