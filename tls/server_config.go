@@ -14,65 +14,65 @@ import (
 
 // SANConfig specifies Subject Alternative Names for a certificate (DNS names and IP addresses).
 type SANConfig struct {
-	DNSNames    []string `mapstructure:"dns-names" json:"dns_names,omitempty"`
-	IPAddresses []string `mapstructure:"ip-addresses" json:"ip_addresses,omitempty"`
+	DNSNames    []string `mapstructure:"dns-names" json:"dns_names,omitzero"`
+	IPAddresses []string `mapstructure:"ip-addresses" json:"ip_addresses,omitzero"`
 }
 
 // CertificateSubject defines X.509 certificate subject information.
 type CertificateSubject struct {
-	Country            []string `mapstructure:"c" json:"country,omitempty"`
-	Organization       []string `mapstructure:"o" json:"organization,omitempty"`
-	OrganizationalUnit []string `mapstructure:"ou" json:"organizational_unit,omitempty"`
-	Locality           []string `mapstructure:"l" json:"locality,omitempty"`
-	Province           []string `mapstructure:"st" json:"province,omitempty"`
-	StreetAddress      []string `mapstructure:"street" json:"street_address,omitempty"`
-	PostalCode         []string `mapstructure:"postalcode" json:"postal_code,omitempty"`
-	SerialNumber       string   `mapstructure:"serialnumber" json:"serial_number,omitempty"`
-	CommonName         string   `mapstructure:"cn" json:"common_name,omitempty"`
+	Country            []string `mapstructure:"c" json:"country,omitzero"`
+	Organization       []string `mapstructure:"o" json:"organization,omitzero"`
+	OrganizationalUnit []string `mapstructure:"ou" json:"organizational_unit,omitzero"`
+	Locality           []string `mapstructure:"l" json:"locality,omitzero"`
+	Province           []string `mapstructure:"st" json:"province,omitzero"`
+	StreetAddress      []string `mapstructure:"street" json:"street_address,omitzero"`
+	PostalCode         []string `mapstructure:"postalcode" json:"postal_code,omitzero"`
+	SerialNumber       string   `mapstructure:"serialnumber" json:"serial_number,omitzero"`
+	CommonName         string   `mapstructure:"cn" json:"common_name,omitzero"`
 }
 
 // SelfSignedConfig specifies parameters for generating a self-signed certificate.
 type SelfSignedConfig struct {
 	Subject        CertificateSubject `mapstructure:"subject" json:"subject"`
 	SAN            SANConfig          `mapstructure:"san" json:"san"`
-	Duration       string             `mapstructure:"duration" json:"duration,omitempty"`
-	IsCA           bool               `mapstructure:"ca" json:"is_ca,omitempty"`
-	Bits           int                `mapstructure:"bits" json:"bits,omitempty"`
-	CacheDirectory string             `mapstructure:"cache-directory" json:"cache_directory,omitempty"`
-	Alias          string             `mapstructure:"alias" json:"alias,omitempty"`
+	Duration       string             `mapstructure:"duration" json:"duration,omitzero"`
+	IsCA           bool               `mapstructure:"ca" json:"is_ca,omitzero"`
+	Bits           int                `mapstructure:"bits" json:"bits,omitzero"`
+	CacheDirectory string             `mapstructure:"cache-directory" json:"cache_directory,omitzero"`
+	Alias          string             `mapstructure:"alias" json:"alias,omitzero"`
 }
 
 // LocalConfig specifies local certificate and key file locations.
 type LocalConfig struct {
-	SinglePEMFile string         `mapstructure:"single-pem-file" json:",omitempty"`
-	Certificate   string         `mapstructure:"cert" json:",omitempty"`
-	Key           string         `mapstructure:"key" json:",omitempty"`
+	SinglePEMFile string         `mapstructure:"single-pem-file" json:",omitzero"`
+	Certificate   string         `mapstructure:"cert" json:",omitzero"`
+	Key           string         `mapstructure:"key" json:",omitzero"`
 	FileWait      FileWaitConfig `mapstructure:"file-wait,squash" json:",squash"`
 }
 
 // FileWaitConfig specifies wait parameters for loading certificate files.
 type FileWaitConfig struct {
-	WaitInterval uint `mapstructure:"file-wait-interval" json:",omitempty"`
-	WaitMax      uint `mapstructure:"file-wait-max" json:",omitempty"`
+	WaitInterval uint `mapstructure:"file-wait-interval" json:",omitzero"`
+	WaitMax      uint `mapstructure:"file-wait-max" json:",omitzero"`
 }
 
 // ServerConfig specifies TLS configuration for a server.
 type ServerConfig struct {
-	ServerName string `mapstructure:"server-name"`
+	ServerName string `json:"server_name,omitzero" mapstructure:"server-name"`
 
-	AutoCert AutoCertConfig `mapstructure:"auto-cert"`
-	// EnableAutoCertManager       bool     `mapstructure:"enable-auto-cert-manager" json:",omitempty"`
-	// AutoCertManagerAllowedHosts []string `mapstructure:"" json:",omitempty"`
+	AutoCert AutoCertConfig `json:"auto_cert" mapstructure:"auto-cert"`
+	// EnableAutoCertManager       bool     `mapstructure:"enable-auto-cert-manager" json:",omitzero"`
+	// AutoCertManagerAllowedHosts []string `mapstructure:"" json:",omitzero"`
 
-	SelfSigned SelfSignedConfig `mapstructure:"self-signed"`
+	SelfSigned SelfSignedConfig `json:"self_signed" mapstructure:"self-signed"`
 
-	LocalConfig LocalConfig `mapstructure:"local"`
+	LocalConfig LocalConfig `json:"local" mapstructure:"local"`
 
-	ClientAuthType string `mapstructure:"client-auth-type" json:",omitempty"`
-	ClientCAFile   string `mapstructure:"client-ca-file" json:",omitempty"`
+	ClientAuthType string `mapstructure:"client-auth-type" json:"client_auth_type,omitzero"`
+	ClientCAFile   string `mapstructure:"client-ca-file" json:"client_ca_file,omitzero"`
 
-	NextProtos    []string `mapstructure:"next-protos"`
-	TLSMinVersion string   `mapstructure:"tls-min-version"`
+	NextProtos    []string `json:"next_protos,omitzero" mapstructure:"next-protos"`
+	TLSMinVersion string   `json:"tls_min_version,omitzero" mapstructure:"tls-min-version"`
 }
 
 // ConfigFunc is a function type that returns a TLS configuration.
