@@ -68,3 +68,46 @@ func TestGetClientIP_XRealIP_OverRemoteAddr(t *testing.T) {
 	ip := GetClientIP(req)
 	assert.Equal(t, "192.168.1.50", ip)
 }
+
+func TestGetClientIP_Forwarded(t *testing.T) {
+	tests := []struct {
+		name     string
+		header   string
+		expected string
+	}{
+		{
+			name:     "Single for",
+			header:   "for=192.0.2.60",
+			expected: "192.0.2.60",
+		},
+		{
+			name:     "Multiple params",
+			header:   "for=192.0.2.60;proto=http;by=203.0.113.43",
+			expected: "192.0.2.60",
+		},
+		{
+			name:     "Multiple values",
+			header:   "for=192.0.2.43, for=198.51.100.17",
+			expected: "192.0.2.43",
+		},
+		{
+			name:     "Quoted IPv6",
+			header:   `for="[2001:db8:cafe::17]"`,
+			expected: "2001:db8:cafe::17",
+		},
+		{
+			name:     "Mixed case and spaces",
+			header:   "For=192.0.2.60 ; Proto=https",
+			expected: "192.0.2.60",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			req.Header.Set("Forwarded", tt.header)
+			ip := GetClientIP(req)
+			assert.Equal(t, tt.expected, ip)
+		})
+	}
+}

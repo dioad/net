@@ -37,6 +37,12 @@ func GetClientIP(r *http.Request) string {
 		return strings.TrimSpace(xff)
 	}
 
+	// Check Forwarded header
+	if f := r.Header.Get("Forwarded"); f != "" {
+		// Take the first value (original client)
+		return parseForwardedHeader(f)
+	}
+
 	// Check X-Real-IP header
 	if xri := r.Header.Get("X-Real-IP"); xri != "" {
 		return strings.TrimSpace(xri)
@@ -54,4 +60,26 @@ func GetClientIP(r *http.Request) string {
 		return addr[:idx]
 	}
 	return addr
+}
+
+func parseForwardedHeader(f string) string {
+	if first, _, ok := strings.Cut(f, ","); ok {
+		f = first
+	}
+	// Look for for=
+	for part := range strings.SplitSeq(f, ";") {
+		part = strings.TrimSpace(part)
+		if before, after, ok := strings.Cut(part, "="); ok {
+			if strings.EqualFold(before, "for") {
+				ip := strings.TrimSpace(after)
+				// Remove quotes if present
+				ip = strings.Trim(ip, "\"")
+				// Remove brackets if present (IPv6)
+				ip = strings.TrimPrefix(ip, "[")
+				ip = strings.TrimSuffix(ip, "]")
+				return ip
+			}
+		}
+	}
+	return ""
 }
