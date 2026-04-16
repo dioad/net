@@ -2,6 +2,7 @@ package http
 
 import (
 	"io"
+	"strings"
 
 	"net/http"
 	"time"
@@ -26,6 +27,11 @@ func DefaultCombinedLogHandler(logWriter io.Writer) HandlerWrapper {
 // StructuredLoggerFormatter is a function type that formats HTTP request logs in a structured format.
 type StructuredLoggerFormatter func(r *http.Request, status, size int, duration time.Duration) *zerolog.Logger
 
+func headerToSnakeCase(s string) string {
+	lower := strings.ToLower(s)
+	return strings.ReplaceAll(lower, "-", "_")
+}
+
 // StandardLogger creates a zerolog.Logger with standard fields for HTTP access logging.
 // The "ip" field is resolved from X-Forwarded-For or X-Real-IP headers when present,
 // falling back to RemoteAddr. Raw proxy headers and RemoteAddr are also included when set.
@@ -38,16 +44,15 @@ func StandardLogger(r *http.Request, status, size int, duration time.Duration) *
 		Dur("duration", duration).
 		Str("user_agent", r.UserAgent()).
 		Str("referer", r.Referer()).
-		Str("ip", GetClientIP(r)).
+		Str("resolved_client_ip", GetClientIP(r)).
 		Str("remote_addr", r.RemoteAddr).
 		Str("proto", r.Proto).
 		Str("host", r.Host)
 
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		ctx = ctx.Str("x_forwarded_for", xff)
-	}
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		ctx = ctx.Str("x_real_ip", xri)
+	for _, h := range []string{"X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "Forwarded", "Via", "X-Real-IP"} {
+		if v := r.Header.Get(h); v != "" {
+			ctx = ctx.Str(headerToSnakeCase(h), v)
+		}
 	}
 
 	logger := ctx.Logger()
