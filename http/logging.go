@@ -15,9 +15,11 @@ import (
 type HandlerWrapper func(next http.Handler) http.Handler
 
 // DefaultCombinedLogHandler returns a HandlerWrapper that logs HTTP requests using the combined log format.
+// It wraps the handler with ProxyHeaders middleware so that X-Forwarded-For and X-Real-IP
+// headers are reflected in the logged client IP.
 func DefaultCombinedLogHandler(logWriter io.Writer) HandlerWrapper {
 	return func(next http.Handler) http.Handler {
-		return handlers.CombinedLoggingHandler(logWriter, next)
+		return handlers.CombinedLoggingHandler(logWriter, handlers.ProxyHeaders(next))
 	}
 }
 
@@ -25,8 +27,10 @@ func DefaultCombinedLogHandler(logWriter io.Writer) HandlerWrapper {
 type StructuredLoggerFormatter func(r *http.Request, status, size int, duration time.Duration) *zerolog.Logger
 
 // StandardLogger creates a zerolog.Logger with standard fields for HTTP access logging.
+// The "ip" field is resolved from X-Forwarded-For or X-Real-IP headers when present,
+// falling back to RemoteAddr. Raw proxy headers and RemoteAddr are also included when set.
 func StandardLogger(r *http.Request, status, size int, duration time.Duration) *zerolog.Logger {
-	logger := hlog.FromRequest(r).With().
+	ctx := hlog.FromRequest(r).With().
 		Str("method", r.Method).
 		Stringer("url", r.URL).
 		Int("status", status).
@@ -34,10 +38,19 @@ func StandardLogger(r *http.Request, status, size int, duration time.Duration) *
 		Dur("duration", duration).
 		Str("user_agent", r.UserAgent()).
 		Str("referer", r.Referer()).
-		Str("ip", r.RemoteAddr).
+		Str("ip", GetClientIP(r)).
+		Str("remote_addr", r.RemoteAddr).
 		Str("proto", r.Proto).
-		Str("host", r.Host).Logger()
+		Str("host", r.Host)
 
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		ctx = ctx.Str("x_forwarded_for", xff)
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		ctx = ctx.Str("x_real_ip", xri)
+	}
+
+	logger := ctx.Logger()
 	return &logger
 }
 
