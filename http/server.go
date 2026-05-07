@@ -272,16 +272,29 @@ func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middl
 	// 404s or redirects for clients that don't support them (e.g. some POST clients).
 	prefixToStrip := strings.TrimSuffix(pathPrefix, "/")
 
-	// We use a custom handler to ensure that a leading slash is always present
-	// for the inner resource handler, even if the stripped path is empty.
+	// We use a request clone rather than mutating req.URL.Path directly so
+	// that any deferred logging middleware (e.g. hlog.AccessHandler) that
+	// reads r.URL after ServeHTTP returns still sees the original, unstripped
+	// path. This mirrors how the stdlib http.StripPrefix behaves.
 	h := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		p := strings.TrimPrefix(req.URL.Path, prefixToStrip)
 		if p == "" || p[0] != '/' {
-			req.URL.Path = "/" + p
-		} else {
-			req.URL.Path = p
+			p = "/" + p
 		}
-		resourceHandler.ServeHTTP(w, req)
+
+		rp := strings.TrimPrefix(req.URL.RawPath, prefixToStrip)
+		if rp != "" && rp[0] != '/' {
+			rp = "/" + rp
+		}
+
+		r2 := new(http.Request)
+		*r2 = *req
+		r2.URL = new(url.URL)
+		*r2.URL = *req.URL
+		r2.URL.Path = p
+		r2.URL.RawPath = rp
+
+		resourceHandler.ServeHTTP(w, r2)
 	})
 
 	s.Mux.Handle(prefixToStrip+"/", h)
