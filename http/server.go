@@ -271,6 +271,7 @@ func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middl
 	// We handle both trailing and non-trailing slash versions to avoid unexpected
 	// 404s or redirects for clients that don't support them (e.g. some POST clients).
 	prefixToStrip := strings.TrimSuffix(pathPrefix, "/")
+	rawPrefixToStrip := (&url.URL{Path: prefixToStrip}).EscapedPath()
 
 	// We use a request clone rather than mutating req.URL.Path directly so
 	// that any deferred logging middleware (e.g. hlog.AccessHandler) that
@@ -288,7 +289,6 @@ func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middl
 		// stripped Path, and only preserve it when it carries encoding
 		// information that differs from Path's default escaped form.
 		if req.URL.RawPath != "" {
-			rawPrefixToStrip := (&url.URL{Path: prefixToStrip}).EscapedPath()
 			rpCandidate := strings.TrimPrefix(req.URL.RawPath, rawPrefixToStrip)
 			if unescaped, err := url.PathUnescape(rpCandidate); err == nil && unescaped == p {
 				if escapedPath := (&url.URL{Path: p}).EscapedPath(); rpCandidate != escapedPath {
