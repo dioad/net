@@ -283,6 +283,10 @@ func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middl
 		}
 
 		rp := ""
+		// RawPath stores the encoded form of Path, so we strip the escaped
+		// mount prefix, verify the remaining candidate still unescapes to the
+		// stripped Path, and only preserve it when it carries encoding
+		// information that differs from Path's default escaped form.
 		if req.URL.RawPath != "" {
 			rawPrefixToStrip := (&url.URL{Path: prefixToStrip}).EscapedPath()
 			rpCandidate := strings.TrimPrefix(req.URL.RawPath, rawPrefixToStrip)
