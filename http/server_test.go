@@ -173,6 +173,19 @@ func (m *MockResource) Handler() http.Handler {
 	return mux
 }
 
+type requestCapturingResource struct {
+	path    string
+	rawPath string
+}
+
+func (r *requestCapturingResource) Handler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		r.path = req.URL.Path
+		r.rawPath = req.URL.RawPath
+		w.WriteHeader(http.StatusOK)
+	})
+}
+
 // TestAddResource tests adding a resource to the server
 func TestAddResource(t *testing.T) {
 	server := NewServer(Config{})
@@ -205,6 +218,44 @@ func TestAddResource(t *testing.T) {
 	if w.Body.String() != "test" {
 		t.Errorf("Expected body %q, got %q", "test", w.Body.String())
 	}
+}
+
+func TestAddResourcePreservesOriginalURLForLogHandler(t *testing.T) {
+	server := NewServer(Config{})
+	resource := &requestCapturingResource{}
+	var loggedURL string
+
+	logger := zerolog.New(io.Discard)
+	server.LogHandler = ZerologStructuredLogHandlerWithFormatter(logger, func(r *http.Request, status, size int, duration time.Duration) *zerolog.Logger {
+		loggedURL = r.URL.String()
+		return &logger
+	})
+	server.AddResource("/api", resource)
+
+	req := httptest.NewRequest("GET", "/api/test?foo=bar", nil)
+	w := httptest.NewRecorder()
+
+	server.handler().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "/test", resource.path)
+	assert.Empty(t, resource.rawPath)
+	assert.Equal(t, "/api/test?foo=bar", loggedURL)
+}
+
+func TestAddResourceStripsEncodedRawPathPrefix(t *testing.T) {
+	server := NewServer(Config{})
+	resource := &requestCapturingResource{}
+	server.AddResource("/api[1]", resource)
+
+	req := httptest.NewRequest("GET", "/api%5B1%5D/test%2Fvalue", nil)
+	w := httptest.NewRecorder()
+
+	server.handler().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "/test/value", resource.path)
+	assert.Equal(t, "/test%2Fvalue", resource.rawPath)
 }
 
 // MockStatusResource implements StatusResource for testing
