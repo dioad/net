@@ -290,10 +290,10 @@ func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middl
 		// information that differs from Path's default escaped form.
 		if req.URL.RawPath != "" {
 			rpCandidate := strings.TrimPrefix(req.URL.RawPath, rawPrefixToStrip)
-			if unescaped, err := url.PathUnescape(rpCandidate); err == nil && unescaped == p {
-				if escapedPath := (&url.URL{Path: p}).EscapedPath(); rpCandidate != escapedPath {
-					rp = rpCandidate
-				}
+			unescaped, err := url.PathUnescape(rpCandidate)
+			escapedPath := (&url.URL{Path: p}).EscapedPath()
+			if err == nil && unescaped == p && rpCandidate != escapedPath {
+				rp = rpCandidate
 			}
 		}
 

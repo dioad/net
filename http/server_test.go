@@ -174,6 +174,7 @@ func (m *MockResource) Handler() http.Handler {
 	return mux
 }
 
+// requestCapturingResource records the stripped request path details passed to a resource handler in tests.
 type requestCapturingResource struct {
 	mu      sync.Mutex
 	path    string
