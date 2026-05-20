@@ -282,9 +282,15 @@ func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middl
 			p = "/" + p
 		}
 
-		rp := strings.TrimPrefix(req.URL.RawPath, prefixToStrip)
-		if rp != "" && rp[0] != '/' {
-			rp = "/" + rp
+		rp := ""
+		if req.URL.RawPath != "" {
+			rawPrefixToStrip := (&url.URL{Path: prefixToStrip}).EscapedPath()
+			rpCandidate := strings.TrimPrefix(req.URL.RawPath, rawPrefixToStrip)
+			if unescaped, err := url.PathUnescape(rpCandidate); err == nil && unescaped == p {
+				if escapedPath := (&url.URL{Path: p}).EscapedPath(); rpCandidate != escapedPath {
+					rp = rpCandidate
+				}
+			}
 		}
 
 		r2 := new(http.Request)
