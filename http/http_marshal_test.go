@@ -16,8 +16,7 @@ func TestIsNilAny(t *testing.T) {
 	assert.True(t, isNilAny(slicePtr), "nil slice pointer should be considered nil")
 	assert.True(t, isNilAny(example), "nil struct pointer should be considered nil")
 
-	nonNilStr := "value"
-	strPtr = &nonNilStr
+	strPtr = new("value")
 	assert.False(t, isNilAny(strPtr), "non-nil string pointer should not be considered nil")
 
 	nonNilSlice := []string{"value"}

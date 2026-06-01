@@ -36,19 +36,19 @@ func TestNewAutocertTLSConfig(t *testing.T) {
 			if err != nil {
 				t.Errorf("NewAutocertTLSConfig() error = %v", err)
 				return
-			} else {
-				if tt.want == nil && got != nil {
-					t.Errorf("NewAutocertTLSConfig() = %v, want %v", got, tt.want)
-				} else if got != nil {
-					if got.GetCertificate == nil {
-						t.Errorf("NewAutocertTLSConfig() GetCertificate is nil")
-					}
+			}
+			if tt.want == nil && got != nil {
+				t.Errorf("NewAutocertTLSConfig() = %v, want %v", got, tt.want)
+			} else if got != nil {
+				if got.GetCertificate == nil {
+					t.Errorf("NewAutocertTLSConfig() GetCertificate is nil")
+				}
 
-					if !slices.Contains(got.NextProtos, "acme-tls/1") {
-						t.Errorf("NewAutocertTLSConfig() NextProtos = %v, should contain [acme-tls/1]", got.NextProtos)
-					}
+				if !slices.Contains(got.NextProtos, "acme-tls/1") {
+					t.Errorf("NewAutocertTLSConfig() NextProtos = %v, should contain [acme-tls/1]", got.NextProtos)
 				}
 			}
+
 		})
 	}
 }

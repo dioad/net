@@ -12,7 +12,6 @@ import (
 // KeyType represents the DKIM key type (e.g., "rsa").
 type KeyType string
 
-// k=
 const (
 	KeyTypeRSA KeyType = "rsa"
 )

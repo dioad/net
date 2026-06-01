@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/dioad/auth/http/basic"
+
 	diohttp "github.com/dioad/net/http"
 )
 

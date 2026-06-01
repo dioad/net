@@ -6,6 +6,7 @@ import (
 
 	"net/http"
 	"time"
+	"sync"
 
 	"github.com/gorilla/handlers"
 	"github.com/rs/zerolog"
@@ -55,8 +56,7 @@ func StandardLogger(r *http.Request, status, size int, duration time.Duration) *
 		}
 	}
 
-	logger := ctx.Logger()
-	return &logger
+	return new(ctx.Logger())
 }
 
 // func CoreDNSStandardLogger
@@ -110,7 +110,9 @@ type zerologLevelSetter struct {
 	originalLevel zerolog.Level
 
 	// save current state
+	mu        sync.Mutex
 	expiresAt time.Time
+	timer     *time.Timer
 }
 
 // OriginalLogLevel returns the original log level of zerolog.
@@ -136,26 +138,46 @@ func (z *zerologLevelSetter) SetLogLevel(level string) error {
 
 // SetLogLevelWithDuration sets the log level and returns the time when it expires.
 func (z *zerologLevelSetter) SetLogLevelWithDuration(level string, duration time.Duration) (time.Time, error) {
-	err := z.SetLogLevel(level)
-	if err != nil {
-		return time.Time{}, nil // Return zero time if there was an error
+	// Set the level first and propagate any error back to the caller.
+	if err := z.SetLogLevel(level); err != nil {
+		return time.Time{}, err
+	}
+
+	z.mu.Lock()
+	defer z.mu.Unlock()
+
+	// Stop previous timer if any.
+	if z.timer != nil {
+		z.timer.Stop()
+		z.timer = nil
 	}
 
 	z.expiresAt = time.Now().Add(duration)
-	go func() {
-		time.AfterFunc(duration, z.ResetLogLevel)
-	}()
+	// Schedule reset and save timer for potential cancellation.
+	z.timer = time.AfterFunc(duration, func() {
+		z.ResetLogLevel()
+	})
 
 	return z.expiresAt, nil
 }
 
 // ExpiresAt returns the time when the current log level will expire.
 func (z *zerologLevelSetter) ExpiresAt() time.Time {
+	z.mu.Lock()
+	defer z.mu.Unlock()
 	return z.expiresAt
 }
 
 // ResetLogLevel resets the log level to the original level.
 func (z *zerologLevelSetter) ResetLogLevel() {
-	zerolog.SetGlobalLevel(z.originalLevel)
+	z.mu.Lock()
+	// Stop timer if present.
+	if z.timer != nil {
+		z.timer.Stop()
+		z.timer = nil
+	}
 	z.expiresAt = time.Time{}
+	z.mu.Unlock()
+
+	zerolog.SetGlobalLevel(z.originalLevel)
 }

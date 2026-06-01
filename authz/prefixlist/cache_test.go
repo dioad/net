@@ -99,6 +99,7 @@ func TestCachingFetcher_ReturnStale(t *testing.T) {
 	// Should return stale data immediately
 	data2, result2, err2 := fetcher.Get(ctx)
 	assert.Equal(t, CacheResultStale, result2)
+	require.NotNil(t, data2)
 	assert.Equal(t, 1, data2.Count) // Stale data
 	assert.NoError(t, err2)         // No error returned with stale data
 

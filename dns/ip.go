@@ -32,8 +32,7 @@ func BlocklistLookupAddr(addr string) (bool, error) {
 	spamName := revAddr + ".zen.spamhaus.org"
 	responseCodes, err := net.LookupHost(spamName)
 	if err != nil {
-		var DNSError *net.DNSError
-		if errors.As(err, &DNSError) {
+		if _, ok := errors.AsType[*net.DNSError](err); ok {
 			return false, nil
 		}
 		return false, err
