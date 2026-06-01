@@ -3,6 +3,7 @@ package json
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 
 	"github.com/rs/zerolog"
@@ -13,6 +14,85 @@ type Response struct {
 	Writer http.ResponseWriter
 	// Request http.Request
 	logger *zerolog.Logger
+}
+
+// responseOption represents a configuration option for responses.
+type responseOption interface {
+	apply(*responseConfig)
+}
+
+// responseConfig holds the merged configuration from all applied options.
+type responseConfig struct {
+	data          any
+	logErr        error
+	logMessage    string
+	publicMessage string
+	headers       map[string]string
+}
+
+// Private option implementations
+
+type withError struct{ err error }
+
+func (w withError) apply(cfg *responseConfig) { cfg.logErr = w.err }
+
+type withData struct{ data any }
+
+func (w withData) apply(cfg *responseConfig) { cfg.data = w.data }
+
+type withLogMessage struct{ msg string }
+
+func (w withLogMessage) apply(cfg *responseConfig) { cfg.logMessage = w.msg }
+
+type withPublicMessage struct{ msg string }
+
+func (w withPublicMessage) apply(cfg *responseConfig) { cfg.publicMessage = w.msg }
+
+type withLocation struct{ uri string }
+
+func (w withLocation) apply(cfg *responseConfig) {
+	cfg.headers["Location"] = w.uri
+}
+
+type withHeader struct {
+	key   string
+	value string
+}
+
+func (w withHeader) apply(cfg *responseConfig) {
+	cfg.headers[w.key] = w.value
+}
+
+// Public option factory functions
+
+// LogErr includes an underlying error for server-side logging.
+func LogErr(err error) responseOption {
+	return withError{err}
+}
+
+// LogMessage provides a custom message for server logs (separate from public message).
+func LogMessage(msg string) responseOption {
+	return withLogMessage{msg}
+}
+
+// PublicMessage sets the message sent to the client (overrides default).
+func PublicMessage(msg string) responseOption {
+	return withPublicMessage{msg}
+}
+
+// Data includes structured data in the response.
+func Data(data any) responseOption {
+	return withData{data}
+}
+
+// Location sets the Location header (typically for 201 Created responses).
+func Location(uri string) responseOption {
+	return withLocation{uri}
+}
+
+// Header sets a custom response header.
+func Header(key, value string) responseOption {
+	return withHeader{key, value}
 }
 
 // NewResponse creates a new Response helper with the provided ResponseWriter.
@@ -36,77 +116,249 @@ func NewResponseWithLogger(w http.ResponseWriter, r *http.Request, l zerolog.Log
 	}
 }
 
-// BadRequestWithMessage sends a 400 Bad Request response with a JSON error message.
+// respondWithStatus sends a response with the given status code and applied options.
+func (r *Response) respondWithStatus(code int, defaultMessage string, opts ...responseOption) {
+	cfg := &responseConfig{
+		publicMessage: defaultMessage,
+		headers:       make(map[string]string),
+	}
+
+	// Apply all options
+	for _, opt := range opts {
+		opt.apply(cfg)
+	}
+
+	// Log error if provided
+	if cfg.logErr != nil {
+		msg := cfg.logMessage
+		if msg == "" {
+			msg = defaultMessage
+		}
+		r.logError(cfg.logErr, msg)
+	}
+
+	// Build response body
+	var body any
+	if cfg.data != nil {
+		body = r.mergeResponseData(cfg.data, cfg.publicMessage, code)
+	} else if cfg.publicMessage != "" {
+		if isErrorStatus(code) {
+			body = map[string]string{"error": cfg.publicMessage}
+		} else {
+			body = map[string]string{"message": cfg.publicMessage}
+		}
+	}
+
+	// Apply headers
+	for k, v := range cfg.headers {
+		r.Writer.Header().Set(k, v)
+	}
+
+	// Send response
+	r.Data(code, body)
+}
+
+// mergeResponseData combines structured data with message if needed.
+func (r *Response) mergeResponseData(data any, message string, code int) any {
+	m, ok := data.(map[string]any)
+	if !ok {
+		return data
+	}
+
+	result := make(map[string]any)
+	maps.Copy(result, m)
+
+	if message != "" {
+		key := "message"
+		if isErrorStatus(code) {
+			key = "error"
+		}
+		result[key] = message
+	}
+
+	return result
+}
+
+// isErrorStatus checks if a status code is an error (4xx or 5xx).
+func isErrorStatus(code int) bool {
+	return code >= 400
+}
+
+// Semantic error response functions
+
+// BadRequest sends a 400 Bad Request response.
+func (r *Response) BadRequest(opts ...responseOption) {
+	r.respondWithStatus(http.StatusBadRequest, "bad request", opts...)
+}
+
+// Unauthorized sends a 401 Unauthorized response.
+func (r *Response) Unauthorized(opts ...responseOption) {
+	r.respondWithStatus(http.StatusUnauthorized, "unauthorized", opts...)
+}
+
+// Forbidden sends a 403 Forbidden response.
+func (r *Response) Forbidden(opts ...responseOption) {
+	r.respondWithStatus(http.StatusForbidden, "forbidden", opts...)
+}
+
+// NotFound sends a 404 Not Found response.
+func (r *Response) NotFound(opts ...responseOption) {
+	r.respondWithStatus(http.StatusNotFound, "not found", opts...)
+}
+
+// Conflict sends a 409 Conflict response.
+func (r *Response) Conflict(opts ...responseOption) {
+	r.respondWithStatus(http.StatusConflict, "conflict", opts...)
+}
+
+// InternalServerError sends a 500 Internal Server Error response.
+func (r *Response) InternalServerError(opts ...responseOption) {
+	r.respondWithStatus(http.StatusInternalServerError, "internal server error", opts...)
+}
+
+// NotAcceptable sends a 406 Not Acceptable response.
+func (r *Response) NotAcceptable(opts ...responseOption) {
+	r.respondWithStatus(http.StatusNotAcceptable, "not acceptable", opts...)
+}
+
+// InvalidInput sends a 400 Bad Request response for invalid input.
+func (r *Response) InvalidInput(opts ...responseOption) {
+	r.respondWithStatus(http.StatusBadRequest, "invalid input", opts...)
+}
+
+// Semantic success response functions
+
+// OK sends a 200 OK response.
+func (r *Response) OK(opts ...responseOption) {
+	r.respondWithStatus(http.StatusOK, "", opts...)
+}
+
+// Created sends a 201 Created response.
+func (r *Response) Created(opts ...responseOption) {
+	r.respondWithStatus(http.StatusCreated, "created", opts...)
+}
+
+// Accepted sends a 202 Accepted response.
+func (r *Response) Accepted(opts ...responseOption) {
+	r.respondWithStatus(http.StatusAccepted, "accepted", opts...)
+}
+
+// WithStatus sends a response with a custom status code.
+func (r *Response) WithStatus(code int, opts ...responseOption) {
+	r.respondWithStatus(code, "", opts...)
+}
+
+// NoContent sends a 204 No Content response.
+func (r *Response) NoContent(opts ...responseOption) {
+	r.respondWithStatus(http.StatusNoContent, "", opts...)
+}
+
+// Deprecated: Use BadRequest() with options instead.
 func (r *Response) BadRequestWithMessage(message string) {
-	r.BadRequestWithMessages(message, message)
+	r.BadRequest(PublicMessage(message))
 }
 
-// BadRequestWithMessages sends a 400 Bad Request response and logs a separate message.
+// Deprecated: Use BadRequest() with options instead.
 func (r *Response) BadRequestWithMessages(responseMessage, logMessage string) {
-	r.ErrorWithMessages(http.StatusBadRequest, responseMessage, logMessage, nil)
+	r.BadRequest(LogMessage(logMessage), PublicMessage(responseMessage))
 }
 
-// InvalidInputWithMessage sends a 400 Bad Request response for invalid input.
+// Deprecated: Use InvalidInput() with options instead.
 func (r *Response) InvalidInputWithMessage(err error, message string) {
-	r.InvalidInputWithMessages(err, message, message)
+	r.InvalidInput(PublicMessage(message), LogErr(err))
 }
 
-// InvalidInputWithMessages sends a 400 Bad Request response for invalid input and logs the error.
+// Deprecated: Use InvalidInput() with options instead.
 func (r *Response) InvalidInputWithMessages(err error, responseMessage, logMessage string) {
-	r.ErrorWithMessages(http.StatusBadRequest, responseMessage, logMessage, err)
+	r.InvalidInput(PublicMessage(responseMessage), LogErr(err), LogMessage(logMessage))
 }
 
-// InternalServerErrorWithMessage sends a 500 Internal Server Error response.
+// Deprecated: Use InternalServerError() with options instead.
 func (r *Response) InternalServerErrorWithMessage(err error, message string) {
-	r.InternalServerErrorWithMessages(err, message, message)
+	r.InternalServerError(LogErr(err), PublicMessage(message))
 }
 
-// InternalServerErrorWithMessages sends a 500 Internal Server Error response and logs the error.
+// Deprecated: Use InternalServerError() with options instead.
 func (r *Response) InternalServerErrorWithMessages(err error, responseMessage string, logMessage string) {
-	r.ErrorWithMessages(http.StatusInternalServerError, responseMessage, logMessage, err)
+	r.InternalServerError(PublicMessage(responseMessage), LogErr(err), LogMessage(logMessage))
 }
 
-// ForbiddenWithMessages sends a 403 Forbidden response.
+// Deprecated: Use Forbidden() with options instead.
 func (r *Response) ForbiddenWithMessages(responseMessage, logMessage string) {
-	r.ErrorWithMessages(http.StatusForbidden, responseMessage, logMessage, nil)
+	r.Forbidden(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
-// ForbiddenWithMessage sends a 403 Forbidden response with the same message for response and log.
+// Deprecated: Use Forbidden() with options instead.
 func (r *Response) ForbiddenWithMessage(message string) {
-	r.ForbiddenWithMessages(message, message)
+	r.Forbidden(PublicMessage(message), LogMessage(message))
 }
 
-// UnauthorizedWithMessages sends a 401 Unauthorized response.
+// Deprecated: Use Unauthorized() with options instead.
 func (r *Response) UnauthorizedWithMessages(responseMessage, logMessage string) {
-	r.ErrorWithMessages(http.StatusUnauthorized, responseMessage, logMessage, nil)
+	r.Unauthorized(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
-// UnauthorizedWithMessage sends a 401 Unauthorized response with the same message for response and log.
+// Deprecated: Use Unauthorized() with options instead.
 func (r *Response) UnauthorizedWithMessage(message string) {
-	r.UnauthorizedWithMessages(message, message)
+	r.Unauthorized(PublicMessage(message), LogMessage(message))
 }
 
-// ConflictWithMessage sends a 409 Conflict response.
+// Deprecated: Use Conflict() with options instead.
 func (r *Response) ConflictWithMessage(message string) {
-	r.ConflictWithMessages(message, message)
+	r.Conflict(PublicMessage(message))
 }
 
-// ConflictWithMessages sends a 409 Conflict response and logs a separate message.
+// Deprecated: Use Conflict() with options instead.
 func (r *Response) ConflictWithMessages(responseMessage, logMessage string) {
-	r.ErrorWithMessages(http.StatusConflict, responseMessage, logMessage, nil)
-}
-
-// ErrorWithMessages sends an error response with the specified status code and messages.
-func (r *Response) ErrorWithMessages(code int, responseMessage string, logMessage string, err error) {
-	data := map[string]string{"error": responseMessage}
-	r.logError(err, logMessage)
-	r.Data(code, data)
+	r.Conflict(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
 func (r *Response) logError(err error, message string) {
 	if r.logger != nil {
 		r.logger.Error().Err(err).Msg(message)
 	}
+}
+
+// Deprecated: Use NotFound() with options instead.
+func (r *Response) NotFoundWithMessage(message string) {
+	r.NotFound(PublicMessage(message))
+}
+
+// Deprecated: Use NotFound() with options instead.
+func (r *Response) NotFoundWithMessages(responseMessage, logMessage string) {
+	r.NotFound(PublicMessage(responseMessage), LogMessage(logMessage))
+}
+
+// Deprecated: Use NotAcceptable() with options instead.
+func (r *Response) NotAcceptableWithMessage(message string) {
+	r.NotAcceptable(PublicMessage(message))
+}
+
+// Deprecated: Use NotAcceptable() with options instead.
+func (r *Response) NotAcceptableWithMessages(responseMessage, logMessage string) {
+	r.NotAcceptable(PublicMessage(responseMessage), LogMessage(logMessage))
+}
+
+// Deprecated: Use Created() with options instead.
+func (r *Response) CreatedWithMessage(message string) {
+	r.Created(PublicMessage(message))
+}
+
+// Deprecated: Use Created() with Location() option instead.
+func (r *Response) CreatedWithURI(uri string) {
+	r.Created(Location(uri), PublicMessage(uri), Data(map[string]any{
+		"uri": uri,
+	}))
+}
+
+// Deprecated: Use Created() with Location() and PublicMessage() options instead.
+func (r *Response) CreatedWithURIAndMessage(uri string, message string) {
+	r.Created(Location(uri), Data(map[string]any{"uri": uri}), PublicMessage(message))
+}
+
+// Deprecated: Use Accepted() with options instead.
+func (r *Response) AcceptedWithMessage(message string) {
+	r.Accepted(PublicMessage(message))
 }
 
 // Data sends a JSON response with the specified status code and data.
@@ -121,60 +373,6 @@ func (r *Response) Data(status int, data any) {
 			r.logError(err, "error encoding response")
 		}
 	}
-}
-
-// OK sends a 200 OK response with the provided data.
-func (r *Response) OK(data any) {
-	r.Data(http.StatusOK, data)
-}
-
-// NotFoundWithMessage sends a 404 Not Found response.
-func (r *Response) NotFoundWithMessage(message string) {
-	r.NotFoundWithMessages(message, message)
-}
-
-// NotFoundWithMessages sends a 404 Not Found response and logs a separate message.
-func (r *Response) NotFoundWithMessages(responseMessage, logMessage string) {
-	r.ErrorWithMessages(http.StatusNotFound, responseMessage, logMessage, nil)
-}
-
-// NotAcceptableWithMessage sends a 406 Not Acceptable response.
-func (r *Response) NotAcceptableWithMessage(message string) {
-	r.NotAcceptableWithMessages(message, message)
-}
-
-// NotAcceptableWithMessages sends a 406 Not Acceptable response and logs a separate message.
-func (r *Response) NotAcceptableWithMessages(responseMessage, logMessage string) {
-	r.ErrorWithMessages(http.StatusNotAcceptable, responseMessage, logMessage, nil)
-}
-
-// CreatedWithMessage sends a 201 Created response.
-func (r *Response) CreatedWithMessage(message string) {
-	r.Data(http.StatusCreated, map[string]string{"message": message})
-}
-
-// CreatedWithURI sends a 201 Created response with a Location header pointing to the newly created resource.
-// The uri parameter should be the full path/URL to the newly created resource.
-// This follows REST best practices by including the Location header and resource URI in the response.
-func (r *Response) CreatedWithURI(uri string) {
-	r.Writer.Header().Set("Location", uri)
-	r.Data(http.StatusCreated, map[string]string{"uri": uri})
-}
-
-// CreatedWithURIAndMessage sends a 201 Created response with a Location header and custom message.
-func (r *Response) CreatedWithURIAndMessage(uri string, message string) {
-	r.Writer.Header().Set("Location", uri)
-	r.Data(http.StatusCreated, map[string]string{"uri": uri, "message": message})
-}
-
-// NoContent sends a 204 No Content response.
-func (r *Response) NoContent() {
-	r.Writer.WriteHeader(http.StatusNoContent)
-}
-
-// AcceptedWithMessage sends a 202 Accepted response.
-func (r *Response) AcceptedWithMessage(message string) {
-	r.Data(http.StatusAccepted, map[string]string{"message": message})
 }
 
 // ReadBody reads and decodes the JSON request body into the specified type.
