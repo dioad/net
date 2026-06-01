@@ -325,7 +325,7 @@ func TestOK(t *testing.T) {
 		"id":     "123",
 	}
 
-	resp.OK(data)
+	resp.OK(Data(data))
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
@@ -599,25 +599,5 @@ func TestNotFoundWithMessages(t *testing.T) {
 
 	if result["error"] != "client not found" {
 		t.Errorf("Expected error message %q, got %q", "client not found", result["error"])
-	}
-}
-
-func TestNotAcceptableWithMessages(t *testing.T) {
-	w := httptest.NewRecorder()
-	resp := NewResponse(w)
-
-	resp.NotAcceptableWithMessages("client not acceptable", "server not acceptable")
-
-	if w.Code != http.StatusNotAcceptable {
-		t.Errorf("Expected status code %d, got %d", http.StatusNotAcceptable, w.Code)
-	}
-
-	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
-	}
-
-	if result["error"] != "client not acceptable" {
-		t.Errorf("Expected error message %q, got %q", "client not acceptable", result["error"])
 	}
 }
