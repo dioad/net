@@ -6,8 +6,9 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/dioad/net/authz/prefixlist"
 	"github.com/rs/zerolog"
+
+	"github.com/dioad/net/authz/prefixlist"
 )
 
 // Example demonstrates basic usage of the prefix list system

@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 
 	"encoding/json"
 	"io"
@@ -89,7 +90,7 @@ func TestServerWithOptions(t *testing.T) {
 	}
 
 	go func() {
-		if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
+		if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			t.Errorf("Server error: %v", err)
 		}
 	}()
@@ -143,7 +144,7 @@ func TestServerWithTLS(t *testing.T) {
 	}
 
 	go func() {
-		if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
+		if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			t.Errorf("Server error: %v", err)
 		}
 	}()
@@ -355,8 +356,8 @@ func TestStatusEndpoint(t *testing.T) {
 			assert.Equal(t, "1.0.0", metadata["version"])
 
 			if tc.wantError {
-				errors := getMap(t, statusResponse, "Errors")
-				_, ok := errors[resourceRoute].(string)
+				e := getMap(t, statusResponse, "Errors")
+				_, ok := e[resourceRoute].(string)
 				require.True(t, ok, "API error not found in errors")
 				return
 			}

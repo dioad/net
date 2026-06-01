@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	authhttp "github.com/dioad/auth/http/context"
+
 	"github.com/dioad/net/authz"
 )
 

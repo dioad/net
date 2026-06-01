@@ -10,8 +10,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/dioad/net/ratelimit"
 	"github.com/rs/zerolog"
+
+	"github.com/dioad/net/ratelimit"
 )
 
 func main() {

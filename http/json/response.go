@@ -24,16 +24,15 @@ func NewResponse(w http.ResponseWriter) *Response {
 
 // NewResponseWithLogger creates a new Response helper with a logger that includes request metadata.
 func NewResponseWithLogger(w http.ResponseWriter, r *http.Request, l zerolog.Logger) *Response {
-	logger := l.With().
-		Str("method", r.Method).
-		Str("url", r.URL.Redacted()).
-		Str("remoteAddr", r.RemoteAddr).
-		Str("userAgent", r.UserAgent()).
-		Logger()
 	return &Response{
 		Writer: w,
 		// Request: r,
-		logger: &logger,
+		logger: new(l.With().
+			Str("method", r.Method).
+			Str("url", r.URL.Redacted()).
+			Str("remoteAddr", r.RemoteAddr).
+			Str("userAgent", r.UserAgent()).
+			Logger()),
 	}
 }
 

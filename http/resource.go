@@ -43,6 +43,6 @@ type ReadinessResource interface {
 
 // RootResource is an interface for the root resource of the server.
 type RootResource interface {
-	// Resource
+	// Index Resource
 	Index() http.HandlerFunc
 }
