@@ -28,6 +28,7 @@ import (
 	"github.com/dioad/auth/http/middleware/jwt"
 	authjwt "github.com/dioad/auth/jwt"
 	"github.com/dioad/auth/oidc"
+
 	"github.com/dioad/net/http/pprof"
 )
 
@@ -189,10 +190,8 @@ func CORSAllowLocalhostOrigin(origin string) bool {
 func WithCORS(options cors.Options) ServerOption {
 	return func(s *Server) {
 		if options.Logger == nil {
-			corsLogger := s.Logger.With().
-				Str("component", "cors").Logger()
-
-			options.Logger = &corsLogger
+			options.Logger = new(s.Logger.With().
+				Str("component", "cors").Logger())
 		}
 		handler, _ := CORSHandler(options)
 		s.Use(handler)
@@ -349,13 +348,12 @@ func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
 // addDefaultHandlers adds default handlers to the server based on configuration
 func (s *Server) addDefaultHandlers() {
 	if s.Config.EnablePrometheusMetrics {
-		// Combine the server's private registry with the global prometheus.DefaultGatherer
-		// This ensures that both internal metrics and any globally registered metrics are served.
-		gatherers := prometheus.Gatherers{
-			s.metricSet.registry,
-			prometheus.DefaultGatherer,
-		}
-		s.Mux.Handle("/metrics", promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{}))
+		// Use only the server's private registry to serve metrics.
+		// This avoids duplicate metrics that can occur when the same metric is
+		// auto-registered with the global prometheus.DefaultRegistry (via promauto)
+		// and also registered with the local registry (in MetricSet.Register).
+		// The server's metricSet contains all necessary application metrics.
+		s.Mux.Handle("/metrics", promhttp.HandlerFor(s.metricSet.registry, promhttp.HandlerOpts{}))
 	}
 
 	if s.Config.EnableDebug {
