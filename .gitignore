@@ -69,3 +69,7 @@ local.properties
 
 # Tools
 .envrc
+
+# IDE / AI tooling
+.junie/
+apm_modules/
