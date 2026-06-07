@@ -103,16 +103,38 @@ func NewResponse(w http.ResponseWriter) *Response {
 }
 
 // NewResponseWithLogger creates a new Response helper with a logger that includes request metadata.
+//
+// Deprecated: Use NewResponseFromRequest in HTTP handlers to automatically inherit the
+// request-scoped context logger (carrying request_id, principal, etc.).
+// NewResponseWithLogger remains useful when an explicit logger is needed (e.g. tests).
 func NewResponseWithLogger(w http.ResponseWriter, r *http.Request, l zerolog.Logger) *Response {
+	logger := l.With().
+		Str("method", r.Method).
+		Str("url", r.URL.Redacted()).
+		Str("remote_addr", r.RemoteAddr).
+		Str("user_agent", r.UserAgent()).
+		Logger()
 	return &Response{
 		Writer: w,
-		// Request: r,
-		logger: new(l.With().
-			Str("method", r.Method).
-			Str("url", r.URL.Redacted()).
-			Str("remoteAddr", r.RemoteAddr).
-			Str("userAgent", r.UserAgent()).
-			Logger()),
+		logger: &logger,
+	}
+}
+
+// NewResponseFromRequest creates a Response that logs using the zerolog logger stored in
+// r's context (injected by request-ID or principal middleware). All context fields
+// (request_id, principal, auth_source, etc.) are automatically included.
+//
+// Prefer this over NewResponseWithLogger in HTTP handlers.
+func NewResponseFromRequest(w http.ResponseWriter, r *http.Request) *Response {
+	logger := zerolog.Ctx(r.Context()).With().
+		Str("method", r.Method).
+		Str("url", r.URL.Redacted()).
+		Str("remote_addr", r.RemoteAddr).
+		Str("user_agent", r.UserAgent()).
+		Logger()
+	return &Response{
+		Writer: w,
+		logger: &logger,
 	}
 }
 

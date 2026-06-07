@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -29,9 +28,11 @@ func TestNewResponse(t *testing.T) {
 }
 
 func TestNewResponseWithLogger(t *testing.T) {
+	t.Parallel()
+	var logOutput bytes.Buffer
+	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/test", nil)
-	logger := zerolog.New(io.Discard)
 
 	resp := NewResponseWithLogger(w, req, logger)
 
@@ -43,6 +44,57 @@ func TestNewResponseWithLogger(t *testing.T) {
 	}
 	if resp.logger == nil {
 		t.Error("Expected logger to be set")
+	}
+
+	// Trigger a log entry and verify snake_case field names.
+	resp.InternalServerError(LogErr(errors.New("oops")), LogMessage("test error"))
+	var entry map[string]any
+	if err := json.Unmarshal(logOutput.Bytes(), &entry); err != nil {
+		t.Fatalf("Failed to parse log output: %v", err)
+	}
+	if _, ok := entry["remote_addr"]; !ok {
+		t.Error("Expected 'remote_addr' field in log entry, got none")
+	}
+	if _, ok := entry["user_agent"]; !ok {
+		t.Error("Expected 'user_agent' field in log entry, got none")
+	}
+	if _, ok := entry["remoteAddr"]; ok {
+		t.Error("Unexpected legacy 'remoteAddr' camelCase field in log entry")
+	}
+	if _, ok := entry["userAgent"]; ok {
+		t.Error("Unexpected legacy 'userAgent' camelCase field in log entry")
+	}
+}
+
+func TestNewResponseFromRequest(t *testing.T) {
+	t.Parallel()
+	var logOutput bytes.Buffer
+	ctxLogger := zerolog.New(&logOutput).With().Str("request_id", "test-req-123").Logger()
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/test", nil)
+	req = req.WithContext(ctxLogger.WithContext(req.Context()))
+
+	resp := NewResponseFromRequest(w, req)
+
+	if resp == nil {
+		t.Fatal("Expected Response to be created, got nil")
+	}
+	if resp.logger == nil {
+		t.Error("Expected logger to be set")
+	}
+
+	// Trigger a log entry and verify the context field is present.
+	resp.InternalServerError(LogErr(errors.New("oops")), LogMessage("ctx test"))
+	var entry map[string]any
+	if err := json.Unmarshal(logOutput.Bytes(), &entry); err != nil {
+		t.Fatalf("Failed to parse log output: %v", err)
+	}
+	if entry["request_id"] != "test-req-123" {
+		t.Errorf("Expected request_id 'test-req-123', got %v", entry["request_id"])
+	}
+	if _, ok := entry["remote_addr"]; !ok {
+		t.Error("Expected 'remote_addr' field in log entry, got none")
 	}
 }
 

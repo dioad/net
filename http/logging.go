@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"net/http"
-	"time"
 	"sync"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/rs/zerolog"
