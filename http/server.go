@@ -148,7 +148,7 @@ func OAuth2ValidatorHandler(v []oidc.ValidatorConfig) (Middleware, error) {
 	}
 
 	multiValidator := &authjwt.MultiValidator{Validators: validators}
-	authHandler := jwt.NewHandler(multiValidator, "auth_token", log.Logger)
+	authHandler := jwt.NewHandler(multiValidator, "auth_token")
 
 	// Convert from common generic wrapper standard back to pure http.Handler middleware
 	return func(next http.Handler) http.Handler {

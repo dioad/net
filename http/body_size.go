@@ -14,17 +14,17 @@ const (
 // BodySizeLimiter is a middleware that limits the size of incoming request bodies.
 type BodySizeLimiter struct {
 	MaxBodyBytes int64
-	Logger       zerolog.Logger
 }
 
 // BodySizeLimiterOpt defines a functional option for configuring the BodySizeLimiter.
 type BodySizeLimiterOpt func(*BodySizeLimiter)
 
-// WithBodySizeLimiterLogger sets a custom logger for the BodySizeLimiter.
-func WithBodySizeLimiterLogger(logger zerolog.Logger) BodySizeLimiterOpt {
-	return func(l *BodySizeLimiter) {
-		l.Logger = logger
-	}
+// WithBodySizeLimiterLogger is a no-op kept for API compatibility.
+//
+// Deprecated: BodySizeLimiter now uses the request-scoped zerolog context logger
+// (zerolog.Ctx(r.Context())) directly inside Wrap, so no external logger is needed.
+func WithBodySizeLimiterLogger(_ zerolog.Logger) BodySizeLimiterOpt {
+	return func(_ *BodySizeLimiter) {}
 }
 
 // WithMaxBodyBytes sets the maximum allowed body size for requests. If not set, DefaultMaxBodyBytes is used.
@@ -38,7 +38,6 @@ func WithMaxBodyBytes(maxBytesSize int64) BodySizeLimiterOpt {
 func NewBodySizeLimiter(opts ...BodySizeLimiterOpt) *BodySizeLimiter {
 	l := &BodySizeLimiter{
 		MaxBodyBytes: DefaultMaxBodyBytes,
-		Logger:       zerolog.Nop(),
 	}
 
 	for _, opt := range opts {
@@ -49,11 +48,13 @@ func NewBodySizeLimiter(opts ...BodySizeLimiterOpt) *BodySizeLimiter {
 }
 
 // Wrap wraps an http.HandlerFunc to limit the request body size.
+// Rejection events are logged using the request-scoped zerolog context logger so that
+// request_id, principal, and other context fields are automatically included.
 func (l *BodySizeLimiter) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check Content-Length header first for early rejection
 		if r.ContentLength > l.MaxBodyBytes {
-			l.Logger.Warn().
+			zerolog.Ctx(r.Context()).Warn().
 				Int64("content_length", r.ContentLength).
 				Int64("max_bytes", l.MaxBodyBytes).
 				Str("path", r.URL.Path).

@@ -50,7 +50,7 @@ func (h *HealthRegistry) aggregateLivenessHandler() http.HandlerFunc {
 			}
 		}
 
-		res := diojson.NewResponseWithLogger(w, r, h.logger)
+		res := diojson.NewResponseFromRequest(w, r)
 		res.Data(httpStatus, map[string]any{
 			"live": httpStatus == http.StatusOK,
 		})
@@ -84,7 +84,7 @@ func (h *HealthRegistry) aggregateReadinessHandler() http.HandlerFunc {
 			}
 		}
 
-		res := diojson.NewResponseWithLogger(w, r, h.logger)
+		res := diojson.NewResponseFromRequest(w, r)
 		res.Data(httpStatus, map[string]any{
 			"ready":   httpStatus == http.StatusOK,
 			"details": resourceReadiness,
@@ -124,7 +124,7 @@ func (h *HealthRegistry) aggregateStatusHandler() http.HandlerFunc {
 		statusMap["Metadata"] = h.metadataMap
 		statusMap["Errors"] = resourceErrors
 
-		res := diojson.NewResponseWithLogger(w, r, h.logger)
+		res := diojson.NewResponseFromRequest(w, r)
 		res.Data(httpStatus, statusMap)
 
 		logEvent := h.logger.Debug()
