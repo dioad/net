@@ -1,21 +1,15 @@
 # github.com/dioad/net
 
-A comprehensive Go library providing production-ready networking utilities, authentication, authorization, and security features for building robust networked applications.
+A comprehensive Go library providing production-ready networking utilities, authorization, and security features for building robust networked applications.
+
+Authentication and identity features are provided by the companion [`github.com/dioad/auth`](https://github.com/dioad/auth) library, which builds on top of this one.
 
 ## Overview
 
-`dioad/net` is a feature-rich networking library that simplifies building secure, observable, and maintainable network services in Go. 
-It provides implementations of common networking patterns, authentication mechanisms, and security protocols.
+`dioad/net` is a feature-rich networking library that simplifies building secure, observable, and maintainable network services in Go.
+It provides implementations of common networking patterns, network-level security, and infrastructure protocols.
 
 ## Core Features
-
-### 🔐 Authentication & Authorization
-- **Multiple Auth Methods**: Basic auth, HMAC, JWT, OIDC
-- **HTTP Auth Handlers**: Easy-to-use middleware for protecting HTTP endpoints
-- **OIDC Integration**: Full OpenID Connect support with claim-based authorization
-- **OAuth2 Support**: Seamless OAuth2 token handling and validation
-- **GitHub Actions OIDC**: Native support for GitHub Actions OIDC token validation
-- **Fly.io OIDC**: Support for Fly.io identity tokens
 
 ### 🌐 HTTP Server
 - **HTTP/HTTPS Server**: HTTP server based on `gorilla/mux` with TLS support
@@ -44,7 +38,6 @@ It provides implementations of common networking patterns, authentication mechan
 
 ### 🛡️ Network Authorization
 - **IP-based ACLs**: Network access control lists with allow/deny rules
-- **Principal-based Authorization**: User and role-based access control
 - **Rate Limiting**: Per-principal rate limiting for network and HTTP services
 - **Prefix Lists**: Support for cloud provider IP ranges (AWS, Google Cloud, Azure, Fastly, Cloudflare, Atlassian, GitLab, Hetzner)
 - **Automatic Updates**: Background refresh of cloud provider prefix lists
@@ -60,34 +53,34 @@ It provides implementations of common networking patterns, authentication mechan
 
 ## Quick Start
 
-### Basic HTTP Server with Authentication
+### Basic HTTP Server
 ```go
 import (
-	"github.com/dioad/net/http"
-	"github.com/dioad/net/http/auth/basic"
+	diohttp "github.com/dioad/net/http"
+	"net/http"
 )
 
-// Create a basic auth map
-authMap := basic.AuthMap{}
-authMap.AddUserWithPlainPassword("user1", "password1")
+myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Hello!")
+})
 
-// Create auth handler
-authHandler, _ := basic.NewHandlerWithMap(authMap)
-
-// Create server with basic auth middleware
-config := http.Config{ListenAddress: ":8080"}
-server := http.NewServer(config)
-server.AddHandler("/protected", authHandler.Wrap(myHandler))
+config := diohttp.Config{ListenAddress: ":8080"}
+server := diohttp.NewServer(config)
+server.AddHandler("/hello", myHandler)
+server.ListenAndServe()
 ```
 
-### OIDC/JWT Authentication
+### HTTP Server with OIDC/JWT Authentication
+
+Authentication middleware is provided by [`github.com/dioad/auth`](https://github.com/dioad/auth).
+
 ```go
 import (
-	"github.com/dioad/net/http"
+	diohttp "github.com/dioad/net/http"
+	authserver "github.com/dioad/auth/http/server"
 	"github.com/dioad/auth/oidc"
 )
 
-// Create OIDC validator configuration
 validatorConfig := oidc.ValidatorConfig{
 	EndpointConfig: oidc.EndpointConfig{
 		Type: "githubactions",
@@ -97,10 +90,8 @@ validatorConfig := oidc.ValidatorConfig{
 	Issuer:    "https://token.actions.githubusercontent.com",
 }
 
-// Create server with OIDC validator as global middleware
-config := http.Config{ListenAddress: ":8080"}
-server := http.NewServer(config, http.WithOAuth2Validator([]oidc.ValidatorConfig{validatorConfig}))
-
+config := diohttp.Config{ListenAddress: ":8080"}
+server := diohttp.NewServer(config, authserver.WithOAuth2Validator([]oidc.ValidatorConfig{validatorConfig}))
 server.AddHandler("/secure", myHandler)
 ```
 
@@ -206,32 +197,31 @@ server := http.NewServer(config)
 
 For more comprehensive, executable examples, see the [`examples/`](examples/) directory:
 
-- **[Basic HTTP Server](examples/basic-http-server/)** - HTTP server with basic authentication
-- **[OIDC Authentication](examples/oidc-auth/)** - OpenID Connect/JWT authentication
+- **[Basic HTTP Server](examples/basic-http-server/)** - HTTP server setup and routing
 - **[IP-based Access Control](examples/ip-acl/)** - Network ACLs for IP filtering
 - **[HTTP Rate Limiting](examples/rate-limiting-http/)** - Per-principal HTTP rate limiting
 - **[Dynamic Rate Limiting](examples/rate-limiting-dynamic/)** - Rate limiting with custom sources
 - **[Network Rate Limiting](examples/rate-limiting-network/)** - Network-level rate limiting
 - **[TLS Configuration](examples/tls-config/)** - TLS setup with self-signed certificates
-- **[GitHub Actions OIDC](examples/githubactions-oidc/)** - GitHub Actions OIDC token handling
+
+Authentication examples (OIDC, JWT, GitHub Actions) are in [`github.com/dioad/auth/examples/`](https://github.com/dioad/auth/tree/main/examples).
 
 All examples are standalone executable Go programs that can be run with `go run ./examples/...` or built with `go build ./examples/...`.
 
 ## Package Structure
 
-- **`authz/`** - Authorization utilities (ACLs, principal checks, IP filtering)
+- **`authz/`** - Authorization utilities (IP-based ACLs, principal allow/deny lists)
 - **`dns/`** - DNS utilities (DoH, IP utilities, blocklist checks)
 - **`http/`** - HTTP server and client
-  - **`auth/`** - Authentication handlers (Basic, HMAC, GitHub, OIDC)
-  - **`authz/`** - Authorization middleware (IP-based, JWT-based, Principal-based)
+  - **`authz/`** - Authorization middleware (IP-based)
+  - **`json/`** - JSON response helpers with structured logging
   - **`resource/`** - Resource-based request handlers
 - **`ratelimit/`** - Generic per-principal rate limiting logic
 - **`metrics/`** - Prometheus metrics collection
-- **`oidc/`** - OpenID Connect client library and validation
-  - **`flyio/`** - Fly.io identity integration
-  - **`githubactions/`** - GitHub Actions OIDC integration
 - **`smtp/`** - SMTP/email security (DKIM, DMARC, SPF, MTA-STS)
 - **`tls/`** - TLS certificate management and ACME support
+
+Authentication and identity (JWT, OIDC, basic auth, HMAC) are in [`github.com/dioad/auth`](https://github.com/dioad/auth).
 
 ## Requirements
 
