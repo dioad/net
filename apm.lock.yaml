@@ -1,0 +1,64 @@
+lockfile_version: '1'
+generated_at: '2026-06-07T18:23:44.099336+00:00'
+apm_version: 0.18.0
+dependencies:
+- repo_url: anthropics/claude-plugins-official
+  host: github.com
+  resolved_commit: 13bb2507180bd4c38078b2235d7c4985d2dc4355
+  virtual_path: plugins/pr-review-toolkit
+  is_virtual: true
+  package_type: marketplace_plugin
+  deployed_files:
+  - .claude/agents/code-reviewer.md
+  - .claude/agents/code-simplifier.md
+  - .claude/agents/comment-analyzer.md
+  - .claude/agents/pr-test-analyzer.md
+  - .claude/agents/silent-failure-hunter.md
+  - .claude/agents/type-design-analyzer.md
+  - .claude/commands/review-pr.md
+  - .github/agents/code-reviewer.agent.md
+  - .github/agents/code-simplifier.agent.md
+  - .github/agents/comment-analyzer.agent.md
+  - .github/agents/pr-test-analyzer.agent.md
+  - .github/agents/silent-failure-hunter.agent.md
+  - .github/agents/type-design-analyzer.agent.md
+  - .github/prompts/review-pr.prompt.md
+  deployed_file_hashes:
+    .claude/agents/code-reviewer.md: sha256:019395c3ce457460115cc703e2f4a86fed4bbe560dc58355051c4d877155d366
+    .claude/agents/code-simplifier.md: sha256:976ddb22b84bc5a714216531a75db5e73169554add6b953442beeedb49b56891
+    .claude/agents/comment-analyzer.md: sha256:4a9c1f2eb8234a4b9231983e75739663d512e1aed242388964a165a719b84698
+    .claude/agents/pr-test-analyzer.md: sha256:fcb1cde9ba7b21694b508766a8d6a79bc91bed9982f828f816210059934f46b4
+    .claude/agents/silent-failure-hunter.md: sha256:fa9b0daec5a267e7e66435cc48b3328301fc9f70c3af259fe248881327a1babc
+    .claude/agents/type-design-analyzer.md: sha256:c1cf67843d3c4fd27ddf6b24aa92521414b16c01610e7f7e87212c7b8681198d
+    .claude/commands/review-pr.md: sha256:1c3ca6f18f9851ac88ffdc3f98b45e9bd19fb139eb14850f2c22cd18c7a167b2
+    .github/agents/code-reviewer.agent.md: sha256:019395c3ce457460115cc703e2f4a86fed4bbe560dc58355051c4d877155d366
+    .github/agents/code-simplifier.agent.md: sha256:976ddb22b84bc5a714216531a75db5e73169554add6b953442beeedb49b56891
+    .github/agents/comment-analyzer.agent.md: sha256:4a9c1f2eb8234a4b9231983e75739663d512e1aed242388964a165a719b84698
+    .github/agents/pr-test-analyzer.agent.md: sha256:fcb1cde9ba7b21694b508766a8d6a79bc91bed9982f828f816210059934f46b4
+    .github/agents/silent-failure-hunter.agent.md: sha256:fa9b0daec5a267e7e66435cc48b3328301fc9f70c3af259fe248881327a1babc
+    .github/agents/type-design-analyzer.agent.md: sha256:c1cf67843d3c4fd27ddf6b24aa92521414b16c01610e7f7e87212c7b8681198d
+    .github/prompts/review-pr.prompt.md: sha256:5e70c17293a044e1bf9d092c80b5da8b4fd5802ebb07dc53993dec4ba7ce2fc4
+  content_hash: sha256:8cc8523c5fcf881b482053e816c9d31ec2b11f2afd457346c472c8fbcf5b0131
+  discovered_via: claude-plugins-official
+  marketplace_plugin_name: pr-review-toolkit
+- repo_url: ast-grep/agent-skill
+  host: github.com
+  resolved_commit: 577f4d4507678f2c8cee150fae25e6ce309f70b1
+  package_type: marketplace_plugin
+  content_hash: sha256:0c65375f2a6eaac114f6b0098b4a6fab199149717e399cab596a24300cdaa1f8
+local_deployed_files:
+- .claude/rules/git-workflow.md
+- .claude/rules/go-testing.md
+- .claude/rules/go.md
+- .claude/rules/project-checks.md
+- .github/instructions/go-testing.instructions.md
+- .github/instructions/go.instructions.md
+- .github/instructions/project-checks.instructions.md
+local_deployed_file_hashes:
+  .claude/rules/git-workflow.md: sha256:db8a1ab89cdeddc4e005ee835f390da3b1f8555cab57e010feede6f6a2e4d856
+  .claude/rules/go-testing.md: sha256:f445b581991c2c689b6113f49764dffa76e7d82623f91668542aee06a2d05742
+  .claude/rules/go.md: sha256:76b9619cf21d1751ae006d0036597b8ec1ec4d4f5d7908ddd67635dbe5c2691c
+  .claude/rules/project-checks.md: sha256:4aa62f78bf4b8f9212c42057b971140551f3b025acfb7706a471768e73b3d319
+  .github/instructions/go-testing.instructions.md: sha256:5931eeaa6a3a49ac6c3ffdb89f966a429197491ae9448e512ca690a5261eacfb
+  .github/instructions/go.instructions.md: sha256:50a461e417027bedbfdb8ddae47a1a7fd385e7843509899dfd0e660b5b089c95
+  .github/instructions/project-checks.instructions.md: sha256:429edd0db577471ced357fbdcf650ba5e097b2d381769fbe408b633272f4ccb3
