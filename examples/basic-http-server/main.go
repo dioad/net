@@ -9,31 +9,19 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/dioad/auth/http/basic"
-
 	diohttp "github.com/dioad/net/http"
 )
 
 func main() {
-	// Create a basic auth map
-	authMap := basic.AuthMap{}
-	authMap.AddUserWithPlainPassword("user1", "password1")
-
-	// Create auth handler
-	authHandler, err := basic.NewHandlerWithMap(authMap)
-	if err != nil {
-		log.Fatalf("Error creating auth handler: %v\n", err)
-	}
-
 	// Create a simple handler
 	myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, authenticated user!\n")
+		fmt.Fprintf(w, "Hello from dioad/net!\n")
 	})
 
-	// Create server with basic auth middleware
+	// Create server
 	config := diohttp.Config{ListenAddress: ":8080"}
 	server := diohttp.NewServer(config)
-	server.AddHandler("/protected", authHandler.Wrap(myHandler))
+	server.AddHandler("/hello", myHandler)
 
 	// Create listener
 	ln, err := net.Listen("tcp", ":8080")
@@ -42,8 +30,8 @@ func main() {
 	}
 	defer ln.Close()
 
-	fmt.Println("Starting HTTP server with basic authentication on :8080")
-	fmt.Println("Try: curl -u user1:password1 http://localhost:8080/protected")
+	fmt.Println("Starting HTTP server on :8080")
+	fmt.Println("Try: curl http://localhost:8080/hello")
 
 	// Start server in goroutine
 	go func() {

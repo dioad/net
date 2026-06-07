@@ -24,11 +24,6 @@ import (
 
 	"github.com/dioad/filter"
 
-	auth "github.com/dioad/auth/http"
-	"github.com/dioad/auth/http/middleware/jwt"
-	authjwt "github.com/dioad/auth/jwt"
-	"github.com/dioad/auth/oidc"
-
 	"github.com/dioad/net/http/pprof"
 )
 
@@ -46,8 +41,6 @@ type Config struct {
 	EnableProxyProtocol bool
 	// TLSConfig is the TLS configuration for the server
 	TLSConfig *tls.Config
-	// AuthConfig is the authentication configuration for the server
-	AuthConfig auth.ServerConfig
 	// EnableHealth enables the /health/live and /health/ready endpoints for health checks
 	EnableHealth bool
 	// ReadHeaderTimeout is the maximum duration for reading request headers.
@@ -136,43 +129,10 @@ func WithLogger(l zerolog.Logger) ServerOption {
 	}
 }
 
-// OAuth2ValidatorHandler returns a middleware that validates OAuth2 tokens using the provided configurations.
-func OAuth2ValidatorHandler(v []oidc.ValidatorConfig) (Middleware, error) {
-	var validators []authjwt.TokenValidator
-	for _, cfg := range v {
-		validator, err := oidc.NewValidatorFromConfig(&cfg)
-		if err != nil {
-			return nil, err
-		}
-		validators = append(validators, validator)
-	}
-
-	multiValidator := &authjwt.MultiValidator{Validators: validators}
-	authHandler := jwt.NewHandler(multiValidator, "auth_token")
-
-	// Convert from common generic wrapper standard back to pure http.Handler middleware
-	return func(next http.Handler) http.Handler {
-		return authHandler.Wrap(next)
-	}, nil
-}
-
 // CORSHandler returns a middleware that handles Cross-Origin Resource Sharing (CORS).
 func CORSHandler(options cors.Options) (Middleware, error) {
 	corsMiddleware := cors.New(options)
 	return corsMiddleware.Handler, nil
-}
-
-// WithOAuth2Validator returns a ServerOption that configures the server to use OAuth2 validation
-// for authentication using the given validator configurations
-func WithOAuth2Validator(v []oidc.ValidatorConfig) ServerOption {
-	return func(s *Server) {
-		handler, err := OAuth2ValidatorHandler(v)
-		if err == nil {
-			s.Use(handler)
-		} else {
-			s.Logger.Fatal().Err(err).Msg("failed to create OAuth2 validator")
-		}
-	}
 }
 
 // CORSAllowLocalhostOrigin returns true if the given origin is a localhost origin.
@@ -195,22 +155,6 @@ func WithCORS(options cors.Options) ServerOption {
 		}
 		handler, _ := CORSHandler(options)
 		s.Use(handler)
-	}
-}
-
-// WithServerAuth returns a ServerOption that configures the server to use the given
-// authentication configuration
-func WithServerAuth(cfg auth.ServerConfig) ServerOption {
-	return func(s *Server) {
-		h, err := auth.NewHandler(&cfg)
-		if err != nil {
-			s.Logger.Fatal().Err(err).Msg("error creating auth handler.")
-			return
-		}
-
-		s.Use(func(next http.Handler) http.Handler {
-			return h.Wrap(next)
-		})
 	}
 }
 

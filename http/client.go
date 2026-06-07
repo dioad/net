@@ -4,11 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-
-	"github.com/dioad/generics"
-
-	auth "github.com/dioad/auth/http"
-	"github.com/dioad/auth/http/basic"
 )
 
 // Client describes an HTTP client for making requests to a base URL.
@@ -18,10 +13,10 @@ type Client struct {
 
 // ClientConfig describes the configuration for an HTTP client.
 type ClientConfig struct {
-	BaseURL    *url.URL
-	Client     *http.Client
-	UserAgent  string
-	AuthConfig auth.ClientConfig
+	BaseURL         *url.URL
+	Client          *http.Client
+	UserAgent       string
+	RequestModifier func(*http.Request) error
 }
 
 func (c *Client) checkConfig() error {
@@ -57,17 +52,11 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	if !generics.IsZeroValue(c.Config.AuthConfig) {
-		ac := auth.NewClientAuth(c.Config.AuthConfig)
-
-		err := ac.AddAuth(req)
-		if err != nil {
+	if c.Config.RequestModifier != nil {
+		if err := c.Config.RequestModifier(req); err != nil {
 			return nil, err
 		}
 	}
-
-	// Add basic / netrc credentials to the request if they exist
-	basic.AddCredentials(req)
 
 	return c.Config.Client.Do(req)
 }
