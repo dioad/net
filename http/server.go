@@ -78,27 +78,28 @@ type Server struct {
 	HealthRegistry *HealthRegistry
 
 	// Private fields
-	server         *http.Server
-	serverInitOnce sync.Once
-	metricSet      *MetricSet
-	instrument     *middleware.Instrument
-	rootResource   RootResource
-	middlewares    []Middleware
+	server           *http.Server
+	serverInitOnce   sync.Once
+	metricSet        *MetricSet
+	metricsGatherers prometheus.Gatherers
+	instrument       *middleware.Instrument
+	rootResource     RootResource
+	middlewares      []Middleware
 }
 
 func newDefaultServer(config Config) *Server {
 	r := prometheus.NewRegistry()
 	m := NewMetricSet(r)
-	m.Register(r)
 	mux := http.NewServeMux()
 
 	server := &Server{
-		Config:         config,
-		Mux:            mux,
-		ResourceMap:    make(map[string]Resource),
-		metricSet:      m,
-		HealthRegistry: NewHealthRegistry(log.Logger),
-		middlewares:    make([]Middleware, 0),
+		Config:           config,
+		Mux:              mux,
+		ResourceMap:      make(map[string]Resource),
+		metricSet:        m,
+		metricsGatherers: prometheus.Gatherers{m.registry, prometheus.DefaultGatherer},
+		HealthRegistry:   NewHealthRegistry(log.Logger),
+		middlewares:      make([]Middleware, 0),
 	}
 
 	return server
@@ -194,6 +195,19 @@ func WithPrometheusRegistry(r prometheus.Registerer) ServerOption {
 	}
 }
 
+// WithMetricsGatherers replaces the default gatherers used for the /metrics endpoint.
+// The default gathers from the server's own private registry and prometheus.DefaultGatherer.
+func WithMetricsGatherers(gatherers ...prometheus.Gatherer) ServerOption {
+	return func(s *Server) {
+		s.metricsGatherers = gatherers
+	}
+}
+
+// MetricSet returns the server's HTTP instrumentation metric set.
+func (s *Server) MetricSet() *MetricSet {
+	return s.metricSet
+}
+
 // filterNilMiddlewares removes nil middlewares from the slice
 func filterNilMiddlewares(middlewares []Middleware) []Middleware {
 	return filter.FilterSlice(middlewares, func(m Middleware) bool {
@@ -268,7 +282,7 @@ func (s *Server) handler() http.Handler {
 	var handler http.Handler = s.Mux
 	handler = Chain(handler, s.middlewares...)
 
-	if s.Config.EnablePrometheusMetrics && s.metricSet != nil {
+	if s.metricSet != nil {
 		handler = s.metricSet.Middleware(s.Mux, handler)
 	}
 
@@ -292,12 +306,7 @@ func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
 // addDefaultHandlers adds default handlers to the server based on configuration
 func (s *Server) addDefaultHandlers() {
 	if s.Config.EnablePrometheusMetrics {
-		// Use only the server's private registry to serve metrics.
-		// This avoids duplicate metrics that can occur when the same metric is
-		// auto-registered with the global prometheus.DefaultRegistry (via promauto)
-		// and also registered with the local registry (in MetricSet.Register).
-		// The server's metricSet contains all necessary application metrics.
-		s.Mux.Handle("/metrics", promhttp.HandlerFor(s.metricSet.registry, promhttp.HandlerOpts{}))
+		s.Mux.Handle("/metrics", promhttp.HandlerFor(s.metricsGatherers, promhttp.HandlerOpts{}))
 	}
 
 	if s.Config.EnableDebug {

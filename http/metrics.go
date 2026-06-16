@@ -17,29 +17,21 @@ import (
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-var rateLimitRequests = promauto.NewCounterVec(
-	prometheus.CounterOpts{
-		Subsystem: "http",
-		Name:      "dioad_net_http_rate_limit_requests_total",
-		Help:      "Count of requests evaluated by rate limiter",
-	},
-	[]string{"result"},
-)
-
+// MetricSet holds the standard HTTP server instrumentation metrics.
 type MetricSet struct {
-	RequestCounter    *prometheus.CounterVec
-	RequestDuration   *prometheus.HistogramVec
-	RequestSize       *prometheus.HistogramVec
-	ResponseSize      *prometheus.HistogramVec
-	InFlightGauge     prometheus.Gauge
-	RateLimitRequests *prometheus.CounterVec
-	registry          *prometheus.Registry
+	RequestCounter  *prometheus.CounterVec
+	RequestDuration *prometheus.HistogramVec
+	RequestSize     *prometheus.HistogramVec
+	ResponseSize    *prometheus.HistogramVec
+	InFlightGauge   prometheus.Gauge
+	registry        *prometheus.Registry
 }
 
+// NewMetricSet creates a new MetricSet and immediately registers its metrics
+// with the provided registry.
 func NewMetricSet(r *prometheus.Registry) *MetricSet {
 	m := &MetricSet{
 		registry: r,
@@ -80,12 +72,14 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 				Help: "Gauge of requests currently being served by the wrapped handler.",
 			},
 		),
-		RateLimitRequests: rateLimitRequests,
 	}
+
+	m.Register(r)
 
 	return m
 }
 
+// Register registers the metrics in the metric set with the given registerer.
 func (m *MetricSet) Register(r prometheus.Registerer) {
 	r.MustRegister(
 		m.RequestCounter,
@@ -94,11 +88,6 @@ func (m *MetricSet) Register(r prometheus.Registerer) {
 		m.RequestSize,
 		m.InFlightGauge,
 	)
-	if err := r.Register(m.RateLimitRequests); err != nil {
-		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
-			panic(err)
-		}
-	}
 }
 
 // Middleware instruments the handler with prometheus metrics.

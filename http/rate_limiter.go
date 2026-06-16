@@ -4,11 +4,32 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 
 	"github.com/dioad/net/ratelimit"
 )
+
+var (
+	rateLimitCounter     *prometheus.CounterVec
+	rateLimitCounterOnce sync.Once
+)
+
+func getRateLimitCounter() *prometheus.CounterVec {
+	rateLimitCounterOnce.Do(func() {
+		rateLimitCounter = prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "dioad_net_http_rate_limit_requests_total",
+				Help: "Count of requests evaluated by rate limiter.",
+			},
+			[]string{"result"},
+		)
+		prometheus.DefaultRegisterer.MustRegister(rateLimitCounter)
+	})
+	return rateLimitCounter
+}
 
 var (
 	DefaultRequestsPerSecond = float64(10) // default to 10 rps
@@ -115,12 +136,12 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			return
 		}
 		if !rl.limiter.Allow(p) {
-			rateLimitRequests.WithLabelValues("blocked").Inc()
+			getRateLimitCounter().WithLabelValues("blocked").Inc()
 			rl.setRetryAfterHeader(w, p)
 			http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 			return
 		}
-		rateLimitRequests.WithLabelValues("allowed").Inc()
+		getRateLimitCounter().WithLabelValues("allowed").Inc()
 		next.ServeHTTP(w, r)
 	})
 }
