@@ -102,6 +102,8 @@ func newDefaultServer(config Config) *Server {
 		middlewares:      make([]Middleware, 0),
 	}
 
+	server.Use(RequestIDMiddleware)
+
 	return server
 }
 
