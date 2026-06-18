@@ -19,14 +19,6 @@ type BodySizeLimiter struct {
 // BodySizeLimiterOpt defines a functional option for configuring the BodySizeLimiter.
 type BodySizeLimiterOpt func(*BodySizeLimiter)
 
-// WithBodySizeLimiterLogger is a no-op kept for API compatibility.
-//
-// Deprecated: BodySizeLimiter now uses the request-scoped zerolog context logger
-// (zerolog.Ctx(r.Context())) directly inside Wrap, so no external logger is needed.
-func WithBodySizeLimiterLogger(_ zerolog.Logger) BodySizeLimiterOpt {
-	return func(_ *BodySizeLimiter) {}
-}
-
 // WithMaxBodyBytes sets the maximum allowed body size for requests. If not set, DefaultMaxBodyBytes is used.
 func WithMaxBodyBytes(maxBytesSize int64) BodySizeLimiterOpt {
 	return func(l *BodySizeLimiter) {
