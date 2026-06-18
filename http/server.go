@@ -64,8 +64,7 @@ const defaultReadHeaderTimeout = 10 * time.Second
 type Server struct {
 	// Config is the server configuration
 	Config Config
-	// Mux is the main router for the server
-	Mux *http.ServeMux
+	mux    *http.ServeMux
 	// Logger is the logger for the server
 	Logger zerolog.Logger
 	// ResourceMap maps path prefixes to resources
@@ -94,7 +93,7 @@ func newDefaultServer(config Config) *Server {
 
 	server := &Server{
 		Config:           config,
-		Mux:              mux,
+		mux:              mux,
 		ResourceMap:      make(map[string]Resource),
 		metricSet:        m,
 		metricsGatherers: prometheus.Gatherers{m.registry, prometheus.DefaultGatherer},
@@ -265,9 +264,9 @@ func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middl
 		resourceHandler.ServeHTTP(w, r2)
 	})
 
-	s.Mux.Handle(prefixToStrip+"/", h)
+	s.mux.Handle(prefixToStrip+"/", h)
 	if prefixToStrip != "" {
-		s.Mux.Handle(prefixToStrip, h)
+		s.mux.Handle(prefixToStrip, h)
 	}
 }
 
@@ -280,11 +279,11 @@ func (s *Server) AddRootResource(r RootResource) {
 // handler returns the HTTP handler for the server
 // It adds default handlers and the root resource handler if configured
 func (s *Server) handler() http.Handler {
-	var handler http.Handler = s.Mux
+	var handler http.Handler = s.mux
 	handler = Chain(handler, s.middlewares...)
 
 	if s.metricSet != nil {
-		handler = s.metricSet.Middleware(s.Mux, handler)
+		handler = s.metricSet.Middleware(s.mux, handler)
 	}
 
 	if s.LogHandler != nil {
@@ -296,18 +295,18 @@ func (s *Server) handler() http.Handler {
 
 // AddHandler adds a handler for the specified path
 func (s *Server) AddHandler(path string, handler http.Handler) {
-	s.Mux.Handle(path, handler)
+	s.mux.Handle(path, handler)
 }
 
 // AddHandlerFunc adds a handler function for the specified path
 func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
-	s.Mux.HandleFunc(path, handler)
+	s.mux.HandleFunc(path, handler)
 }
 
 // addDefaultHandlers adds default handlers to the server based on configuration
 func (s *Server) addDefaultHandlers() {
 	if s.Config.EnablePrometheusMetrics {
-		s.Mux.Handle("/metrics", promhttp.HandlerFor(s.metricsGatherers, promhttp.HandlerOpts{}))
+		s.mux.Handle("/metrics", promhttp.HandlerFor(s.metricsGatherers, promhttp.HandlerOpts{}))
 	}
 
 	if s.Config.EnableDebug {
