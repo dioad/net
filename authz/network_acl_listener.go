@@ -9,42 +9,40 @@ import (
 // Listener is a network listener that enforces a NetworkACL on all incoming connections.
 type Listener struct {
 	NetworkACL *NetworkACL
-	Listener   net.Listener
 	Logger     zerolog.Logger
+	inner      *GatingListener
 }
 
-// Accept waits for and returns the next connection to the listener.
-// It checks each connection against the NetworkACL, closes rejected connections,
-// and loops until an authorised connection is found.
-func (l *Listener) Accept() (net.Conn, error) {
-	for {
-		c, err := l.Listener.Accept()
-		if err != nil {
-			return nil, err
-		}
+// NewListener creates a Listener that gates incoming connections via the given NetworkACL.
+func NewListener(l net.Listener, acl *NetworkACL, logger zerolog.Logger) *Listener {
+	ln := &Listener{NetworkACL: acl, Logger: logger}
+	ln.inner = NewGatingListener(l, ln.gate)
+	return ln
+}
 
-		authorised, err := l.NetworkACL.AuthoriseConn(c)
-		if err != nil {
-			_ = c.Close()
-			return nil, err
-		}
-
-		if !authorised {
-			l.Logger.Warn().Stringer("remoteAddr", c.RemoteAddr()).Msg("access denied")
-			_ = c.Close()
-			continue
-		}
-
-		return c, nil
+func (l *Listener) gate(c net.Conn) (bool, error) {
+	allowed, err := l.NetworkACL.AuthoriseConn(c)
+	if err != nil {
+		return false, err
 	}
+	if !allowed {
+		l.Logger.Warn().Stringer("remoteAddr", c.RemoteAddr()).Msg("access denied")
+	}
+	return allowed, nil
+}
+
+// Accept waits for and returns the next connection that passes the NetworkACL.
+// Rejected connections are closed; the loop retries until an authorised connection arrives.
+func (l *Listener) Accept() (net.Conn, error) {
+	return l.inner.Accept()
 }
 
 // Close closes the listener.
 func (l *Listener) Close() error {
-	return l.Listener.Close()
+	return l.inner.Close()
 }
 
 // Addr returns the listener's network address.
 func (l *Listener) Addr() net.Addr {
-	return l.Listener.Addr()
+	return l.inner.Addr()
 }
