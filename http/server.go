@@ -133,9 +133,9 @@ func WithLogger(l zerolog.Logger) ServerOption {
 }
 
 // CORSHandler returns a middleware that handles Cross-Origin Resource Sharing (CORS).
-func CORSHandler(options cors.Options) (Middleware, error) {
+func CORSHandler(options cors.Options) Middleware {
 	corsMiddleware := cors.New(options)
-	return corsMiddleware.Handler, nil
+	return corsMiddleware.Handler
 }
 
 // CORSAllowLocalhostOrigin returns true if the given origin is a localhost origin.
@@ -156,8 +156,7 @@ func WithCORS(options cors.Options) ServerOption {
 			options.Logger = new(s.Logger.With().
 				Str("component", "cors").Logger())
 		}
-		handler, _ := CORSHandler(options)
-		s.Use(handler)
+		s.Use(CORSHandler(options))
 	}
 }
 
