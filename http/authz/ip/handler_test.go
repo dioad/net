@@ -19,7 +19,10 @@ func TestHandlerFunc(t *testing.T) {
 		w.Write([]byte("success"))
 	})
 
-	handlerFunc := HandlerFunc(cfg, nextHandler)
+	handlerFunc, err := HandlerFunc(cfg, nextHandler)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// Test allowed IP
 	req := httptest.NewRequest("GET", "/test", nil)
@@ -42,7 +45,10 @@ func TestNewHandler(t *testing.T) {
 		AllowByDefault: false,
 	}
 
-	handler := NewHandler(cfg)
+	handler, err := NewHandler(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if handler == nil {
 		t.Fatal("Expected handler to be created, got nil")
@@ -58,7 +64,10 @@ func TestAuthRequest_Allowed(t *testing.T) {
 		AllowByDefault: false,
 	}
 
-	handler := NewHandler(cfg)
+	handler, err := NewHandler(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	req := httptest.NewRequest("GET", "/test", nil)
 	req.RemoteAddr = "192.168.1.100:8080"
@@ -79,12 +88,15 @@ func TestAuthRequest_Denied(t *testing.T) {
 		AllowByDefault: false,
 	}
 
-	handler := NewHandler(cfg)
+	handler, err := NewHandler(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	req := httptest.NewRequest("GET", "/test", nil)
 	req.RemoteAddr = "192.168.1.1:8080"
 
-	_, err := handler.AuthRequest(req)
+	_, err = handler.AuthRequest(req)
 
 	if err == nil {
 		t.Error("Expected error for denied IP, got nil")
@@ -97,12 +109,15 @@ func TestAuthRequest_InvalidAddress(t *testing.T) {
 		AllowByDefault: false,
 	}
 
-	handler := NewHandler(cfg)
+	handler, err := NewHandler(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	req := httptest.NewRequest("GET", "/test", nil)
 	req.RemoteAddr = "invalid-address"
 
-	_, err := handler.AuthRequest(req)
+	_, err = handler.AuthRequest(req)
 
 	if err == nil {
 		t.Error("Expected error for invalid address, got nil")
@@ -115,7 +130,10 @@ func TestWrap_Allowed(t *testing.T) {
 		AllowByDefault: false,
 	}
 
-	handler := NewHandler(cfg)
+	handler, err := NewHandler(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -144,7 +162,10 @@ func TestWrap_Forbidden(t *testing.T) {
 		AllowByDefault: false,
 	}
 
-	handler := NewHandler(cfg)
+	handler, err := NewHandler(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Error("Next handler should not be called for forbidden request")
@@ -170,7 +191,10 @@ func TestWrap_AllowByDefault(t *testing.T) {
 		AllowByDefault: true,
 	}
 
-	handler := NewHandler(cfg)
+	handler, err := NewHandler(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

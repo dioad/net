@@ -10,15 +10,21 @@ import (
 )
 
 // HandlerFunc creates an IP-based authorization-wrapped HTTP handler function.
-func HandlerFunc(cfg authz.NetworkACLConfig, next http.Handler) http.HandlerFunc {
-	h := NewHandler(cfg)
-	return h.Wrap(next).ServeHTTP
+func HandlerFunc(cfg authz.NetworkACLConfig, next http.Handler) (http.HandlerFunc, error) {
+	h, err := NewHandler(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return h.Wrap(next).ServeHTTP, nil
 }
 
 // NewHandler creates a new IP-based authorization handler.
-func NewHandler(cfg authz.NetworkACLConfig) *Handler {
-	authoriser, _ := authz.NewNetworkACL(cfg)
-	return &Handler{Authoriser: authoriser}
+func NewHandler(cfg authz.NetworkACLConfig) (*Handler, error) {
+	authoriser, err := authz.NewNetworkACL(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("ip.NewHandler: invalid ACL config: %w", err)
+	}
+	return &Handler{Authoriser: authoriser}, nil
 }
 
 // Handler implements IP-based authorization for HTTP servers.
