@@ -50,7 +50,9 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 		req.Header.Set("User-Agent", libraryUserAgent)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	if req.Body != nil && req.ContentLength != 0 {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	if c.Config.RequestModifier != nil {
 		if err := c.Config.RequestModifier(req); err != nil {
