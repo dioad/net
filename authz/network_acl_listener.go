@@ -14,27 +14,29 @@ type Listener struct {
 }
 
 // Accept waits for and returns the next connection to the listener.
-// It checks each connection against the NetworkACL and closes it if not authorised.
+// It checks each connection against the NetworkACL, closes rejected connections,
+// and loops until an authorised connection is found.
 func (l *Listener) Accept() (net.Conn, error) {
-	c, err := l.Listener.Accept()
-	if err != nil {
-		return nil, err
-	}
-
-	authorised, err := l.NetworkACL.AuthoriseConn(c)
-	if err != nil {
-		return nil, err
-	}
-
-	if !authorised {
-		l.Logger.Warn().Stringer("remoteAddr", c.RemoteAddr()).Msg("access denied")
-		err = c.Close()
+	for {
+		c, err := l.Listener.Accept()
 		if err != nil {
-			l.Logger.Error().Err(err).Msg("closeConnError")
+			return nil, err
 		}
-	}
 
-	return c, nil
+		authorised, err := l.NetworkACL.AuthoriseConn(c)
+		if err != nil {
+			_ = c.Close()
+			return nil, err
+		}
+
+		if !authorised {
+			l.Logger.Warn().Stringer("remoteAddr", c.RemoteAddr()).Msg("access denied")
+			_ = c.Close()
+			continue
+		}
+
+		return c, nil
+	}
 }
 
 // Close closes the listener.
