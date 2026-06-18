@@ -61,26 +61,25 @@ type RateLimiter struct {
 }
 
 // NewRateLimiter creates a new rate limiter with static limits.
-// requestsPerSecond: allowed requests per second per principal
-// burst: maximum burst size
+//
+// Deprecated: Use NewRateLimiterWithOptions with WithRateLimiterStaticLimits and
+// WithRateLimiterLogger instead.
 func NewRateLimiter(requestsPerSecond float64, burst int, logger zerolog.Logger) *RateLimiter {
 	return NewRateLimiterWithConfig(requestsPerSecond, burst, 5*time.Minute, 30*time.Minute, logger)
 }
 
 // NewRateLimiterWithContext creates a new rate limiter with static limits and a context.
-// The rate limiter will stop its background cleanup when the context is cancelled.
-// requestsPerSecond: allowed requests per second per principal
-// burst: maximum burst size
+//
+// Deprecated: Use NewRateLimiterWithOptions with WithRateLimiterContext,
+// WithRateLimiterStaticLimits, and WithRateLimiterLogger instead.
 func NewRateLimiterWithContext(ctx context.Context, requestsPerSecond float64, burst int, logger zerolog.Logger) *RateLimiter {
 	return NewRateLimiterWithContextAndConfig(ctx, requestsPerSecond, burst, 5*time.Minute, 30*time.Minute, logger)
 }
 
 // NewRateLimiterWithConfig creates a new rate limiter with custom configuration.
-// requestsPerSecond: allowed requests per second per principal.
-// burst: maximum burst size.
-// cleanupInterval: how often stale limiter cleanup runs.
-// staleTTL: how long a limiter can remain unused before it is considered stale and removed.
-// logger: zerolog logger used for logging within the rate limiter.
+//
+// Deprecated: Use NewRateLimiterWithOptions with WithRateLimiterStaticLimits,
+// WithRateLimiterCleanupConfig, and WithRateLimiterLogger instead.
 func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
 	if requestsPerSecond < 0 {
 		requestsPerSecond = 0
@@ -111,13 +110,9 @@ func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInter
 }
 
 // NewRateLimiterWithContextAndConfig creates a new rate limiter with custom configuration and a context.
-// The rate limiter will stop its background cleanup when the context is cancelled.
-// ctx: parent context for lifecycle management.
-// requestsPerSecond: allowed requests per second per principal.
-// burst: maximum burst size.
-// cleanupInterval: how often stale limiter cleanup runs.
-// staleTTL: how long a limiter can remain unused before it is considered stale and removed.
-// logger: zerolog logger used for logging within the rate limiter.
+//
+// Deprecated: Use NewRateLimiterWithOptions with WithRateLimiterContext,
+// WithRateLimiterStaticLimits, WithRateLimiterCleanupConfig, and WithRateLimiterLogger instead.
 func NewRateLimiterWithContextAndConfig(ctx context.Context, requestsPerSecond float64, burst int, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
 	if requestsPerSecond < 0 {
 		requestsPerSecond = 0
@@ -148,24 +143,25 @@ func NewRateLimiterWithContextAndConfig(ctx context.Context, requestsPerSecond f
 }
 
 // NewRateLimiterWithSource creates a new rate limiter with a custom rate limit source.
+//
+// Deprecated: Use NewRateLimiterWithOptions with WithRateLimiterSource and
+// WithRateLimiterLogger instead.
 func NewRateLimiterWithSource(source RateLimitSource, logger zerolog.Logger) *RateLimiter {
 	return NewRateLimiterWithSourceAndConfig(source, 5*time.Minute, 30*time.Minute, logger)
 }
 
 // NewRateLimiterWithSourceAndContext creates a new rate limiter with a custom rate limit source and a context.
-// The rate limiter will stop its background cleanup when the context is cancelled.
+//
+// Deprecated: Use NewRateLimiterWithOptions with WithRateLimiterContext,
+// WithRateLimiterSource, and WithRateLimiterLogger instead.
 func NewRateLimiterWithSourceAndContext(ctx context.Context, source RateLimitSource, logger zerolog.Logger) *RateLimiter {
 	return NewRateLimiterWithSourceContextAndConfig(ctx, source, 5*time.Minute, 30*time.Minute, logger)
 }
 
 // NewRateLimiterWithSourceAndConfig creates a new rate limiter with a custom rate limit source and configuration.
-// source: provides dynamic rate limits per principal.
-// cleanupInterval: how often stale limiter cleanup runs.
-// staleTTL: how long a limiter can remain unused before it is considered stale and removed.
-// logger: zerolog logger used for logging within the rate limiter.
-// Note: This constructor does not set fallback requestsPerSecond and burst values.
-// If the source returns ok=false for a principal, the rate limiter will use 0 for both,
-// which will block all requests. Use NewRateLimiterWithConfig and set LimitSource if you need fallback limits.
+//
+// Deprecated: Use NewRateLimiterWithOptions with WithRateLimiterSource,
+// WithRateLimiterCleanupConfig, and WithRateLimiterLogger instead.
 func NewRateLimiterWithSourceAndConfig(source RateLimitSource, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
 	if cleanupInterval <= 0 {
 		cleanupInterval = 5 * time.Minute
@@ -189,15 +185,10 @@ func NewRateLimiterWithSourceAndConfig(source RateLimitSource, cleanupInterval, 
 }
 
 // NewRateLimiterWithSourceContextAndConfig creates a new rate limiter with a custom rate limit source,
-// context, and configuration. The rate limiter will stop its background cleanup when the context is cancelled.
-// ctx: parent context for lifecycle management.
-// source: provides dynamic rate limits per principal.
-// cleanupInterval: how often stale limiter cleanup runs.
-// staleTTL: how long a limiter can remain unused before it is considered stale and removed.
-// logger: zerolog logger used for logging within the rate limiter.
-// Note: This constructor does not set fallback requestsPerSecond and burst values.
-// If the source returns ok=false for a principal, the rate limiter will use 0 for both,
-// which will block all requests. Use NewRateLimiterWithContextAndConfig and set LimitSource if you need fallback limits.
+// context, and configuration.
+//
+// Deprecated: Use NewRateLimiterWithOptions with WithRateLimiterContext,
+// WithRateLimiterSource, WithRateLimiterCleanupConfig, and WithRateLimiterLogger instead.
 func NewRateLimiterWithSourceContextAndConfig(ctx context.Context, source RateLimitSource, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
 	if cleanupInterval <= 0 {
 		cleanupInterval = 5 * time.Minute
@@ -215,6 +206,89 @@ func NewRateLimiterWithSourceContextAndConfig(ctx context.Context, source RateLi
 		staleTTL:        staleTTL,
 		ctx:             derivedCtx,
 		cancel:          cancel,
+	}
+	rl.start()
+	return rl
+}
+
+// Option is a functional option for configuring a RateLimiter.
+type Option func(*rateLimiterOptions)
+
+type rateLimiterOptions struct {
+	ctx             context.Context
+	requestsPerSec  float64
+	burst           int
+	cleanupInterval time.Duration
+	staleTTL        time.Duration
+	limitSource     RateLimitSource
+	logger          zerolog.Logger
+}
+
+// WithRateLimiterContext sets a parent context whose cancellation stops
+// the background cleanup goroutine.
+func WithRateLimiterContext(ctx context.Context) Option {
+	return func(o *rateLimiterOptions) { o.ctx = ctx }
+}
+
+// WithRateLimiterStaticLimits sets the static requests-per-second and burst values.
+func WithRateLimiterStaticLimits(rps float64, burst int) Option {
+	return func(o *rateLimiterOptions) {
+		o.requestsPerSec = rps
+		o.burst = burst
+	}
+}
+
+// WithRateLimiterSource sets a dynamic RateLimitSource. When set, per-principal
+// limits from the source take precedence over the static limits.
+func WithRateLimiterSource(s RateLimitSource) Option {
+	return func(o *rateLimiterOptions) { o.limitSource = s }
+}
+
+// WithRateLimiterCleanupConfig sets the cleanup interval and stale-entry TTL.
+func WithRateLimiterCleanupConfig(cleanupInterval, staleTTL time.Duration) Option {
+	return func(o *rateLimiterOptions) {
+		o.cleanupInterval = cleanupInterval
+		o.staleTTL = staleTTL
+	}
+}
+
+// WithRateLimiterLogger sets the logger used by the rate limiter.
+func WithRateLimiterLogger(logger zerolog.Logger) Option {
+	return func(o *rateLimiterOptions) { o.logger = logger }
+}
+
+// NewRateLimiterWithOptions creates a RateLimiter using functional options.
+// This is the preferred constructor; the positional constructors are deprecated.
+func NewRateLimiterWithOptions(opts ...Option) *RateLimiter {
+	o := &rateLimiterOptions{
+		ctx:             context.Background(),
+		requestsPerSec:  0,
+		burst:           0,
+		cleanupInterval: 5 * time.Minute,
+		staleTTL:        30 * time.Minute,
+	}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	if o.cleanupInterval <= 0 {
+		o.cleanupInterval = 5 * time.Minute
+	}
+	if o.staleTTL <= 0 {
+		o.staleTTL = 30 * time.Minute
+	}
+
+	ctx, cancel := context.WithCancel(o.ctx)
+	rl := &RateLimiter{
+		limiters:          make(map[string]*limiterEntry),
+		logger:            o.logger,
+		requestsPerSecond: o.requestsPerSec,
+		burst:             o.burst,
+		cleanupInterval:   o.cleanupInterval,
+		staleTTL:          o.staleTTL,
+		LimitSource:       o.limitSource,
+		ctx:               ctx,
+		cancel:            cancel,
 	}
 	rl.start()
 	return rl
