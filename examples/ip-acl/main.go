@@ -56,11 +56,7 @@ func main() {
 	}
 	defer allowListener.Close()
 
-	aclAllowListener := &authz.Listener{
-		NetworkACL: allowLocalACL,
-		Listener:   allowListener,
-		Logger:     logger,
-	}
+	aclAllowListener := authz.NewListener(allowListener, allowLocalACL, logger)
 
 	// Create listener that DENIES localhost connections
 	denyListener, err := net.Listen("tcp", "127.0.0.1:9002")
@@ -69,11 +65,7 @@ func main() {
 	}
 	defer denyListener.Close()
 
-	aclDenyListener := &authz.Listener{
-		NetworkACL: denyLocalACL,
-		Listener:   denyListener,
-		Logger:     logger,
-	}
+	aclDenyListener := authz.NewListener(denyListener, denyLocalACL, logger)
 
 	fmt.Println("Started two ACL-protected listeners:")
 	fmt.Println()
