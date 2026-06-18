@@ -3,6 +3,7 @@ package metrics
 
 import (
 	"net"
+	"sync/atomic"
 
 	"github.com/rs/zerolog"
 )
@@ -15,17 +16,17 @@ type ListenerMetrics interface {
 // Listener wraps a net.Listener and tracks accepted connection metrics.
 type Listener struct {
 	ln            net.Listener
-	acceptedCount int
+	acceptedCount atomic.Int64
 	logger        zerolog.Logger
 	useLogger     bool
 }
 
 func (l *Listener) ResetMetrics() {
-	l.acceptedCount = 0
+	l.acceptedCount.Store(0)
 }
 
 func (l *Listener) AcceptedCount() int {
-	return l.acceptedCount
+	return int(l.acceptedCount.Load())
 }
 
 func (l *Listener) Accept() (net.Conn, error) {
@@ -35,7 +36,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
-	l.acceptedCount += 1
+	l.acceptedCount.Add(1)
 	var connWithMetrics net.Conn
 	if l.useLogger {
 		connWithMetrics = NewConnWithLogger(conn, l.logger)
