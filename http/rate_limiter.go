@@ -4,32 +4,12 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 
 	"github.com/dioad/net/ratelimit"
 )
-
-var (
-	rateLimitCounter     *prometheus.CounterVec
-	rateLimitCounterOnce sync.Once
-)
-
-func getRateLimitCounter() *prometheus.CounterVec {
-	rateLimitCounterOnce.Do(func() {
-		rateLimitCounter = prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "dioad_net_http_rate_limit_requests_total",
-				Help: "Count of requests evaluated by rate limiter.",
-			},
-			[]string{"result"},
-		)
-		prometheus.DefaultRegisterer.MustRegister(rateLimitCounter)
-	})
-	return rateLimitCounter
-}
 
 var (
 	DefaultRequestsPerSecond = float64(10) // default to 10 rps
@@ -47,6 +27,8 @@ type RateLimiter struct {
 	requestsPerSecond float64
 	burst             int
 	logger            zerolog.Logger
+	counter           *prometheus.CounterVec
+	registry          prometheus.Registerer
 }
 
 // WithPrincipalFunc allows configuring the function used to extract the principal from incoming HTTP requests.
@@ -80,6 +62,15 @@ func WithRateLimitLogger(logger zerolog.Logger) func(*RateLimiter) {
 	}
 }
 
+// WithRateLimiterRegistry sets the Prometheus registry used to register the rate-limit
+// counter. When not set, prometheus.DefaultRegisterer is used.
+func WithRateLimiterRegistry(reg prometheus.Registerer) func(*RateLimiter) {
+	return func(rl *RateLimiter) {
+		rl.registry = reg
+	}
+}
+
+// RateLimiterOption is a functional option for configuring an HTTP RateLimiter.
 type RateLimiterOption func(*RateLimiter)
 
 // ClientIPPrincipalFunc is a default PrincipalFunc that extracts the client's IP address from the request for rate limiting purposes.
@@ -87,6 +78,7 @@ func ClientIPPrincipalFunc(r *http.Request) (string, error) {
 	return GetClientIP(r), nil
 }
 
+// StaticPrincipalFunc returns a PrincipalFunc that always returns the given principal.
 func StaticPrincipalFunc(principal string) PrincipalFunc {
 	return func(r *http.Request) (string, error) {
 		return principal, nil
@@ -99,9 +91,9 @@ func StaticPrincipalFunc(principal string) PrincipalFunc {
 func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 	r := &RateLimiter{
 		getPrincipal:      ClientIPPrincipalFunc,
-		requestsPerSecond: DefaultRequestsPerSecond, // default to 10 rps
-		burst:             DefaultBurst,             // default burst size
-		logger:            zerolog.Nop(),            // default to no-op logger
+		requestsPerSecond: DefaultRequestsPerSecond,
+		burst:             DefaultBurst,
+		logger:            zerolog.Nop(),
 	}
 
 	for _, opt := range opts {
@@ -117,6 +109,25 @@ func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 	}
 	r.limiter = ratelimit.NewRateLimiterWithOptions(rlOpts...)
 
+	reg := r.registry
+	if reg == nil {
+		reg = prometheus.DefaultRegisterer
+	}
+	r.counter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "dioad_net_http_rate_limit_requests_total",
+			Help: "Count of requests evaluated by rate limiter.",
+		},
+		[]string{"result"},
+	)
+	if err := reg.Register(r.counter); err != nil {
+		// If already registered (e.g. multiple limiters on DefaultRegisterer),
+		// reuse the existing counter.
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			r.counter = are.ExistingCollector.(*prometheus.CounterVec)
+		}
+	}
+
 	return r
 }
 
@@ -124,7 +135,6 @@ func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 func (rl *RateLimiter) setRetryAfterHeader(w http.ResponseWriter, principal string) {
 	retryAfter := rl.limiter.RetryAfter(principal)
 	retryAfterSeconds := max(
-		// Ensure a minimum of 1 second for Retry-After
 		int(math.Ceil(retryAfter.Seconds())), 1)
 	w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
 }
@@ -138,12 +148,12 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			return
 		}
 		if !rl.limiter.Allow(p) {
-			getRateLimitCounter().WithLabelValues("blocked").Inc()
+			rl.counter.WithLabelValues("blocked").Inc()
 			rl.setRetryAfterHeader(w, p)
 			http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 			return
 		}
-		getRateLimitCounter().WithLabelValues("allowed").Inc()
+		rl.counter.WithLabelValues("allowed").Inc()
 		next.ServeHTTP(w, r)
 	})
 }
