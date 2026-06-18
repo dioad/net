@@ -4,7 +4,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 )
+
+var libraryUserAgent = func() string {
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
+		return "DioadClient/" + info.Main.Version
+	}
+	return "DioadClient/dev"
+}()
 
 // Client describes an HTTP client for making requests to a base URL.
 type Client struct {
@@ -41,8 +49,6 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 	if err := c.checkConfig(); err != nil {
 		return nil, err
 	}
-
-	libraryUserAgent := "DioadClient/VERSION"
 
 	if c.Config.UserAgent != "" {
 		req.Header.Set("User-Agent", fmt.Sprintf("%s %s", c.Config.UserAgent, libraryUserAgent))
