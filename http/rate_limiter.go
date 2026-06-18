@@ -108,12 +108,14 @@ func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 		opt(r)
 	}
 
-	rateLimiter := ratelimit.NewRateLimiter(r.requestsPerSecond, r.burst, r.logger)
-	if r.source != nil {
-		rateLimiter = ratelimit.NewRateLimiterWithSource(r.source, r.logger)
+	rlOpts := []ratelimit.Option{
+		ratelimit.WithRateLimiterLogger(r.logger),
+		ratelimit.WithRateLimiterStaticLimits(r.requestsPerSecond, r.burst),
 	}
-
-	r.limiter = rateLimiter
+	if r.source != nil {
+		rlOpts = append(rlOpts, ratelimit.WithRateLimiterSource(r.source))
+	}
+	r.limiter = ratelimit.NewRateLimiterWithOptions(rlOpts...)
 
 	return r
 }
