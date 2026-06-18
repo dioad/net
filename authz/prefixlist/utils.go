@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/netip"
 	"strings"
-	"time"
 )
 
 // parseCommaSeparated parses comma-separated values into a slice
@@ -63,8 +62,7 @@ func FetchTextLines(ctx context.Context, url string) ([]string, error) {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := defaultFetchClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("http request: %w", err)
 	}

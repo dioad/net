@@ -46,9 +46,10 @@ type FetchResult[T any] struct {
 
 // CachingFetcher is a generic caching HTTP fetcher that handles HTTP requests with caching
 type CachingFetcher[T any] struct {
-	url       string
-	config    CacheConfig
-	fetchFunc FetchFunc[T] // custom fetch function, defaults to JSON fetching
+	url        string
+	config     CacheConfig
+	fetchFunc  FetchFunc[T] // custom fetch function, defaults to JSON fetching
+	httpClient *http.Client
 
 	mu          sync.RWMutex
 	cachedData  *T
@@ -59,13 +60,16 @@ type CachingFetcher[T any] struct {
 	refreshCond *sync.Cond
 }
 
+var defaultFetchClient = &http.Client{Timeout: 30 * time.Second}
+
 // NewCachingFetcher creates a new caching fetcher for the specified URL and type.
 // It uses JSON unmarshaling by default to decode the response body into type T.
 func NewCachingFetcher[T any](url string, config CacheConfig) *CachingFetcher[T] {
 	f := &CachingFetcher[T]{
-		url:       url,
-		config:    config,
-		fetchFunc: nil,
+		url:        url,
+		config:     config,
+		fetchFunc:  nil,
+		httpClient: defaultFetchClient,
 	}
 	f.refreshCond = sync.NewCond(&f.mu)
 	return f
@@ -76,9 +80,10 @@ func NewCachingFetcher[T any](url string, config CacheConfig) *CachingFetcher[T]
 // parsing of the HTTP response (e.g., plain text lines).
 func NewCachingFetcherWithFunc[T any](url string, config CacheConfig, fetchFunc FetchFunc[T]) *CachingFetcher[T] {
 	f := &CachingFetcher[T]{
-		url:       url,
-		config:    config,
-		fetchFunc: fetchFunc,
+		url:        url,
+		config:     config,
+		fetchFunc:  fetchFunc,
+		httpClient: defaultFetchClient,
 	}
 	f.refreshCond = sync.NewCond(&f.mu)
 	return f
@@ -209,8 +214,7 @@ func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, http.Header, erro
 		return result, nil, fmt.Errorf("create request: %w", err)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := f.httpClient.Do(req)
 	if err != nil {
 		return result, nil, fmt.Errorf("http request: %w", err)
 	}
