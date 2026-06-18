@@ -31,6 +31,9 @@ func getICanHazIP(ctx context.Context, url string) (netip.Addr, error) {
 	}()
 
 	ipBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return netip.Addr{}, fmt.Errorf("read response body: %w", err)
+	}
 	ipString := strings.TrimRight(string(ipBytes), "\n")
 
 	addr, err := netip.ParseAddr(ipString)
