@@ -46,10 +46,9 @@ type FetchResult[T any] struct {
 
 // CachingFetcher is a generic caching HTTP fetcher that handles HTTP requests with caching
 type CachingFetcher[T any] struct {
-	url         string
-	config      CacheConfig
-	fetchFunc   FetchFunc[T] // custom fetch function, defaults to JSON fetching
-	lastHeaders http.Header
+	url       string
+	config    CacheConfig
+	fetchFunc FetchFunc[T] // custom fetch function, defaults to JSON fetching
 
 	mu          sync.RWMutex
 	cachedData  *T
@@ -138,7 +137,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	f.mu.Unlock()
 
 	// Perform the fetch
-	data, err := f.doFetch(ctx)
+	data, headers, err := f.doFetch(ctx)
 
 	f.mu.Lock()
 	f.refreshing = false
@@ -162,7 +161,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	// Success - cache the data
 	f.cachedData = &data
 	f.cachedAt = time.Now()
-	f.expiresAt = f.calculateExpiry(f.lastHeaders)
+	f.expiresAt = f.calculateExpiry(headers)
 
 	f.mu.Unlock()
 	f.refreshCond.Broadcast()
@@ -171,7 +170,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 
 // backgroundRefresh performs a refresh in the background
 func (f *CachingFetcher[T]) backgroundRefresh(ctx context.Context) {
-	data, err := f.doFetch(ctx)
+	data, headers, err := f.doFetch(ctx)
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -182,53 +181,57 @@ func (f *CachingFetcher[T]) backgroundRefresh(ctx context.Context) {
 	if err == nil {
 		f.cachedData = &data
 		f.cachedAt = time.Now()
-		f.expiresAt = f.calculateExpiry(f.lastHeaders)
+		f.expiresAt = f.calculateExpiry(headers)
 	}
 
 	f.refreshCond.Broadcast()
 }
 
-// doFetch performs the actual fetch, using custom function if provided
-func (f *CachingFetcher[T]) doFetch(ctx context.Context) (T, error) {
+// doFetch performs the actual fetch, using custom function if provided.
+// It returns the fetched data, the HTTP response headers (nil when fetchFunc is used),
+// and any error.
+func (f *CachingFetcher[T]) doFetch(ctx context.Context) (T, http.Header, error) {
 	if f.fetchFunc != nil {
-		return f.fetchFunc(ctx, f.url)
+		data, err := f.fetchFunc(ctx, f.url)
+		return data, nil, err
 	}
 	return f.fetchJSON(ctx)
 }
 
-// fetchJSON performs the actual HTTP request and JSON unmarshaling
-func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, error) {
+// fetchJSON performs the actual HTTP request and JSON unmarshaling.
+// It returns the parsed value, the response headers (for cache-expiry calculation),
+// and any error.
+func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, http.Header, error) {
 	var result T
 
 	req, err := http.NewRequestWithContext(ctx, "GET", f.url, nil)
 	if err != nil {
-		return result, fmt.Errorf("create request: %w", err)
+		return result, nil, fmt.Errorf("create request: %w", err)
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return result, fmt.Errorf("http request: %w", err)
+		return result, nil, fmt.Errorf("http request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// Capture response headers for cache expiry calculation
-	f.lastHeaders = resp.Header
+	headers := resp.Header
 
 	if resp.StatusCode != http.StatusOK {
-		return result, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return result, headers, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return result, fmt.Errorf("read response: %w", err)
+		return result, headers, fmt.Errorf("read response: %w", err)
 	}
 
 	if err := json.Unmarshal(body, &result); err != nil {
-		return result, fmt.Errorf("unmarshal json: %w", err)
+		return result, headers, fmt.Errorf("unmarshal json: %w", err)
 	}
 
-	return result, nil
+	return result, headers, nil
 }
 
 // calculateExpiry determines when the cached data expires based on HTTP cache headers
