@@ -8,30 +8,31 @@ import (
 
 // Listener is a network listener that enforces an Authoriser on all incoming connections.
 type Listener struct {
-	NetworkACL Authoriser
-	Logger     zerolog.Logger
-	inner      *GatingListener
+	acl    Authoriser
+	Logger zerolog.Logger
+	inner  *GatingListener
 }
 
 // NewListener creates a Listener that gates incoming connections via the given Authoriser.
 func NewListener(l net.Listener, acl Authoriser, logger zerolog.Logger) *Listener {
-	ln := &Listener{NetworkACL: acl, Logger: logger}
+	ln := &Listener{acl: acl, Logger: logger}
 	ln.inner = NewGatingListener(l, ln.gate)
 	return ln
 }
 
-func (l *Listener) gate(c net.Conn) (bool, error) {
-	allowed, err := l.NetworkACL.AuthoriseConn(c)
+func (l *Listener) gate(c net.Conn) bool {
+	allowed, err := l.acl.AuthoriseConn(c)
 	if err != nil {
-		return false, err
+		l.Logger.Error().Err(err).Stringer("remoteAddr", c.RemoteAddr()).Msg("authz error; denying connection")
+		return false
 	}
 	if !allowed {
 		l.Logger.Warn().Stringer("remoteAddr", c.RemoteAddr()).Msg("access denied")
 	}
-	return allowed, nil
+	return allowed
 }
 
-// Accept waits for and returns the next connection that passes the NetworkACL.
+// Accept waits for and returns the next connection that passes the Authoriser.
 // Rejected connections are closed; the loop retries until an authorised connection arrives.
 func (l *Listener) Accept() (net.Conn, error) {
 	return l.inner.Accept()

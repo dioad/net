@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -121,14 +122,26 @@ func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 		[]string{"result"},
 	)
 	if err := reg.Register(r.counter); err != nil {
-		// If already registered (e.g. multiple limiters on DefaultRegisterer),
-		// reuse the existing counter.
-		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
-			r.counter = are.ExistingCollector.(*prometheus.CounterVec)
+		var are prometheus.AlreadyRegisteredError
+		if errors.As(err, &are) {
+			if existing, ok := are.ExistingCollector.(*prometheus.CounterVec); ok {
+				r.counter = existing
+			} else {
+				r.logger.Error().Err(err).Msg("rate-limit counter registration conflict: existing collector has unexpected type")
+			}
+		} else {
+			r.logger.Error().Err(err).Msg("rate-limit counter registration failed; metrics will not be exported")
 		}
 	}
 
 	return r
+}
+
+// Stop shuts down the background cleanup goroutine started by the rate limiter.
+// It should be called when the RateLimiter is no longer needed to avoid a goroutine leak.
+// Stop is safe to call multiple times.
+func (rl *RateLimiter) Stop() {
+	rl.limiter.Stop()
 }
 
 // setRetryAfterHeader calculates and sets the Retry-After header based on the rate limiter state.

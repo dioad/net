@@ -6,18 +6,19 @@ import "net"
 // accepted connection. Connections rejected by the gate are closed and the
 // loop retries; only connections that pass the gate are returned.
 //
-// gate receives the accepted conn and returns (allow bool, err error).
-// A non-nil error closes the connection and propagates the error to the caller.
+// gate receives the accepted conn and returns true to allow it. A false return
+// closes the connection and retries; gate errors are the gate's responsibility
+// to handle before returning.
 type GatingListener struct {
 	net.Listener
-	gate func(net.Conn) (bool, error)
+	gate func(net.Conn) bool
 }
 
 // NewGatingListener creates a GatingListener that applies gate to every
 // accepted connection. gate must be safe for concurrent use if Accept is
 // called concurrently (in practice net.Listener.Accept is typically called
 // from a single goroutine).
-func NewGatingListener(l net.Listener, gate func(net.Conn) (bool, error)) *GatingListener {
+func NewGatingListener(l net.Listener, gate func(net.Conn) bool) *GatingListener {
 	return &GatingListener{Listener: l, gate: gate}
 }
 
@@ -28,15 +29,9 @@ func (g *GatingListener) Accept() (net.Conn, error) {
 		if err != nil {
 			return nil, err
 		}
-		allowed, err := g.gate(c)
-		if err != nil {
-			_ = c.Close()
-			return nil, err
+		if g.gate(c) {
+			return c, nil
 		}
-		if !allowed {
-			_ = c.Close()
-			continue
-		}
-		return c, nil
+		_ = c.Close()
 	}
 }
