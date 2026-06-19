@@ -20,7 +20,6 @@ import (
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/weaveworks/common/middleware"
 
 	"github.com/dioad/filter"
 
@@ -81,7 +80,7 @@ type Server struct {
 	serverInitOnce   sync.Once
 	metricSet        *MetricSet
 	metricsGatherers prometheus.Gatherers
-	instrument       *middleware.Instrument
+	instrument       Instrument
 	rootResource     RootResource
 	middlewares      []Middleware
 }
@@ -108,6 +107,11 @@ func newDefaultServer(config Config) *Server {
 
 // ServerOption is a function that configures a Server
 type ServerOption func(*Server)
+
+// Instrument wraps an http.Handler with telemetry instrumentation.
+type Instrument interface {
+	Wrap(handler http.Handler) http.Handler
+}
 
 // WithLogWriter returns a ServerOption that configures the server to log requests to the given writer
 // using the combined log format
@@ -173,15 +177,15 @@ func NewServer(config Config, opts ...ServerOption) *Server {
 
 // WithTelemetryInstrument returns a ServerOption that configures the server to use the given
 // telemetry instrument for metrics collection
-func WithTelemetryInstrument(i middleware.Instrument) ServerOption {
+func WithTelemetryInstrument(i Instrument) ServerOption {
 	return func(s *Server) {
 		s.ConfigureTelemetryInstrument(i)
 	}
 }
 
 // ConfigureTelemetryInstrument configures the server with the given telemetry instrument
-func (s *Server) ConfigureTelemetryInstrument(i middleware.Instrument) {
-	s.instrument = &i
+func (s *Server) ConfigureTelemetryInstrument(i Instrument) {
+	s.instrument = i
 	s.Use(func(next http.Handler) http.Handler {
 		return s.instrument.Wrap(next)
 	})
