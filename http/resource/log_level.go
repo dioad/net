@@ -120,9 +120,7 @@ func (dr *LogLevelResource) GetIndex() http.HandlerFunc {
 func (dr *LogLevelResource) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", dr.GetIndex())
-	mux.HandleFunc("GET /", dr.GetIndex())
 	mux.HandleFunc("POST /{$}", dr.PostIndex())
-	mux.HandleFunc("POST /", dr.PostIndex())
 	return mux
 }
 
