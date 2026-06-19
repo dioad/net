@@ -49,7 +49,11 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 }
 
 // ResolveRelativeRequestPath resolves a relative request path against the client's base URL.
+// It returns an error if the client was not configured with a BaseURL.
 func (c *Client) ResolveRelativeRequestPath(requestPath string) (*url.URL, error) {
+	if c.Config.BaseURL == nil {
+		return nil, fmt.Errorf("no base url configured for client")
+	}
 	relativePathURL, err := url.Parse(requestPath)
 	if err != nil {
 		return nil, err
@@ -72,15 +76,13 @@ func NewDefaultClient() *Client {
 
 // NewClient creates a new HTTP client with the provided configuration.
 // It returns an error if the configuration is missing required fields.
+// BaseURL is optional; it is only required when calling ResolveRelativeRequestPath.
 func NewClient(config *ClientConfig) (*Client, error) {
 	if config == nil {
 		return nil, fmt.Errorf("no config specified for client")
 	}
 	if config.Client == nil {
 		return nil, fmt.Errorf("no HTTP client specified for client")
-	}
-	if config.BaseURL == nil {
-		return nil, fmt.Errorf("no base url specified for client")
 	}
 	return &Client{Config: config}, nil
 }
