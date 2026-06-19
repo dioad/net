@@ -12,9 +12,9 @@ import (
 var (
 	// IPv4ICanHazIP is the URL to fetch the public IPv4 address.
 	// TODO: change this to ipv4.myip.dioad.net(A) ipv6.myip.dioad.net (AAAA) and myip.dioad.net(A and AAAA)
-	IPv4ICanHazIP = "http://ipv4.icanhazip.com"
+	IPv4ICanHazIP = "https://ipv4.icanhazip.com"
 	// IPv6ICanHazIP is the URL to fetch the public IPv6 address.
-	IPv6ICanHazIP = "http://ipv6.icanhazip.com"
+	IPv6ICanHazIP = "https://ipv6.icanhazip.com"
 )
 
 func getICanHazIP(ctx context.Context, url string) (netip.Addr, error) {
