@@ -6,15 +6,15 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Listener is a network listener that enforces a NetworkACL on all incoming connections.
+// Listener is a network listener that enforces an Authoriser on all incoming connections.
 type Listener struct {
-	NetworkACL *NetworkACL
+	NetworkACL Authoriser
 	Logger     zerolog.Logger
 	inner      *GatingListener
 }
 
-// NewListener creates a Listener that gates incoming connections via the given NetworkACL.
-func NewListener(l net.Listener, acl *NetworkACL, logger zerolog.Logger) *Listener {
+// NewListener creates a Listener that gates incoming connections via the given Authoriser.
+func NewListener(l net.Listener, acl Authoriser, logger zerolog.Logger) *Listener {
 	ln := &Listener{NetworkACL: acl, Logger: logger}
 	ln.inner = NewGatingListener(l, ln.gate)
 	return ln

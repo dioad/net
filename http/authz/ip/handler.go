@@ -29,7 +29,7 @@ func NewHandler(cfg authz.NetworkACLConfig) (*Handler, error) {
 
 // Handler implements IP-based authorization for HTTP servers.
 type Handler struct {
-	Authoriser *authz.NetworkACL
+	Authoriser authz.Authoriser
 }
 
 // AuthRequest checks if an HTTP request is authorized based on the remote IP address.
