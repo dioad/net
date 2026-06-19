@@ -10,30 +10,6 @@ import (
 	dnh "github.com/dioad/net/http"
 )
 
-// type Duration time.Duration
-//
-// func (d Duration) MarshalJSON() ([]byte, error) {
-// 	return json.Marshal(time.Duration(d).String())
-// }
-//
-// // UnmarshalJSON sets the Duration from JSON
-// func (d *Duration) UnmarshalJSON(data []byte) error {
-// 	if string(data) == "null" {
-// 		return nil
-// 	}
-//
-// 	var dstr string
-// 	if err := json.Unmarshal(data, &dstr); err != nil {
-// 		return err
-// 	}
-// 	tt, err := time.ParseDuration(dstr)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	*d = Duration(tt)
-// 	return nil
-// }
-
 // LogLevelResource is an HTTP resource that allows getting and setting the global log level.
 type LogLevelResource struct {
 	LogSetter dnh.LogLevelSetter
