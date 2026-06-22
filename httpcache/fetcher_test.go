@@ -1,4 +1,4 @@
-package prefixlist
+package httpcache
 
 import (
 	"context"

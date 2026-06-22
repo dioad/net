@@ -3,6 +3,8 @@ package prefixlist
 import (
 	"net/netip"
 	"time"
+
+	"github.com/dioad/net/httpcache"
 )
 
 func init() {
@@ -28,7 +30,7 @@ func NewFastlyProvider() *FastlyProvider {
 	p.HTTPJSONProvider = NewHTTPJSONProvider[fastlyIPRanges](
 		"fastly",
 		"https://api.fastly.com/public-ip-list",
-		CacheConfig{
+		httpcache.CacheConfig{
 			StaticExpiry: 24 * time.Hour,
 			ReturnStale:  true,
 		},

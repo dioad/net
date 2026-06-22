@@ -1,4 +1,5 @@
-package prefixlist
+// Package httpcache provides a generic caching HTTP fetcher.
+package httpcache
 
 import (
 	"context"

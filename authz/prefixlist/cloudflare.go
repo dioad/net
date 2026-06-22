@@ -2,6 +2,8 @@ package prefixlist
 
 import (
 	"time"
+
+	"github.com/dioad/net/httpcache"
 )
 
 func init() {
@@ -30,7 +32,7 @@ func NewCloudflareProvider(ipv6 bool) *CloudflareProvider {
 		HTTPTextProvider: NewHTTPTextProvider(
 			name,
 			url,
-			CacheConfig{
+			httpcache.CacheConfig{
 				StaticExpiry: 24 * time.Hour,
 				ReturnStale:  true,
 			},
