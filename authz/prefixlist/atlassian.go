@@ -4,6 +4,8 @@ import (
 	"net/netip"
 	"strings"
 	"time"
+
+	"github.com/dioad/net/httpcache"
 )
 
 func init() {
@@ -52,7 +54,7 @@ func NewAtlassianProvider(regions, products []string) *AtlassianProvider {
 	p.HTTPJSONProvider = NewHTTPJSONProvider[atlassianIPRanges](
 		name,
 		"https://ip-ranges.atlassian.com/",
-		CacheConfig{
+		httpcache.CacheConfig{
 			StaticExpiry: 24 * time.Hour,
 			ReturnStale:  true,
 		},

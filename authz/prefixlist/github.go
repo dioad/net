@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/netip"
 	"time"
+
+	"github.com/dioad/net/httpcache"
 )
 
 func init() {
@@ -43,7 +45,7 @@ func NewGitHubProvider(filter string) *GitHubProvider {
 	p.HTTPJSONProvider = NewHTTPJSONProvider[githubMeta](
 		name,
 		"https://api.github.com/meta",
-		CacheConfig{
+		httpcache.CacheConfig{
 			StaticExpiry: 1 * time.Hour,
 			ReturnStale:  true,
 		},

@@ -3,6 +3,8 @@ package prefixlist
 import (
 	"net/netip"
 	"time"
+
+	"github.com/dioad/net/httpcache"
 )
 
 func init() {
@@ -52,7 +54,7 @@ func NewAWSProvider(service, region string) *AWSProvider {
 	p.HTTPJSONProvider = NewHTTPJSONProvider[awsIPRanges](
 		name,
 		"https://ip-ranges.amazonaws.com/ip-ranges.json",
-		CacheConfig{
+		httpcache.CacheConfig{
 			StaticExpiry: 24 * time.Hour,
 			ReturnStale:  true,
 		},

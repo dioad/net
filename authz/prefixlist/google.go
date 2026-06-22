@@ -4,6 +4,8 @@ import (
 	"net/netip"
 	"strings"
 	"time"
+
+	"github.com/dioad/net/httpcache"
 )
 
 func init() {
@@ -51,7 +53,7 @@ func NewGoogleProvider(scopes, services []string) *GoogleProvider {
 	p.HTTPJSONProvider = NewHTTPJSONProvider[googleIPRanges](
 		name,
 		"https://www.gstatic.com/ipranges/cloud.json",
-		CacheConfig{
+		httpcache.CacheConfig{
 			StaticExpiry: 24 * time.Hour,
 			ReturnStale:  true,
 		},

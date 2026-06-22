@@ -3,6 +3,8 @@ package prefixlist
 import (
 	"context"
 	"net/netip"
+
+	"github.com/dioad/net/httpcache"
 )
 
 // TransformFunc is a function that transforms fetched data into a list of prefixes
@@ -11,7 +13,7 @@ type TransformFunc[T any] func(T) ([]netip.Prefix, error)
 // HTTPJSONProvider is a generic provider that fetches JSON data and transforms it into prefixes
 type HTTPJSONProvider[T any] struct {
 	name      string
-	fetcher   *CachingFetcher[T]
+	fetcher   *httpcache.CachingFetcher[T]
 	transform TransformFunc[T]
 }
 
@@ -21,10 +23,10 @@ type HTTPJSONProvider[T any] struct {
 //   - url: the HTTP endpoint to fetch from
 //   - config: caching configuration
 //   - transform: function to transform the JSON response into prefixes
-func NewHTTPJSONProvider[T any](name, url string, config CacheConfig, transform TransformFunc[T]) *HTTPJSONProvider[T] {
+func NewHTTPJSONProvider[T any](name, url string, config httpcache.CacheConfig, transform TransformFunc[T]) *HTTPJSONProvider[T] {
 	return &HTTPJSONProvider[T]{
 		name:      name,
-		fetcher:   NewCachingFetcher[T](url, config),
+		fetcher:   httpcache.NewCachingFetcher[T](url, config),
 		transform: transform,
 	}
 }
@@ -58,18 +60,18 @@ func (p *HTTPJSONProvider[T]) Contains(addr netip.Addr) bool {
 // HTTPTextProvider is a provider for HTTP endpoints that return plain text lists of prefixes
 type HTTPTextProvider struct {
 	name    string
-	fetcher *CachingFetcher[[]string]
+	fetcher *httpcache.CachingFetcher[[]string]
 }
 
 // NewHTTPTextProvider creates a new HTTP text-based provider
 // The endpoint is expected to return a plain text list of CIDR ranges (one per line)
-func NewHTTPTextProvider(name, url string, config CacheConfig) *HTTPTextProvider {
+func NewHTTPTextProvider(name, url string, config httpcache.CacheConfig) *HTTPTextProvider {
 	return &HTTPTextProvider{
 		name: name,
-		fetcher: NewCachingFetcherWithFunc[[]string](
+		fetcher: httpcache.NewCachingFetcherWithFunc[[]string](
 			url,
 			config,
-			FetchTextLines,
+			httpcache.FetchTextLines,
 		),
 	}
 }
