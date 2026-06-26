@@ -3,6 +3,7 @@ package metrics
 import (
 	"errors"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -239,12 +240,20 @@ func NewConnWithCloser(c net.Conn, closer func(net.Conn)) net2.DoneConn {
 	return net2.NewConnWithCloser(conn, closer)
 }
 
+// isTLSCloseNotifyError reports whether err is a TLS close_notify failure where
+// Go closed the connection successfully despite being unable to send the alert.
+// The Go TLS layer appends "but connection was closed anyway" in this case,
+// meaning the peer disconnected first and the close itself succeeded.
+func isTLSCloseNotifyError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "but connection was closed anyway")
+}
+
 // NewConnWithLogger returns a new net.Conn that wraps the given net.Conn and
 // logs connection stats when the connection is closed.
 func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net2.DoneConn {
 	return NewConnWithCloser(c, func(c net.Conn) {
 		err := c.Close()
-		if err != nil && !errors.Is(err, net.ErrClosed) {
+		if err != nil && !errors.Is(err, net.ErrClosed) && !isTLSCloseNotifyError(err) {
 			logger.Error().
 				Err(err).
 				Msg("connectionCloseError")
