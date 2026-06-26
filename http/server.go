@@ -348,8 +348,7 @@ func (s *Server) initialiseServer() {
 			s.AddHandler("/", s.rootResource.Index())
 		}
 
-		// Create a standard logger that writes to our zerolog logger
-		errorLogger := stdlog.New(s.Logger.With().Str("level", "error").Logger(), "", stdlog.Lshortfile)
+		errorLogger := stdlog.New(&tlsHandshakeErrorFilter{logger: s.Logger}, "", stdlog.Lshortfile)
 
 		readHeaderTimeout := s.Config.ReadHeaderTimeout
 		if readHeaderTimeout == 0 {
