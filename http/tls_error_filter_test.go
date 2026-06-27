@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIsBenignTLSHandshakeReason(t *testing.T) {
+func Test_isBenignTLSHandshakeReason(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		reason string
@@ -19,11 +19,14 @@ func TestIsBenignTLSHandshakeReason(t *testing.T) {
 		{"i/o timeout", true},
 		{"connection reset by peer", true},
 		{"EOF", true},
+		{"unexpected EOF", true},
 		{"tls: client requested unsupported application protocols ([\"h2c\" \"spdy/3\"])", true},
 		{"tls: client offered only unsupported versions: [302 301]", true},
 		{"tls: no cipher suite supported by both client and server", true},
 		{"tls: bad record MAC", false},
 		{"remote error: tls: certificate required", false},
+		// "EOF" must not match via substring — would suppress real errors containing "EOF".
+		{"tls: unexpected message after EOF recovery", false},
 		{"", false},
 	}
 	for _, tc := range cases {
@@ -34,7 +37,7 @@ func TestIsBenignTLSHandshakeReason(t *testing.T) {
 	}
 }
 
-func TestTLSHandshakeErrorFilter_benign(t *testing.T) {
+func Test_tlsHandshakeErrorFilter_Write_benign(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	logger := zerolog.New(&buf)
@@ -53,7 +56,7 @@ func TestTLSHandshakeErrorFilter_benign(t *testing.T) {
 	assert.NotContains(t, out, `"level":"error"`)
 }
 
-func TestTLSHandshakeErrorFilter_nonBenign(t *testing.T) {
+func Test_tlsHandshakeErrorFilter_Write_nonBenign(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	logger := zerolog.New(&buf)
@@ -66,11 +69,13 @@ func TestTLSHandshakeErrorFilter_nonBenign(t *testing.T) {
 
 	out := buf.String()
 	assert.Contains(t, out, `"level":"error"`)
+	assert.Contains(t, out, `"message":"tls_handshake_error"`)
+	assert.Contains(t, out, `"remote_addr":"10.0.0.1:1234"`)
+	assert.Contains(t, out, `"reason":"tls: bad record MAC"`)
 	assert.NotContains(t, out, `"level":"warn"`)
-	assert.NotContains(t, out, `"message":"tls_probe"`)
 }
 
-func TestTLSHandshakeErrorFilter_nonTLSMessage(t *testing.T) {
+func Test_tlsHandshakeErrorFilter_Write_nonTLSMessage(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	logger := zerolog.New(&buf)
@@ -86,7 +91,7 @@ func TestTLSHandshakeErrorFilter_nonTLSMessage(t *testing.T) {
 	assert.NotContains(t, out, `"level":"warn"`)
 }
 
-func TestTLSHandshakeErrorFilter_unsupportedProtocols(t *testing.T) {
+func Test_tlsHandshakeErrorFilter_Write_unsupportedProtocols(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	logger := zerolog.New(&buf)

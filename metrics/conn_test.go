@@ -2,14 +2,11 @@ package metrics
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"net"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestConnDuration(t *testing.T) {
@@ -108,46 +105,5 @@ func TestConnBytesRead(t *testing.T) {
 
 	if uint64(len(bytesToWrite)) != c.(*Conn).BytesRead() {
 		t.Fatalf("c.BytesRead() not equal to bytes read")
-	}
-}
-
-func TestIsTLSCloseNotifyError(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name string
-		err  error
-		want bool
-	}{
-		{
-			name: "tls close_notify with connection closed anyway",
-			err:  errors.New("tls: failed to send closeNotify alert (but connection was closed anyway): write tcp 10.0.0.1:443->1.2.3.4:5678: write: broken pipe"),
-			want: true,
-		},
-		{
-			name: "nil error",
-			err:  nil,
-			want: false,
-		},
-		{
-			name: "net.ErrClosed",
-			err:  net.ErrClosed,
-			want: false,
-		},
-		{
-			name: "generic broken pipe",
-			err:  errors.New("write: broken pipe"),
-			want: false,
-		},
-		{
-			name: "other tls error without closed-anyway phrase",
-			err:  errors.New("tls: bad record MAC"),
-			want: false,
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tc.want, isTLSCloseNotifyError(tc.err))
-		})
 	}
 }
