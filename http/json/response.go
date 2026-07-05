@@ -121,20 +121,15 @@ func NewResponseWithLogger(w http.ResponseWriter, r *http.Request, l zerolog.Log
 }
 
 // NewResponseFromRequest creates a Response that logs using the zerolog logger stored in
-// r's context (injected by request-ID or principal middleware). All context fields
-// (request_id, principal, auth_source, etc.) are automatically included.
+// r's context. All context fields — request_id, principal, auth_source, method, url
+// (the full pre-strip path), remote_addr, and user_agent — are present because
+// AddResource injects them into the context logger before calling the resource handler.
 //
 // Prefer this over NewResponseWithLogger in HTTP handlers.
 func NewResponseFromRequest(w http.ResponseWriter, r *http.Request) *Response {
-	logger := zerolog.Ctx(r.Context()).With().
-		Str("method", r.Method).
-		Str("url", r.URL.Redacted()).
-		Str("remote_addr", r.RemoteAddr).
-		Str("user_agent", r.UserAgent()).
-		Logger()
 	return &Response{
 		Writer: w,
-		logger: &logger,
+		logger: zerolog.Ctx(r.Context()),
 	}
 }
 

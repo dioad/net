@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"errors"
 
@@ -160,6 +161,11 @@ func TestServerWithTLS(t *testing.T) {
 	}
 }
 
+// resourceFunc is a Resource adapter for plain handler functions.
+type resourceFunc func(w http.ResponseWriter, r *http.Request)
+
+func (f resourceFunc) Handler() http.Handler { return http.HandlerFunc(f) }
+
 // MockResource implements Resource for testing
 type MockResource struct {
 	HandlerCalled bool
@@ -254,6 +260,40 @@ func TestAddResourcePreservesOriginalURLForLogHandler(t *testing.T) {
 	assert.Equal(t, "/test", path)
 	assert.Empty(t, rawPath)
 	assert.Equal(t, "/api/test?foo=bar", loggedURL)
+}
+
+func TestAddResourceEnrichesContextLogger(t *testing.T) {
+	t.Parallel()
+
+	var logBuf bytes.Buffer
+	logger := zerolog.New(&logBuf)
+
+	server := NewServer(Config{})
+
+	var capturedEntry map[string]string
+	resource := resourceFunc(func(w http.ResponseWriter, r *http.Request) {
+		zerolog.Ctx(r.Context()).Info().Msg("handler log")
+		var entry map[string]string
+		if err := json.Unmarshal(logBuf.Bytes(), &entry); err == nil {
+			capturedEntry = entry
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	server.AddResource("/app", resource)
+
+	req := httptest.NewRequest(http.MethodPost, "/app/pricing", nil)
+	req.Header.Set("User-Agent", "test-agent/1.0")
+	req = req.WithContext(logger.WithContext(req.Context()))
+	w := httptest.NewRecorder()
+
+	server.handler().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.NotNil(t, capturedEntry, "handler must have emitted a log event")
+	assert.Equal(t, http.MethodPost, capturedEntry["method"])
+	assert.Equal(t, "/app/pricing", capturedEntry["url"],
+		"url in context must be the full pre-strip path, not the resource-relative path")
+	assert.Equal(t, "test-agent/1.0", capturedEntry["user_agent"])
 }
 
 func TestAddResourceStripsEncodedRawPathPrefix(t *testing.T) {
