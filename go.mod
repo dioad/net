@@ -7,7 +7,7 @@ require (
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/handlers v1.5.2
-	github.com/pires/go-proxyproto v0.12.0
+	github.com/pires/go-proxyproto v0.14.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.69.0 // indirect
 	github.com/prometheus/procfs v0.21.0 // indirect

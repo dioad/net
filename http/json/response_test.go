@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/rs/zerolog"
 )
 
@@ -69,7 +72,16 @@ func TestNewResponseWithLogger(t *testing.T) {
 func TestNewResponseFromRequest(t *testing.T) {
 	t.Parallel()
 	var logOutput bytes.Buffer
-	ctxLogger := zerolog.New(&logOutput).With().Str("request_id", "test-req-123").Logger()
+	// Simulate the context logger as AddResource enriches it: request_id,
+	// method, url (full pre-strip path), remote_addr, user_agent are all
+	// present before the resource handler runs.
+	ctxLogger := zerolog.New(&logOutput).With().
+		Str("request_id", "test-req-123").
+		Str("method", "GET").
+		Str("url", "/app/test").
+		Str("remote_addr", "127.0.0.1:12345").
+		Str("user_agent", "test-agent/1.0").
+		Logger()
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/test", nil)
@@ -77,25 +89,15 @@ func TestNewResponseFromRequest(t *testing.T) {
 
 	resp := NewResponseFromRequest(w, req)
 
-	if resp == nil {
-		t.Fatal("Expected Response to be created, got nil")
-	}
-	if resp.logger == nil {
-		t.Error("Expected logger to be set")
-	}
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.logger)
 
-	// Trigger a log entry and verify the context field is present.
 	resp.InternalServerError(LogErr(errors.New("oops")), LogMessage("ctx test"))
 	var entry map[string]any
-	if err := json.Unmarshal(logOutput.Bytes(), &entry); err != nil {
-		t.Fatalf("Failed to parse log output: %v", err)
-	}
-	if entry["request_id"] != "test-req-123" {
-		t.Errorf("Expected request_id 'test-req-123', got %v", entry["request_id"])
-	}
-	if _, ok := entry["remote_addr"]; !ok {
-		t.Error("Expected 'remote_addr' field in log entry, got none")
-	}
+	require.NoError(t, json.Unmarshal(logOutput.Bytes(), &entry))
+	assert.Equal(t, "test-req-123", entry["request_id"])
+	assert.Equal(t, "/app/test", entry["url"])
+	assert.Equal(t, "127.0.0.1:12345", entry["remote_addr"])
 }
 
 func TestBadRequestWithMessage(t *testing.T) {

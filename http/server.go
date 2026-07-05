@@ -258,6 +258,20 @@ func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middl
 			}
 		}
 
+		// Inject the original (pre-strip) request fields into the context logger
+		// so that all handlers and service-layer code that calls
+		// zerolog.Ctx(ctx) carry method, url, remote_addr, and user_agent
+		// without each handler needing to add them individually.
+		// This must happen before the clone so that r2 shares the same
+		// context and therefore inherits the enrichment automatically.
+		zerolog.Ctx(req.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
+			return c.Str("method", req.Method).
+				Str("url", req.URL.Redacted()).
+				Str("host", req.Host).
+				Str("remote_addr", req.RemoteAddr).
+				Str("user_agent", req.UserAgent())
+		})
+
 		r2 := new(http.Request)
 		*r2 = *req
 		r2.URL = new(url.URL)
