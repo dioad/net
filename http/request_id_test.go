@@ -92,6 +92,44 @@ func TestRequestIDMiddleware_worksWithoutPreseededLogger(t *testing.T) {
 	assert.NotEmpty(t, rec.Header().Get("X-Request-ID"))
 }
 
+// TestRequestIDMiddleware_requestIDVisibleFromOuterContext verifies that a
+// logger pointer captured BEFORE RequestIDMiddleware runs (as hlog.AccessHandler
+// does) still sees request_id after the middleware completes.
+// This is the access-log correlation scenario: the middleware must mutate the
+// logger in-place rather than forking to a new context.
+func TestRequestIDMiddleware_requestIDVisibleFromOuterContext(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	logger := zerolog.New(&buf)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req = req.WithContext(logger.WithContext(req.Context()))
+
+	// Capture the logger pointer before the middleware runs, exactly as
+	// hlog.AccessHandler captures it when it wraps the next handler.
+	outerLogger := zerolog.Ctx(req.Context())
+
+	handler := diohttp.RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	responseID := rec.Header().Get("X-Request-ID")
+	require.NotEmpty(t, responseID)
+
+	// Emit a deferred log event via the pre-captured pointer, simulating the
+	// access log writing after ServeHTTP returns.
+	outerLogger.Info().Msg("access log")
+
+	var logEntry map[string]string
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &logEntry))
+	assert.Equal(t, responseID, logEntry["request_id"],
+		"pre-middleware logger pointer must reflect request_id added by UpdateContext")
+}
+
 func TestRequestIDMiddleware_generatesDistinctIDsPerRequest(t *testing.T) {
 	t.Parallel()
 
