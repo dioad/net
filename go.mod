@@ -10,7 +10,7 @@ require (
 	github.com/pires/go-proxyproto v0.14.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.69.0 // indirect
-	github.com/prometheus/procfs v0.21.0 // indirect
+	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/rs/zerolog v1.35.1
 	golang.org/x/crypto v0.53.0
