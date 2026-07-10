@@ -15,13 +15,13 @@ require (
 	github.com/rs/zerolog v1.35.1
 	golang.org/x/crypto v0.53.0
 	golang.org/x/net v0.56.0
-	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
 require (
-	github.com/coredns/coredns v1.14.4
+	github.com/coredns/coredns v1.14.6
 	github.com/dioad/filter v0.6.1
 	github.com/dioad/generics v0.0.9
 	github.com/dioad/util v0.7.0
