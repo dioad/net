@@ -203,6 +203,40 @@ func TestDNS01ManagerRenewalLoopExitsOnContextCancellation(t *testing.T) {
 	}
 }
 
+func TestDNS01ManagerReissueReturnsPromptlyOnContextCancellation(t *testing.T) {
+	dir := t.TempDir()
+
+	unblock := make(chan struct{})
+	obtainStarted := make(chan struct{})
+	m := &dns01Manager{
+		certPath: filepath.Join(dir, "cert.pem"),
+		keyPath:  filepath.Join(dir, "cert.key"),
+		obtain: func(ctx context.Context, _ DNS01Config, _ string) (*obtainedCert, error) {
+			close(obtainStarted)
+			<-unblock
+			return nil, ctx.Err()
+		},
+	}
+	t.Cleanup(func() { close(unblock) })
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- m.reissue(ctx)
+	}()
+
+	<-obtainStarted
+	cancel()
+
+	select {
+	case err := <-errCh:
+		assert.ErrorIs(t, err, context.Canceled, "reissue should return the context error, not wait for obtain")
+	case <-time.After(time.Second):
+		t.Fatal("reissue did not return promptly after context cancellation")
+	}
+}
+
 func TestLoadOrCreateAccountKey(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "account.key")
 

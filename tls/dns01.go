@@ -174,7 +174,7 @@ func (m *dns01Manager) ensureCertificate(ctx context.Context) error {
 }
 
 func (m *dns01Manager) reissue(ctx context.Context) error {
-	obtained, err := m.obtain(ctx, m.config, m.accountKeyPath)
+	obtained, err := m.obtainWithContext(ctx)
 	if err != nil {
 		return fmt.Errorf("error obtaining certificate via acme dns-01: %w", err)
 	}
@@ -193,6 +193,37 @@ func (m *dns01Manager) reissue(ctx context.Context) error {
 
 	m.setCertificate(&cert)
 	return nil
+}
+
+// dns01ObtainResult carries the outcome of a background m.obtain call so
+// obtainWithContext can select between it and ctx cancellation.
+type dns01ObtainResult struct {
+	cert *obtainedCert
+	err  error
+}
+
+// obtainWithContext runs m.obtain in a separate goroutine and returns as
+// soon as either it completes or ctx is cancelled. lego v5's DNS-01
+// propagation-wait loop (internal/wait.For) takes no context and ignores
+// cancellation while polling for record propagation, so a plain blocking
+// call to m.obtain would keep reissue running past ctx cancellation for up
+// to the propagation timeout. The obtain goroutine is not killed when ctx
+// is cancelled - it holds no lock and has no side effect beyond its own
+// ACME network calls - so it is left to finish or fail on its own; the
+// buffered channel ensures it never blocks trying to send its result.
+func (m *dns01Manager) obtainWithContext(ctx context.Context) (*obtainedCert, error) {
+	resultCh := make(chan dns01ObtainResult, 1)
+	go func() {
+		cert, err := m.obtain(ctx, m.config, m.accountKeyPath)
+		resultCh <- dns01ObtainResult{cert: cert, err: err}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case result := <-resultCh:
+		return result.cert, result.err
+	}
 }
 
 func (m *dns01Manager) loadCachedCertificate() (*tls.Certificate, bool) {
