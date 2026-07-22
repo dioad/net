@@ -26,7 +26,7 @@ require (
 	github.com/dioad/generics v0.0.9
 	github.com/dioad/util v0.7.0
 	github.com/emersion/go-msgauth v0.7.0
-	github.com/go-acme/lego/v5 v5.2.2
+	github.com/go-acme/lego/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/miekg/dns v1.1.72
@@ -55,5 +55,5 @@ require (
 	golang.org/x/tools v0.48.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	software.sslmate.com/src/go-pkcs12 v0.7.1 // indirect
+	software.sslmate.com/src/go-pkcs12 v0.7.3 // indirect
 )
