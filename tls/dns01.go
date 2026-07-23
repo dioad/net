@@ -6,13 +6,15 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +25,7 @@ import (
 	"github.com/go-acme/lego/v5/lego"
 	"github.com/go-acme/lego/v5/registration"
 	"github.com/rs/zerolog"
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/dioad/generics"
 
@@ -43,6 +46,37 @@ const dns01TickEvery = 24 * time.Hour
 // during a single ACME issuance attempt, in addition to ctx cancellation
 // (which lego v5 also honours directly on these calls).
 const dns01ObtainTimeout = 2 * time.Minute
+
+// domainSetCacheKey derives a stable, filesystem- and autocert.Cache-safe
+// identifier for a set of domains. It is order-independent (the domains are
+// sorted before hashing) so reissuing under a reordered but otherwise
+// identical Domains list reuses the same cache entry, and it never contains
+// characters autocert.Cache's contract forbids (notably "*"), so wildcard
+// domains such as "*.example.com" are safe to include. Deriving the cache
+// key from the domain set - rather than a fixed name - is what lets multiple
+// DNS01Config instances for different domains share one CacheDirectory
+// without their certificates and keys colliding.
+func domainSetCacheKey(domains []string) string {
+	sorted := make([]string, len(domains))
+	for i, d := range domains {
+		sorted[i] = strings.ToLower(d)
+	}
+	sort.Strings(sorted)
+
+	sum := sha256.Sum256([]byte(strings.Join(sorted, "\n")))
+	return hex.EncodeToString(sum[:])[:16]
+}
+
+// accountCacheKey derives a stable cache key for the ACME account tied to
+// email and directoryURL. The account key is a distinct identity from any
+// certificate's domain set, so DNS01Config instances that share a
+// CacheDirectory but use different accounts (different email or ACME
+// directory) get separate account keys automatically, while instances
+// sharing the same account reuse one.
+func accountCacheKey(email, directoryURL string) string {
+	sum := sha256.Sum256([]byte(strings.ToLower(email) + "\n" + directoryURL))
+	return hex.EncodeToString(sum[:])[:16]
+}
 
 // DNS01Config specifies parameters for obtaining and renewing a certificate
 // via the ACME DNS-01 challenge.
@@ -123,10 +157,10 @@ type obtainedCert struct {
 }
 
 // certObtainFunc performs one ACME DNS-01 issuance for c.Domains, using the
-// account key at accountKeyPath (creating one if absent). Production code
-// wires this to obtainViaLego; tests inject a fake that never touches the
-// network.
-type certObtainFunc func(ctx context.Context, c DNS01Config, accountKeyPath string) (*obtainedCert, error)
+// account key cached under accountKeyName (creating one if absent).
+// Production code wires this to obtainViaLego; tests inject a fake that
+// never touches the network.
+type certObtainFunc func(ctx context.Context, c DNS01Config, cache autocert.Cache, accountKeyName string) (*obtainedCert, error)
 
 // dns01Manager holds runtime state for a single DNS01Config-based TLS
 // config. A fresh manager is created per NewDNS01TLSConfig call, so no
@@ -134,9 +168,14 @@ type certObtainFunc func(ctx context.Context, c DNS01Config, accountKeyPath stri
 type dns01Manager struct {
 	config DNS01Config
 
-	accountKeyPath string
-	certPath       string
-	keyPath        string
+	// cache stores the ACME account key and issued certificate/key material,
+	// keyed by accountKeyName/certName/certKeyName. It is the same Cache
+	// abstraction (golang.org/x/crypto/acme/autocert.Cache) that the
+	// autocert TLS arm uses, so a CacheDirectory can be shared between them.
+	cache          autocert.Cache
+	accountKeyName string
+	certName       string
+	certKeyName    string
 
 	obtain    certObtainFunc
 	tickEvery time.Duration
@@ -153,11 +192,15 @@ func newDNS01Manager(c DNS01Config) (*dns01Manager, error) {
 		return nil, fmt.Errorf("error creating cache directory: %w", err)
 	}
 
+	certKey := domainSetCacheKey(c.Domains)
+	accountKey := accountCacheKey(c.Email, c.DirectoryURL)
+
 	return &dns01Manager{
 		config:         c,
-		accountKeyPath: filepath.Join(cacheDir, "account.key"),
-		certPath:       filepath.Join(cacheDir, "cert.pem"),
-		keyPath:        filepath.Join(cacheDir, "cert.key"),
+		cache:          autocert.DirCache(cacheDir),
+		accountKeyName: accountKey + "+account",
+		certName:       certKey + "+crt",
+		certKeyName:    certKey + "+key",
 		obtain:         obtainViaLego,
 		tickEvery:      dns01TickEvery,
 	}, nil
@@ -166,7 +209,7 @@ func newDNS01Manager(c DNS01Config) (*dns01Manager, error) {
 // ensureCertificate loads a cached certificate if it exists and is not near
 // expiry, otherwise it reissues one.
 func (m *dns01Manager) ensureCertificate(ctx context.Context) error {
-	if cert, ok := m.loadCachedCertificate(); ok && !needsRenewal(cert.Leaf.NotAfter, time.Now(), dns01RenewBefore) {
+	if cert, ok := m.loadCachedCertificate(ctx); ok && !needsRenewal(cert.Leaf.NotAfter, time.Now(), dns01RenewBefore) {
 		m.setCertificate(cert)
 		return nil
 	}
@@ -179,10 +222,10 @@ func (m *dns01Manager) reissue(ctx context.Context) error {
 		return fmt.Errorf("error obtaining certificate via acme dns-01: %w", err)
 	}
 
-	if err := os.WriteFile(m.certPath, obtained.certPEM, 0644); err != nil {
+	if err := m.cache.Put(ctx, m.certName, obtained.certPEM); err != nil {
 		return fmt.Errorf("error persisting certificate: %w", err)
 	}
-	if err := os.WriteFile(m.keyPath, obtained.keyPEM, 0600); err != nil {
+	if err := m.cache.Put(ctx, m.certKeyName, obtained.keyPEM); err != nil {
 		return fmt.Errorf("error persisting private key: %w", err)
 	}
 
@@ -214,7 +257,7 @@ type dns01ObtainResult struct {
 func (m *dns01Manager) obtainWithContext(ctx context.Context) (*obtainedCert, error) {
 	resultCh := make(chan dns01ObtainResult, 1)
 	go func() {
-		cert, err := m.obtain(ctx, m.config, m.accountKeyPath)
+		cert, err := m.obtain(ctx, m.config, m.cache, m.accountKeyName)
 		resultCh <- dns01ObtainResult{cert: cert, err: err}
 	}()
 
@@ -226,8 +269,17 @@ func (m *dns01Manager) obtainWithContext(ctx context.Context) (*obtainedCert, er
 	}
 }
 
-func (m *dns01Manager) loadCachedCertificate() (*tls.Certificate, bool) {
-	cert, err := tls.LoadX509KeyPair(m.certPath, m.keyPath)
+func (m *dns01Manager) loadCachedCertificate(ctx context.Context) (*tls.Certificate, bool) {
+	certPEM, err := m.cache.Get(ctx, m.certName)
+	if err != nil {
+		return nil, false
+	}
+	keyPEM, err := m.cache.Get(ctx, m.certKeyName)
+	if err != nil {
+		return nil, false
+	}
+
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
 		return nil, false
 	}
@@ -338,8 +390,8 @@ func (u *dns01User) GetPrivateKey() crypto.Signer           { return u.key }
 // obtainViaLego runs the ACME DNS-01 flow (client creation, provider
 // registration, account registration, certificate issuance) for c.Domains,
 // producing PEM-encoded certificate and private key material.
-func obtainViaLego(ctx context.Context, c DNS01Config, accountKeyPath string) (*obtainedCert, error) {
-	accountKey, err := loadOrCreateAccountKey(accountKeyPath)
+func obtainViaLego(ctx context.Context, c DNS01Config, cache autocert.Cache, accountKeyName string) (*obtainedCert, error) {
+	accountKey, err := loadOrCreateAccountKey(ctx, cache, accountKeyName)
 	if err != nil {
 		return nil, fmt.Errorf("error loading acme account key: %w", err)
 	}
@@ -391,33 +443,33 @@ func obtainViaLego(ctx context.Context, c DNS01Config, accountKeyPath string) (*
 	return &obtainedCert{certPEM: resource.Certificate, keyPEM: resource.PrivateKey}, nil
 }
 
-// loadOrCreateAccountKey loads the ACME account private key from path,
-// creating and persisting a new one if it doesn't exist.
-func loadOrCreateAccountKey(path string) (*ecdsa.PrivateKey, error) {
-	pathClean := filepath.Clean(path)
-	if data, err := os.ReadFile(pathClean); err == nil {
+// loadOrCreateAccountKey loads the ACME account private key cached under
+// key, creating and persisting a new one if it doesn't exist.
+func loadOrCreateAccountKey(ctx context.Context, cache autocert.Cache, key string) (*ecdsa.PrivateKey, error) {
+	if data, err := cache.Get(ctx, key); err == nil {
 		block, _ := pem.Decode(data)
 		if block == nil {
-			return nil, fmt.Errorf("invalid PEM in account key file %s", path)
+			return nil, fmt.Errorf("invalid PEM in account key %s", key)
 		}
 		return x509.ParseECPrivateKey(block.Bytes)
-	} else if !errors.Is(err, os.ErrNotExist) {
+	} else if !errors.Is(err, autocert.ErrCacheMiss) {
 		return nil, fmt.Errorf("error reading account key: %w", err)
 	}
 
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	accountKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("error generating account key: %w", err)
 	}
 
-	der, err := x509.MarshalECPrivateKey(key)
+	der, err := x509.MarshalECPrivateKey(accountKey)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling account key: %w", err)
 	}
 
-	if err := saveBlockToPEMFile(path, 0600, "EC PRIVATE KEY", der); err != nil {
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der})
+	if err := cache.Put(ctx, key, pemBytes); err != nil {
 		return nil, fmt.Errorf("error saving account key: %w", err)
 	}
 
-	return key, nil
+	return accountKey, nil
 }
