@@ -30,7 +30,7 @@ func TestNewDefaultServer(t *testing.T) {
 	ln, _ := nettest.NewLocalListener("tcp4")
 
 	go func() {
-		s.Serve(ln)
+		_ = s.Serve(ln)
 	}()
 
 	err := s.Shutdown(context.Background())
@@ -49,8 +49,8 @@ func TestMultipleNewDefaultServer(t *testing.T) {
 	ln2, _ := nettest.NewLocalListener("tcp4")
 
 	go func() {
-		s1.Serve(ln1)
-		s2.Serve(ln2)
+		_ = s1.Serve(ln1)
+		_ = s2.Serve(ln2)
 	}()
 
 	err := s1.Shutdown(context.Background())
@@ -176,7 +176,7 @@ func (m *MockResource) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test"))
+		_, _ = w.Write([]byte("test"))
 	})
 	return mux
 }
@@ -510,7 +510,7 @@ func TestMiddleware(t *testing.T) {
 	// Add a handler
 	server.AddHandlerFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test"))
+		_, _ = w.Write([]byte("test"))
 	})
 
 	// Create a test request

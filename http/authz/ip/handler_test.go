@@ -16,7 +16,7 @@ func TestHandlerFunc(t *testing.T) {
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		_, _ = w.Write([]byte("success"))
 	})
 
 	handlerFunc, err := HandlerFunc(cfg, nextHandler)
@@ -137,7 +137,7 @@ func TestWrap_Allowed(t *testing.T) {
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("allowed"))
+		_, _ = w.Write([]byte("allowed"))
 	})
 
 	wrappedHandler := handler.Wrap(nextHandler)
@@ -198,7 +198,7 @@ func TestWrap_AllowByDefault(t *testing.T) {
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("allowed by default"))
+		_, _ = w.Write([]byte("allowed by default"))
 	})
 
 	wrappedHandler := handler.Wrap(nextHandler)

@@ -23,7 +23,7 @@ func TestCachingFetcher_Basic(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount.Add(1)
 		data := testData{Message: "hello", Count: int(callCount.Load())}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 
@@ -73,7 +73,7 @@ func TestCachingFetcher_ReturnStale(t *testing.T) {
 			return
 		}
 		data := testData{Message: "hello", Count: int(callCount.Load())}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 
@@ -122,7 +122,7 @@ func TestCachingFetcher_NoReturnStale_BlocksOnExpiry(t *testing.T) {
 			time.Sleep(100 * time.Millisecond)
 		}
 		data := testData{Message: "hello", Count: int(callCount.Load())}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 
@@ -182,7 +182,7 @@ func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
 		callCount.Add(1)
 		time.Sleep(50 * time.Millisecond) // Simulate slow response
 		data := testData{Message: "hello", Count: int(callCount.Load())}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 
@@ -217,7 +217,7 @@ func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
 func TestCachingFetcher_GetCachedData(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data := testData{Message: "hello", Count: 42}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 
@@ -243,7 +243,7 @@ func TestCachingFetcher_GetCachedData(t *testing.T) {
 func TestCachingFetcher_GetCacheInfo(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data := testData{Message: "hello", Count: 42}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 
@@ -502,7 +502,7 @@ func TestCachingFetcher_HTTPCacheHeaders(t *testing.T) {
 			callCount.Add(1)
 			w.Header().Set("Cache-Control", "max-age=1")
 			data := testData{Message: "hello", Count: int(callCount.Load())}
-			json.NewEncoder(w).Encode(data)
+			_ = json.NewEncoder(w).Encode(data)
 		}))
 		defer server.Close()
 
@@ -543,7 +543,7 @@ func TestCachingFetcher_HTTPCacheHeaders(t *testing.T) {
 			expiresTime := time.Now().Add(1 * time.Second)
 			w.Header().Set("Expires", expiresTime.Format(time.RFC1123))
 			data := testData{Message: "hello", Count: int(callCount.Load())}
-			json.NewEncoder(w).Encode(data)
+			_ = json.NewEncoder(w).Encode(data)
 		}))
 		defer server.Close()
 
@@ -583,7 +583,7 @@ func TestCachingFetcher_CacheControl_NoStore(t *testing.T) {
 		callCount.Add(1)
 		w.Header().Set("Cache-Control", "no-store")
 		data := testData{Message: "hello", Count: int(callCount.Load())}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 
@@ -615,7 +615,7 @@ func TestCachingFetcher_CacheControl_NoCache(t *testing.T) {
 		callCount.Add(1)
 		w.Header().Set("Cache-Control", "no-cache")
 		data := testData{Message: "hello", Count: int(callCount.Load())}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 
@@ -657,7 +657,7 @@ func TestCachingFetcher_CacheControl_MustRevalidate(t *testing.T) {
 		callCount.Add(1)
 		w.Header().Set("Cache-Control", "max-age=1, must-revalidate")
 		data := testData{Message: "hello", Count: int(callCount.Load())}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 
@@ -697,7 +697,7 @@ func TestCachingFetcher_CacheControl_MaxAgeWithNoCache(t *testing.T) {
 		// no-cache should take precedence over max-age
 		w.Header().Set("Cache-Control", "max-age=3600, no-cache")
 		data := testData{Message: "hello", Count: int(callCount.Load())}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 
@@ -732,7 +732,7 @@ func TestCachingFetcher_CacheControl_MaxAgeWithNoStore(t *testing.T) {
 		// no-store should take precedence over max-age
 		w.Header().Set("Cache-Control", "max-age=3600, no-store")
 		data := testData{Message: "hello", Count: int(callCount.Load())}
-		json.NewEncoder(w).Encode(data)
+		_ = json.NewEncoder(w).Encode(data)
 	}))
 	defer server.Close()
 

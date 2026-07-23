@@ -305,7 +305,7 @@ func ExampleMarshalHeader_rfc9110Compliance() {
 
 	// Unmarshal back - values are preserved exactly
 	var result DataList
-	dhttp.UnmarshalHeader(headers, &result, opts)
+	_ = dhttp.UnmarshalHeader(headers, &result, opts)
 
 	fmt.Printf("\nUnmarshaled values:\n")
 	for i, item := range result.Items {

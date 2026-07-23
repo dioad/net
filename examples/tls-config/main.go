@@ -21,7 +21,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating temp dir: %v\n", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	certFile := filepath.Join(tmpDir, "cert.pem")
 	keyFile := filepath.Join(tmpDir, "key.pem")
@@ -63,7 +63,7 @@ func main() {
 
 	// Create a simple handler
 	myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello from secure HTTPS server!\n")
+		_, _ = fmt.Fprintf(w, "Hello from secure HTTPS server!\n")
 	})
 
 	// Create server with TLS
@@ -75,11 +75,11 @@ func main() {
 	server.AddHandler("/", myHandler)
 
 	// Create listener
-	ln, err := net.Listen("tcp", ":8443")
+	ln, err := net.Listen("tcp", ":8443") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
 	if err != nil {
 		log.Fatalf("Error creating listener: %v\n", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	fmt.Println("\nStarting HTTPS server with TLS on :8443")
 	fmt.Println("Note: Using self-signed certificate")

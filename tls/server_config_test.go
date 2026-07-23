@@ -190,7 +190,9 @@ func TestNewServerTLSConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to write CA file: %v", err)
 	}
-	caFile.Close()
+	if err := caFile.Close(); err != nil {
+		t.Fatalf("Failed to close CA file: %v", err)
+	}
 
 	tests := []struct {
 		name        string

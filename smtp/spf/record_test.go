@@ -146,7 +146,9 @@ func TestSPFRecord(t *testing.T) {
 	}
 
 	for _, run := range tests {
-		run.s.Render(nil)
+		if err := run.s.Render(nil); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		result := run.s.String()
 		if result != run.r {
 			t.Errorf("got: %s, expected: %s", result, run.r)

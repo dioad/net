@@ -15,7 +15,7 @@ func TestListener_Accept(t *testing.T) {
 	// Create a real TCP listener on localhost
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	// Create a rate limiter: 1 RPS, burst of 2
 	rl := NewRateLimiterWithConfig(1.0, 2, 100*time.Millisecond, 30*time.Minute, zerolog.Nop())
@@ -34,7 +34,7 @@ func TestListener_Accept(t *testing.T) {
 			}
 			atomic.AddInt32(&acceptedCount, 1)
 
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 
@@ -51,7 +51,7 @@ func TestListener_Accept(t *testing.T) {
 			// If it's NOT rate limited, it returns it and we close it in the goroutine.
 			// If it IS rate limited, rlListener.Accept() won't return it to our goroutine,
 			// it will close it and continue to the next Accept().
-			conn.Close()
+			_ = conn.Close()
 		}
 	}
 
@@ -69,11 +69,11 @@ func TestListener_Accept(t *testing.T) {
 	if err == nil {
 		// We expect the server to close this connection because of rate limiting
 		buf := make([]byte, 1)
-		conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		require.NoError(t, conn.SetReadDeadline(time.Now().Add(100*time.Millisecond)))
 		_, err := conn.Read(buf)
 		// Should get EOF or similar because server closed it
 		assert.Error(t, err)
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	time.Sleep(50 * time.Millisecond)
@@ -87,7 +87,7 @@ func TestListener_Accept(t *testing.T) {
 	conn, err = dialer.Dial("tcp", ln.Addr().String())
 	assert.NoError(t, err)
 	if err == nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	time.Sleep(50 * time.Millisecond)
