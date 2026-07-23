@@ -49,7 +49,7 @@ func TestListener(t *testing.T) {
 	// Create a test server
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	// Create a multi-provider with test provider
 	provider := &mockProvider{
@@ -69,7 +69,7 @@ func TestListener(t *testing.T) {
 	go func() {
 		conn, err := net.Dial("tcp", listener.Addr().String())
 		if err == nil {
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
@@ -77,7 +77,7 @@ func TestListener(t *testing.T) {
 	acceptedConn, err := plListener.Accept()
 	require.NoError(t, err)
 	assert.NotNil(t, acceptedConn)
-	acceptedConn.Close()
+	_ = acceptedConn.Close()
 }
 
 func TestListenerAddr(t *testing.T) {
@@ -85,7 +85,7 @@ func TestListenerAddr(t *testing.T) {
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	provider := &mockProvider{
 		name:     "test",

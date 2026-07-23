@@ -19,14 +19,17 @@ func main() {
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	// Create a generic rate limiter (10 connections per second, burst of 20)
-	rl := ratelimit.NewRateLimiter(10.0, 20, logger)
+	rl := ratelimit.NewRateLimiterWithOptions(
+		ratelimit.WithRateLimiterStaticLimits(10.0, 20),
+		ratelimit.WithRateLimiterLogger(logger),
+	)
 
 	// Create a listener
-	ln, err := net.Listen("tcp", ":8080")
+	ln, err := net.Listen("tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
 	if err != nil {
 		log.Fatalf("Error creating listener: %v\n", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	// Wrap an existing listener with rate limiting (by source IP)
 	rlListener := ratelimit.NewListener(ln, rl, logger)
@@ -42,7 +45,7 @@ func main() {
 	go func() {
 		<-sigChan
 		fmt.Println("\nShutting down server...")
-		rlListener.Close()
+		_ = rlListener.Close()
 	}()
 
 	// Accept and handle connections
@@ -63,14 +66,14 @@ func main() {
 }
 
 func handleConnection(conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	fmt.Printf("New connection from %s\n", conn.RemoteAddr())
 
 	// Send welcome message
-	io.WriteString(conn, "Hello! You've connected to the rate-limited server.\n")
-	io.WriteString(conn, "This connection is rate-limited by source IP.\n")
-	io.WriteString(conn, "Type 'quit' to disconnect.\n\n")
+	_, _ = io.WriteString(conn, "Hello! You've connected to the rate-limited server.\n")
+	_, _ = io.WriteString(conn, "This connection is rate-limited by source IP.\n")
+	_, _ = io.WriteString(conn, "Type 'quit' to disconnect.\n\n")
 
 	// Echo server
 	buf := make([]byte, 1024)
@@ -86,10 +89,10 @@ func handleConnection(conn net.Conn) {
 		if n > 0 {
 			msg := string(buf[:n])
 			if msg == "quit\n" || msg == "quit\r\n" {
-				io.WriteString(conn, "Goodbye!\n")
+				_, _ = io.WriteString(conn, "Goodbye!\n")
 				break
 			}
-			conn.Write(buf[:n])
+			_, _ = conn.Write(buf[:n])
 		}
 	}
 

@@ -54,7 +54,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating allow listener: %v\n", err)
 	}
-	defer allowListener.Close()
+	defer func() { _ = allowListener.Close() }()
 
 	aclAllowListener := authz.NewListener(allowListener, allowLocalACL, logger)
 
@@ -63,7 +63,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating deny listener: %v\n", err)
 	}
-	defer denyListener.Close()
+	defer func() { _ = denyListener.Close() }()
 
 	aclDenyListener := authz.NewListener(denyListener, denyLocalACL, logger)
 
@@ -102,8 +102,8 @@ func main() {
 	<-sigChan
 
 	fmt.Println("\nShutting down listeners...")
-	aclAllowListener.Close()
-	aclDenyListener.Close()
+	_ = aclAllowListener.Close()
+	_ = aclDenyListener.Close()
 
 	// Wait for goroutines to finish with timeout
 	done := make(chan struct{})
@@ -191,13 +191,13 @@ func acceptConnections(listener *authz.Listener, listenerType string, logger zer
 }
 
 func handleConnection(conn net.Conn, logger zerolog.Logger) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Send welcome message
 	welcome := fmt.Sprintf("Welcome! You connected from %s\n", conn.RemoteAddr())
 	welcome += "This connection was authorized by the ACL.\n"
 	welcome += "Type 'quit' to disconnect.\n\n"
-	io.WriteString(conn, welcome)
+	_, _ = io.WriteString(conn, welcome)
 
 	// Simple echo server
 	buf := make([]byte, 1024)
@@ -213,11 +213,11 @@ func handleConnection(conn net.Conn, logger zerolog.Logger) {
 		if n > 0 {
 			msg := string(buf[:n])
 			if msg == "quit\n" || msg == "quit\r\n" {
-				io.WriteString(conn, "Goodbye!\n")
+				_, _ = io.WriteString(conn, "Goodbye!\n")
 				break
 			}
 			// Echo back
-			conn.Write(buf[:n])
+			_, _ = conn.Write(buf[:n])
 		}
 	}
 

@@ -81,7 +81,7 @@ func ExampleListener() {
 	if err != nil {
 		panic(err)
 	}
-	defer baseListener.Close()
+	defer func() { _ = baseListener.Close() }()
 
 	// Create a multi-provider with GitLab provider
 	gitlabProvider := prefixlist.NewGitLabProvider()

@@ -11,7 +11,7 @@ func TestLoadX509CertFromFile_InvalidPEM(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	if _, err := tmpFile.WriteString("not a pem"); err != nil {
 		t.Fatalf("failed to write to temp file: %v", err)

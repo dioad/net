@@ -39,7 +39,9 @@ func TestRecordPercentInBounds(t *testing.T) {
 		Version: "DMARC1",
 		Policy:  PolicyQuarantine,
 	}
-	r.SetPercent(45)
+	if err := r.SetPercent(45); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	result := r.String()
 

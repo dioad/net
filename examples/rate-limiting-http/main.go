@@ -26,7 +26,7 @@ func main() {
 
 	// Create a simple handler
 	myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Request processed successfully\n")
+		_, _ = fmt.Fprintf(w, "Request processed successfully\n")
 	})
 
 	// Use as middleware for a specific principal
@@ -38,11 +38,11 @@ func main() {
 	server.AddHandler("/limited", handler)
 
 	// Create listener
-	ln, err := net.Listen("tcp", ":8080")
+	ln, err := net.Listen("tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
 	if err != nil {
 		log.Fatalf("Error creating listener: %v\n", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	fmt.Println("Starting HTTP server with rate limiting on :8080")
 	fmt.Println("Rate limit: 1 request/second with burst of 5 for principal 'user1'")

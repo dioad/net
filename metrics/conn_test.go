@@ -18,8 +18,8 @@ func TestConnDuration(t *testing.T) {
 	// startTime := time.Now()
 	wg.Go(func() {
 		controlBytes := make([]byte, 1)
-		controlConn.Write([]byte("a"))
-		controlConn.Read(controlBytes)
+		_, _ = controlConn.Write([]byte("a"))
+		_, _ = controlConn.Read(controlBytes)
 	})
 
 	var midDuration time.Duration
@@ -30,13 +30,13 @@ func TestConnDuration(t *testing.T) {
 		dest := make([]byte, 1)
 		time.Sleep(50 * time.Millisecond)
 
-		c.Read(dest)
+		_, _ = c.Read(dest)
 
 		midDuration = c.(*Conn).Duration()
 
 		time.Sleep(50 * time.Millisecond)
 
-		c.Write([]byte("b"))
+		_, _ = c.Write([]byte("b"))
 
 		endDuration = c.(*Conn).Duration()
 	})
@@ -53,7 +53,7 @@ func TestConnDuration(t *testing.T) {
 		t.Errorf("end duration mismatch: %v(rounded=%v) != %v", endDuration, roundedEndDuration, 200*time.Millisecond)
 	}
 
-	c.(*Conn).Close()
+	_ = c.(*Conn).Close()
 
 	// roundedD1 := d1.Round(10 * time.Millisecond)
 	// if roundedD1 != 250*time.Millisecond {
@@ -73,8 +73,8 @@ func TestConnBytesWritten(t *testing.T) {
 	bytesToWrite := []byte("hello")
 
 	go func() {
-		c.Write([]byte("hello"))
-		c.Close()
+		_, _ = c.Write([]byte("hello"))
+		_ = c.Close()
 	}()
 	bytesWritten, _ := io.ReadAll(server)
 
@@ -94,8 +94,8 @@ func TestConnBytesRead(t *testing.T) {
 	bytesToWrite := []byte("hello")
 
 	go func() {
-		server.Write([]byte("hello"))
-		server.Close()
+		_, _ = server.Write([]byte("hello"))
+		_ = server.Close()
 	}()
 	bytesWritten, _ := io.ReadAll(c)
 

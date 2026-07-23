@@ -13,7 +13,7 @@ func TestConnCloser(t *testing.T) {
 	_, client := net.Pipe()
 	c := NewConnWithCloser(client, func(c net.Conn) { result = true })
 
-	c.Close()
+	_ = c.Close()
 
 	if !result {
 		t.Fatalf("failed to call closer")
@@ -38,8 +38,8 @@ func TestConnCloserPassThroughWrite(t *testing.T) {
 	bytesToWrite := []byte("hello")
 
 	go func() {
-		c.Write([]byte("hello"))
-		c.Close()
+		_, _ = c.Write([]byte("hello"))
+		_ = c.Close()
 	}()
 	bytesWritten, _ := io.ReadAll(server)
 
@@ -55,8 +55,8 @@ func TestConnCloserPassThroughRead(t *testing.T) {
 	bytesToWrite := []byte("hello")
 
 	go func() {
-		server.Write([]byte("hello"))
-		server.Close()
+		_, _ = server.Write([]byte("hello"))
+		_ = server.Close()
 	}()
 	bytesWritten, _ := io.ReadAll(c)
 
