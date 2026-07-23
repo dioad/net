@@ -219,7 +219,7 @@ func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, http.Header, erro
 	if err != nil {
 		return result, nil, fmt.Errorf("http request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	headers := resp.Header
 

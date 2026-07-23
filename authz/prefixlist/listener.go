@@ -37,7 +37,9 @@ func (l *Listener) Accept() (net.Conn, error) {
 			l.logger.Warn().
 				Str("remoteAddr", conn.RemoteAddr().String()).
 				Msg("non-TCP connection, rejecting")
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				l.logger.Debug().Err(err).Msg("error closing rejected connection")
+			}
 			continue
 		}
 
@@ -47,7 +49,9 @@ func (l *Listener) Accept() (net.Conn, error) {
 			l.logger.Warn().
 				Str("remoteAddr", tcpAddr.IP.String()).
 				Msg("invalid IP address, rejecting")
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				l.logger.Debug().Err(err).Msg("error closing rejected connection")
+			}
 			continue
 		}
 
@@ -56,7 +60,9 @@ func (l *Listener) Accept() (net.Conn, error) {
 			l.logger.Warn().
 				Str("remoteAddr", addr.String()).
 				Msg("connection not in allowed prefix lists, rejecting")
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				l.logger.Debug().Err(err).Msg("error closing rejected connection")
+			}
 			continue
 		}
 

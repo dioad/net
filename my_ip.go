@@ -27,7 +27,7 @@ func getICanHazIP(ctx context.Context, url string) (netip.Addr, error) {
 		return netip.Addr{}, err
 	}
 	defer func() {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}()
 
 	ipBytes, err := io.ReadAll(resp.Body)

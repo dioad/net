@@ -37,7 +37,9 @@ func (l *Listener) Accept() (net.Conn, error) {
 				Str("remoteAddr", conn.RemoteAddr().String()).
 				Str("principal", principal).
 				Msg("rate limit exceeded, rejecting connection")
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				l.Logger.Debug().Err(err).Msg("error closing rejected connection")
+			}
 			continue
 		}
 
