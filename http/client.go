@@ -45,7 +45,7 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	return c.Config.Client.Do(req)
+	return c.Config.Client.Do(req) // #nosec G704 -- Client is a generic HTTP client; making requests to caller-supplied URLs is its purpose, not a vulnerability
 }
 
 // ResolveRelativeRequestPath resolves a relative request path against the client's base URL.

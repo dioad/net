@@ -212,7 +212,7 @@ func NewSelfSignedTLSConfig(config SelfSignedConfig) (*tls.Config, error) {
 
 // CertificatesFromSinglePEMFile loads certificate and key from a single PEM file.
 func CertificatesFromSinglePEMFile(ctx context.Context, singlePEMFile string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
-	interval := time.Duration(waitConfig.WaitInterval) * time.Second
+	interval := time.Duration(waitConfig.WaitInterval) * time.Second // #nosec G115 -- WaitInterval is an operator-supplied config value in seconds, never near uint64/int64 boundary
 
 	cert, err := util.WaitForReturn(ctx, interval, waitConfig.WaitMax, func() (*tls.Certificate, error) {
 		return LoadKeyPairAndCertsFromFile(singlePEMFile)
@@ -227,7 +227,7 @@ func CertificatesFromSinglePEMFile(ctx context.Context, singlePEMFile string, wa
 // CertificateFromKeyAndCertificateFiles loads certificate and key from separate files.
 func CertificateFromKeyAndCertificateFiles(ctx context.Context, key, cert string, waitConfig FileWaitConfig) ([]tls.Certificate, error) {
 
-	interval := time.Duration(waitConfig.WaitInterval) * time.Second
+	interval := time.Duration(waitConfig.WaitInterval) * time.Second // #nosec G115 -- WaitInterval is an operator-supplied config value in seconds, never near uint64/int64 boundary
 
 	serverCertificate, err := util.WaitForReturn(ctx, interval, waitConfig.WaitMax, func() (*tls.Certificate, error) {
 		certificate, err := tls.LoadX509KeyPair(cert, key)
