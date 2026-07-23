@@ -94,7 +94,7 @@ func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInter
 		staleTTL = 30 * time.Minute
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background()) // #nosec G118 -- cancel is stored on RateLimiter.cancel and invoked by Stop()
 	rl := &RateLimiter{
 		limiters:          make(map[string]*limiterEntry),
 		logger:            logger,
@@ -127,7 +127,7 @@ func NewRateLimiterWithContextAndConfig(ctx context.Context, requestsPerSecond f
 		staleTTL = 30 * time.Minute
 	}
 
-	derivedCtx, cancel := context.WithCancel(ctx)
+	derivedCtx, cancel := context.WithCancel(ctx) // #nosec G118 -- cancel is stored on RateLimiter.cancel and invoked by Stop()
 	rl := &RateLimiter{
 		limiters:          make(map[string]*limiterEntry),
 		logger:            logger,
@@ -170,7 +170,7 @@ func NewRateLimiterWithSourceAndConfig(source RateLimitSource, cleanupInterval, 
 		staleTTL = 30 * time.Minute
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background()) // #nosec G118 -- cancel is stored on RateLimiter.cancel and invoked by Stop()
 	rl := &RateLimiter{
 		limiters:        make(map[string]*limiterEntry),
 		logger:          logger,
@@ -197,7 +197,7 @@ func NewRateLimiterWithSourceContextAndConfig(ctx context.Context, source RateLi
 		staleTTL = 30 * time.Minute
 	}
 
-	derivedCtx, cancel := context.WithCancel(ctx)
+	derivedCtx, cancel := context.WithCancel(ctx) // #nosec G118 -- cancel is stored on RateLimiter.cancel and invoked by Stop()
 	rl := &RateLimiter{
 		limiters:        make(map[string]*limiterEntry),
 		logger:          logger,
@@ -278,7 +278,7 @@ func NewRateLimiterWithOptions(opts ...Option) *RateLimiter {
 		o.staleTTL = 30 * time.Minute
 	}
 
-	ctx, cancel := context.WithCancel(o.ctx)
+	ctx, cancel := context.WithCancel(o.ctx) // #nosec G118 -- cancel is stored on RateLimiter.cancel and invoked by Stop()
 	rl := &RateLimiter{
 		limiters:          make(map[string]*limiterEntry),
 		logger:            o.logger,

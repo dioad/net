@@ -59,7 +59,7 @@ func (m *connMetrics) BytesWritten() uint64 {
 
 // IncBytesRead increments the number of bytes read.
 func (m *connMetrics) IncBytesRead(n int) {
-	atomic.AddUint64(&m.bytesRead, uint64(n))
+	atomic.AddUint64(&m.bytesRead, uint64(n)) // #nosec G115 -- n is a Read() byte count, always >= 0 per io.Reader contract
 	m.updateTime()
 }
 
@@ -76,7 +76,7 @@ func (m *connMetrics) updateTime() {
 
 // IncBytesWritten increments the number of bytes written.
 func (m *connMetrics) IncBytesWritten(n int) {
-	atomic.AddUint64(&m.bytesWritten, uint64(n))
+	atomic.AddUint64(&m.bytesWritten, uint64(n)) // #nosec G115 -- n is a Write() byte count, always >= 0 per io.Writer contract
 	m.updateTime()
 }
 
