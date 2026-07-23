@@ -47,7 +47,7 @@ type LocalConfig struct {
 	SinglePEMFile string         `mapstructure:"single-pem-file" json:",omitzero"`
 	Certificate   string         `mapstructure:"cert" json:",omitzero"`
 	Key           string         `mapstructure:"key" json:",omitzero"`
-	FileWait      FileWaitConfig `mapstructure:"file-wait,squash" json:",squash"`
+	FileWait      FileWaitConfig `mapstructure:"file-wait,squash" json:",omitzero"`
 }
 
 // FileWaitConfig specifies wait parameters for loading certificate files.

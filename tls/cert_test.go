@@ -1,6 +1,7 @@
 package tls
 
 import (
+	"crypto/x509"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -13,11 +14,16 @@ import (
 
 func TestLoadCertPoolFromFile(t *testing.T) {
 	certPath, _ := writeTestCert(t)
+	certPEM, err := os.ReadFile(certPath)
+	require.NoError(t, err)
 
 	pool, err := LoadCertPoolFromFile(certPath)
 	require.NoError(t, err)
 	require.NotNil(t, pool)
-	assert.NotEmpty(t, pool.Subjects())
+
+	want := x509.NewCertPool()
+	require.True(t, want.AppendCertsFromPEM(certPEM))
+	assert.True(t, pool.Equal(want))
 }
 
 func TestLoadCertPoolFromFS(t *testing.T) {
@@ -32,5 +38,8 @@ func TestLoadCertPoolFromFS(t *testing.T) {
 	pool, err := LoadCertPoolFromFS(fsys, filepath.ToSlash("certs/root.pem"))
 	require.NoError(t, err)
 	require.NotNil(t, pool)
-	assert.NotEmpty(t, pool.Subjects())
+
+	want := x509.NewCertPool()
+	require.True(t, want.AppendCertsFromPEM(certPEM))
+	assert.True(t, pool.Equal(want))
 }

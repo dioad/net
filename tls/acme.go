@@ -48,7 +48,7 @@ type ACMEConfig struct {
 	Domains []string `mapstructure:"domains" json:",omitempty"`
 
 	// DNS01 holds fields that apply only when Type is ACMEChallengeDNS01.
-	DNS01 DNS01Options `mapstructure:"dns01,squash" json:",squash"`
+	DNS01 DNS01Options `mapstructure:"dns01,squash" json:",omitzero"`
 }
 
 // DNS01Options specifies dns-01-only ACME parameters.
