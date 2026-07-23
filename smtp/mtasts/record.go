@@ -29,9 +29,9 @@ func (r *Record) String() string {
 	if r.Version == "" {
 		sb.WriteString("v=STSv1; ")
 	} else {
-		sb.WriteString(fmt.Sprintf("v=%s ", r.Version))
+		fmt.Fprintf(&sb, "v=%s ", r.Version)
 	}
-	sb.WriteString(fmt.Sprintf("id=%s", r.ID))
+	fmt.Fprintf(&sb, "id=%s", r.ID)
 
 	result := sb.String()
 	if len(result) > 255 {

@@ -27,14 +27,14 @@ type Policy struct {
 func FormatPolicy(p *Policy) (string, error) {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("version: %s\n", p.Version))
-	sb.WriteString(fmt.Sprintf("mode: %s\n", p.Mode))
+	fmt.Fprintf(&sb, "version: %s\n", p.Version)
+	fmt.Fprintf(&sb, "mode: %s\n", p.Mode)
 
 	for _, v := range p.MX {
-		sb.WriteString(fmt.Sprintf("mx: %s\n", v))
+		fmt.Fprintf(&sb, "mx: %s\n", v)
 	}
 
-	sb.WriteString(fmt.Sprintf("max_age: %d\n", p.MaxAge))
+	fmt.Fprintf(&sb, "max_age: %d\n", p.MaxAge)
 
 	return sb.String(), nil
 }

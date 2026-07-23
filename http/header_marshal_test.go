@@ -423,8 +423,8 @@ func TestUnexportedFields(t *testing.T) {
 	}
 
 	// Unexported fieldSet should not be present
-	if _, ok := header["UnexportedField"]; ok {
-		t.Error("UnexportedField should not be present")
+	if got := header.Get("UnexportedField"); got != "" {
+		t.Errorf("UnexportedField should not be present, got %q", got)
 	}
 }
 
