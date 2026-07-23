@@ -3,6 +3,8 @@ package mtasts
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/rs/zerolog"
 )
 
 func HTTPHandler(p *Policy) (http.HandlerFunc, error) {
@@ -15,6 +17,8 @@ func HTTPHandler(p *Policy) (http.HandlerFunc, error) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Header().Set("Cache-Control", "max-age=3600")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(outputPolicy))
+		if _, err := w.Write([]byte(outputPolicy)); err != nil {
+			zerolog.Ctx(r.Context()).Error().Err(err).Msg("failed to write mta-sts policy response")
+		}
 	}, nil
 }

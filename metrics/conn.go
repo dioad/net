@@ -225,8 +225,11 @@ func NewConnWithStartTime(c net.Conn, startTime time.Time) net.Conn {
 		},
 	}
 
-	conn.SetKeepAlive(true)
-	conn.SetKeepAlivePeriod(60 * time.Minute)
+	// Keep-alive tuning is best-effort: SetKeepAlive/SetKeepAlivePeriod are
+	// no-ops (nil error) for non-TCP connections, and a failure on a TCP
+	// connection does not prevent the connection from being usable.
+	_ = conn.SetKeepAlive(true)
+	_ = conn.SetKeepAlivePeriod(60 * time.Minute)
 
 	return conn
 }

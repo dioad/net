@@ -58,13 +58,13 @@ func LoadKeyPairFromFiles(certPath, keyPath string) (*tls.Certificate, error) {
 func saveBlockToPEMFile(filename string, perm int, blockType string, data []byte) error {
 	filenameClean := filepath.Clean(filename)
 
-	f, err := os.OpenFile(filenameClean, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(perm))
+	f, err := os.OpenFile(filenameClean, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(perm)) // #nosec G115 -- perm is a caller-supplied Unix permission mode (e.g. 0600), always a small positive value
 	if err != nil {
 		return err
 	}
 
 	if err = encodeBlock(f, blockType, data); err != nil {
-		f.Close()
+		_ = f.Close()
 		return err
 	}
 
@@ -101,7 +101,7 @@ func encodePrivateKeyBlock(w io.Writer, data crypto.PrivateKey) error {
 func SaveTLSCertificateToFile(cert *tls.Certificate, filename string, perm int) error {
 	filenameClean := filepath.Clean(filename)
 
-	f, err := os.OpenFile(filenameClean, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(perm))
+	f, err := os.OpenFile(filenameClean, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(perm)) // #nosec G115 -- perm is a caller-supplied Unix permission mode (e.g. 0600), always a small positive value
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func SaveTLSCertificateToFiles(cert *tls.Certificate, certPath, keyPath string) 
 // LoadKeyPairAndCertsFromFile From: https://gist.github.com/ukautz/cd118e298bbd8f0a88fc
 // LoadKeyPairAndCertsFromFile reads file, divides into key and certificates
 func LoadKeyPairAndCertsFromFile(path string) (*tls.Certificate, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- path is caller-supplied server configuration, not untrusted user input
 	if err != nil {
 		return nil, err
 	}
