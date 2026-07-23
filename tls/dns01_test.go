@@ -8,14 +8,13 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
-	"os"
-	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 type fakeDNS01Provider struct{}
@@ -105,23 +104,32 @@ func TestConfigFuncFromConfigSelectsDNS01(t *testing.T) {
 	assert.NotNil(t, configFunc)
 }
 
+// newTestDNS01Manager builds a dns01Manager backed by an autocert.DirCache
+// rooted at dir, using fixed cache keys unrelated to any real domain -
+// sufficient for tests that exercise cache-hit/reissue/renewal behaviour
+// rather than key derivation itself (see TestDomainSetCacheKey and
+// TestDNS01ManagersForDifferentDomainsDoNotCollide for that).
+func newTestDNS01Manager(dir string) *dns01Manager {
+	return &dns01Manager{
+		cache:          autocert.DirCache(dir),
+		accountKeyName: "test+account",
+		certName:       "test+crt",
+		certKeyName:    "test+key",
+	}
+}
+
 func TestDNS01ManagerEnsureCertificateCacheHit(t *testing.T) {
 	dir := t.TempDir()
-	certPath := filepath.Join(dir, "cert.pem")
-	keyPath := filepath.Join(dir, "cert.key")
+	m := newTestDNS01Manager(dir)
 
 	certPEM, keyPEM := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
-	require.NoError(t, os.WriteFile(certPath, certPEM, 0600))
-	require.NoError(t, os.WriteFile(keyPath, keyPEM, 0600))
+	require.NoError(t, m.cache.Put(context.Background(), m.certName, certPEM))
+	require.NoError(t, m.cache.Put(context.Background(), m.certKeyName, keyPEM))
 
 	var calls int
-	m := &dns01Manager{
-		certPath: certPath,
-		keyPath:  keyPath,
-		obtain: func(context.Context, DNS01Config, string) (*obtainedCert, error) {
-			calls++
-			return nil, assert.AnError
-		},
+	m.obtain = func(context.Context, DNS01Config, autocert.Cache, string) (*obtainedCert, error) {
+		calls++
+		return nil, assert.AnError
 	}
 
 	require.NoError(t, m.ensureCertificate(context.Background()))
@@ -134,49 +142,41 @@ func TestDNS01ManagerEnsureCertificateCacheHit(t *testing.T) {
 
 func TestDNS01ManagerEnsureCertificateReissuesWhenNearExpiry(t *testing.T) {
 	dir := t.TempDir()
-	certPath := filepath.Join(dir, "cert.pem")
-	keyPath := filepath.Join(dir, "cert.key")
+	m := newTestDNS01Manager(dir)
 
 	oldCertPEM, oldKeyPEM := genTestCertPEM(t, time.Now().Add(time.Hour))
-	require.NoError(t, os.WriteFile(certPath, oldCertPEM, 0600))
-	require.NoError(t, os.WriteFile(keyPath, oldKeyPEM, 0600))
+	require.NoError(t, m.cache.Put(context.Background(), m.certName, oldCertPEM))
+	require.NoError(t, m.cache.Put(context.Background(), m.certKeyName, oldKeyPEM))
 
 	newCertPEM, newKeyPEM := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
 
 	var calls int
-	m := &dns01Manager{
-		certPath: certPath,
-		keyPath:  keyPath,
-		obtain: func(context.Context, DNS01Config, string) (*obtainedCert, error) {
-			calls++
-			return &obtainedCert{certPEM: newCertPEM, keyPEM: newKeyPEM}, nil
-		},
+	m.obtain = func(context.Context, DNS01Config, autocert.Cache, string) (*obtainedCert, error) {
+		calls++
+		return &obtainedCert{certPEM: newCertPEM, keyPEM: newKeyPEM}, nil
 	}
 
 	require.NoError(t, m.ensureCertificate(context.Background()))
 	assert.Equal(t, 1, calls)
 
-	persistedCertPEM, err := os.ReadFile(certPath)
+	persistedCertPEM, err := m.cache.Get(context.Background(), m.certName)
 	require.NoError(t, err)
 	assert.Equal(t, newCertPEM, persistedCertPEM)
 }
 
 func TestDNS01ManagerRenewalLoopExitsOnContextCancellation(t *testing.T) {
 	dir := t.TempDir()
+	m := newTestDNS01Manager(dir)
+	m.tickEvery = 10 * time.Millisecond
 
 	// Always return a soon-expiring certificate so every tick reissues,
 	// giving a deterministic call count to poll for.
 	freshCertPEM, freshKeyPEM := genTestCertPEM(t, time.Now().Add(time.Hour))
 
 	var calls atomic.Int32
-	m := &dns01Manager{
-		certPath:  filepath.Join(dir, "cert.pem"),
-		keyPath:   filepath.Join(dir, "cert.key"),
-		tickEvery: 10 * time.Millisecond,
-		obtain: func(context.Context, DNS01Config, string) (*obtainedCert, error) {
-			calls.Add(1)
-			return &obtainedCert{certPEM: freshCertPEM, keyPEM: freshKeyPEM}, nil
-		},
+	m.obtain = func(context.Context, DNS01Config, autocert.Cache, string) (*obtainedCert, error) {
+		calls.Add(1)
+		return &obtainedCert{certPEM: freshCertPEM, keyPEM: freshKeyPEM}, nil
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -205,17 +205,14 @@ func TestDNS01ManagerRenewalLoopExitsOnContextCancellation(t *testing.T) {
 
 func TestDNS01ManagerReissueReturnsPromptlyOnContextCancellation(t *testing.T) {
 	dir := t.TempDir()
+	m := newTestDNS01Manager(dir)
 
 	unblock := make(chan struct{})
 	obtainStarted := make(chan struct{})
-	m := &dns01Manager{
-		certPath: filepath.Join(dir, "cert.pem"),
-		keyPath:  filepath.Join(dir, "cert.key"),
-		obtain: func(ctx context.Context, _ DNS01Config, _ string) (*obtainedCert, error) {
-			close(obtainStarted)
-			<-unblock
-			return nil, ctx.Err()
-		},
+	m.obtain = func(ctx context.Context, _ DNS01Config, _ autocert.Cache, _ string) (*obtainedCert, error) {
+		close(obtainStarted)
+		<-unblock
+		return nil, ctx.Err()
 	}
 	t.Cleanup(func() { close(unblock) })
 
@@ -238,13 +235,14 @@ func TestDNS01ManagerReissueReturnsPromptlyOnContextCancellation(t *testing.T) {
 }
 
 func TestLoadOrCreateAccountKey(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "account.key")
+	cache := autocert.DirCache(t.TempDir())
+	ctx := context.Background()
 
-	key1, err := loadOrCreateAccountKey(path)
+	key1, err := loadOrCreateAccountKey(ctx, cache, "test+account")
 	require.NoError(t, err)
 	require.NotNil(t, key1)
 
-	key2, err := loadOrCreateAccountKey(path)
+	key2, err := loadOrCreateAccountKey(ctx, cache, "test+account")
 	require.NoError(t, err)
 
 	der1, err := x509.MarshalECPrivateKey(key1)
@@ -252,6 +250,55 @@ func TestLoadOrCreateAccountKey(t *testing.T) {
 	der2, err := x509.MarshalECPrivateKey(key2)
 	require.NoError(t, err)
 	assert.Equal(t, der1, der2, "second call should load the persisted key rather than generating a new one")
+}
+
+func TestDomainSetCacheKey(t *testing.T) {
+	t.Run("order independent", func(t *testing.T) {
+		assert.Equal(t,
+			domainSetCacheKey([]string{"a.example.com", "b.example.com"}),
+			domainSetCacheKey([]string{"b.example.com", "a.example.com"}),
+		)
+	})
+
+	t.Run("different domain sets produce different keys", func(t *testing.T) {
+		assert.NotEqual(t,
+			domainSetCacheKey([]string{"a.example.com"}),
+			domainSetCacheKey([]string{"b.example.com"}),
+		)
+	})
+
+	t.Run("wildcard domains never surface a literal asterisk", func(t *testing.T) {
+		assert.NotContains(t, domainSetCacheKey([]string{"*.example.com"}), "*")
+	})
+}
+
+func TestDNS01ManagersForDifferentDomainsDoNotCollide(t *testing.T) {
+	dir := t.TempDir()
+
+	mgrA, err := newDNS01Manager(DNS01Config{CacheDirectory: dir, Domains: []string{"a.example.com"}})
+	require.NoError(t, err)
+	mgrB, err := newDNS01Manager(DNS01Config{CacheDirectory: dir, Domains: []string{"b.example.com"}})
+	require.NoError(t, err)
+
+	assert.NotEqual(t, mgrA.certName, mgrB.certName)
+	assert.NotEqual(t, mgrA.certKeyName, mgrB.certKeyName)
+
+	certA, keyA := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+	certB, keyB := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+
+	ctx := context.Background()
+	require.NoError(t, mgrA.cache.Put(ctx, mgrA.certName, certA))
+	require.NoError(t, mgrA.cache.Put(ctx, mgrA.certKeyName, keyA))
+	require.NoError(t, mgrB.cache.Put(ctx, mgrB.certName, certB))
+	require.NoError(t, mgrB.cache.Put(ctx, mgrB.certKeyName, keyB))
+
+	gotA, err := mgrA.cache.Get(ctx, mgrA.certName)
+	require.NoError(t, err)
+	assert.Equal(t, certA, gotA, "manager A's certificate should not be clobbered by manager B sharing the same cache directory")
+
+	gotB, err := mgrB.cache.Get(ctx, mgrB.certName)
+	require.NoError(t, err)
+	assert.Equal(t, certB, gotB, "manager B's certificate should not be clobbered by manager A sharing the same cache directory")
 }
 
 func TestDNS01ProviderWithTimeoutReturnsConfiguredValues(t *testing.T) {
