@@ -71,37 +71,70 @@ func TestNeedsRenewal(t *testing.T) {
 	}
 }
 
-func TestNewDNS01TLSConfig(t *testing.T) {
+func TestNewACMETLSConfigDNS01(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("zero value returns nil", func(t *testing.T) {
-		cfg, err := NewDNS01TLSConfig(ctx, DNS01Config{})
+		cfg, err := NewACMETLSConfig(ctx, ACMEConfig{})
 		require.NoError(t, err)
 		assert.Nil(t, cfg)
 	})
 
 	t.Run("missing provider is an error", func(t *testing.T) {
-		_, err := NewDNS01TLSConfig(ctx, DNS01Config{Domains: []string{"example.com"}})
+		_, err := NewACMETLSConfig(ctx, ACMEConfig{Type: ACMEChallengeDNS01, Domains: []string{"example.com"}})
 		assert.Error(t, err)
 	})
 
 	t.Run("missing domains is an error", func(t *testing.T) {
-		_, err := NewDNS01TLSConfig(ctx, DNS01Config{Provider: fakeDNS01Provider{}})
+		_, err := NewACMETLSConfig(ctx, ACMEConfig{Type: ACMEChallengeDNS01, DNS01: DNS01Options{Provider: fakeDNS01Provider{}}})
 		assert.Error(t, err)
 	})
 }
 
-func TestConfigFuncFromConfigSelectsDNS01(t *testing.T) {
+func TestNewACMETLSConfigRejectsWildcardForTLSALPN01(t *testing.T) {
 	ctx := context.Background()
-	cfg := ServerConfig{
-		DNS01: DNS01Config{
-			Domains:  []string{"example.com"},
-			Provider: fakeDNS01Provider{},
-		},
-	}
 
-	configFunc := configFuncFromConfig(ctx, cfg)
-	assert.NotNil(t, configFunc)
+	_, err := NewACMETLSConfig(ctx, ACMEConfig{
+		CacheDirectory: t.TempDir(),
+		Domains:        []string{"*.example.com"},
+	})
+	assert.Error(t, err, "tls-alpn-01 cannot validate a wildcard identifier")
+}
+
+func TestNewACMETLSConfigRejectsUnknownType(t *testing.T) {
+	ctx := context.Background()
+
+	_, err := NewACMETLSConfig(ctx, ACMEConfig{Type: "http-01", Domains: []string{"example.com"}})
+	assert.Error(t, err)
+}
+
+func TestConfigFuncFromConfigSelectsACME(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("dns-01", func(t *testing.T) {
+		cfg := ServerConfig{
+			ACME: ACMEConfig{
+				Type:    ACMEChallengeDNS01,
+				Domains: []string{"example.com"},
+				DNS01:   DNS01Options{Provider: fakeDNS01Provider{}},
+			},
+		}
+
+		configFunc := configFuncFromConfig(ctx, cfg)
+		assert.NotNil(t, configFunc)
+	})
+
+	t.Run("tls-alpn-01 default", func(t *testing.T) {
+		cfg := ServerConfig{
+			ACME: ACMEConfig{
+				Domains:        []string{"example.com"},
+				CacheDirectory: t.TempDir(),
+			},
+		}
+
+		configFunc := configFuncFromConfig(ctx, cfg)
+		assert.NotNil(t, configFunc)
+	})
 }
 
 // newTestDNS01Manager builds a dns01Manager backed by an autocert.DirCache
@@ -127,7 +160,7 @@ func TestDNS01ManagerEnsureCertificateCacheHit(t *testing.T) {
 	require.NoError(t, m.cache.Put(context.Background(), m.certKeyName, keyPEM))
 
 	var calls int
-	m.obtain = func(context.Context, DNS01Config, autocert.Cache, string) (*obtainedCert, error) {
+	m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls++
 		return nil, assert.AnError
 	}
@@ -151,7 +184,7 @@ func TestDNS01ManagerEnsureCertificateReissuesWhenNearExpiry(t *testing.T) {
 	newCertPEM, newKeyPEM := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
 
 	var calls int
-	m.obtain = func(context.Context, DNS01Config, autocert.Cache, string) (*obtainedCert, error) {
+	m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls++
 		return &obtainedCert{certPEM: newCertPEM, keyPEM: newKeyPEM}, nil
 	}
@@ -174,7 +207,7 @@ func TestDNS01ManagerRenewalLoopExitsOnContextCancellation(t *testing.T) {
 	freshCertPEM, freshKeyPEM := genTestCertPEM(t, time.Now().Add(time.Hour))
 
 	var calls atomic.Int32
-	m.obtain = func(context.Context, DNS01Config, autocert.Cache, string) (*obtainedCert, error) {
+	m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls.Add(1)
 		return &obtainedCert{certPEM: freshCertPEM, keyPEM: freshKeyPEM}, nil
 	}
@@ -209,7 +242,7 @@ func TestDNS01ManagerReissueReturnsPromptlyOnContextCancellation(t *testing.T) {
 
 	unblock := make(chan struct{})
 	obtainStarted := make(chan struct{})
-	m.obtain = func(ctx context.Context, _ DNS01Config, _ autocert.Cache, _ string) (*obtainedCert, error) {
+	m.obtain = func(ctx context.Context, _ ACMEConfig, _ autocert.Cache, _ string) (*obtainedCert, error) {
 		close(obtainStarted)
 		<-unblock
 		return nil, ctx.Err()
@@ -275,9 +308,9 @@ func TestDomainSetCacheKey(t *testing.T) {
 func TestDNS01ManagersForDifferentDomainsDoNotCollide(t *testing.T) {
 	dir := t.TempDir()
 
-	mgrA, err := newDNS01Manager(DNS01Config{CacheDirectory: dir, Domains: []string{"a.example.com"}})
+	mgrA, err := newDNS01Manager(ACMEConfig{CacheDirectory: dir, Domains: []string{"a.example.com"}})
 	require.NoError(t, err)
-	mgrB, err := newDNS01Manager(DNS01Config{CacheDirectory: dir, Domains: []string{"b.example.com"}})
+	mgrB, err := newDNS01Manager(ACMEConfig{CacheDirectory: dir, Domains: []string{"b.example.com"}})
 	require.NoError(t, err)
 
 	assert.NotEqual(t, mgrA.certName, mgrB.certName)

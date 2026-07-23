@@ -60,15 +60,11 @@ type FileWaitConfig struct {
 type ServerConfig struct {
 	ServerName string `json:"server_name,omitzero" mapstructure:"server-name"`
 
-	AutoCert AutoCertConfig `json:"auto_cert" mapstructure:"auto-cert"`
-	// EnableAutoCertManager       bool     `mapstructure:"enable-auto-cert-manager" json:",omitzero"`
-	// AutoCertManagerAllowedHosts []string `mapstructure:"" json:",omitzero"`
+	ACME ACMEConfig `json:"acme" mapstructure:"acme"`
 
 	SelfSigned SelfSignedConfig `json:"self_signed" mapstructure:"self-signed"`
 
 	LocalConfig LocalConfig `json:"local" mapstructure:"local"`
-
-	DNS01 DNS01Config `json:"dns01" mapstructure:"dns-01"`
 
 	ClientAuthType string `mapstructure:"client-auth-type" json:"client_auth_type,omitzero"`
 	ClientCAFile   string `mapstructure:"client-ca-file" json:"client_ca_file,omitzero"`
@@ -81,18 +77,16 @@ type ServerConfig struct {
 type ConfigFunc func() (*tls.Config, error)
 
 // configFuncFromConfig selects the TLS config arm to use. Arms are checked
-// in a fixed order - AutoCert, then SelfSigned, then LocalConfig, then
-// DNS01 - and the first non-zero-value config wins silently; no error is
-// raised if more than one arm is configured.
+// in a fixed order - ACME, then SelfSigned, then LocalConfig - and the
+// first non-zero-value config wins silently; no error is raised if more
+// than one arm is configured.
 func configFuncFromConfig(ctx context.Context, c ServerConfig) ConfigFunc {
-	if !generics.IsZeroValue(c.AutoCert) {
-		return NewAutocertTLSConfigFunc(c.AutoCert)
+	if !generics.IsZeroValue(c.ACME) {
+		return NewACMETLSConfigFunc(ctx, c.ACME)
 	} else if !generics.IsZeroValue(c.SelfSigned) {
 		return NewSelfSignedTLSConfigFunc(c.SelfSigned)
 	} else if !generics.IsZeroValue(c.LocalConfig) {
 		return NewLocalTLSConfigFunc(ctx, c.LocalConfig)
-	} else if !generics.IsZeroValue(c.DNS01) {
-		return NewDNS01TLSConfigFunc(ctx, c.DNS01)
 	}
 	return nil
 }

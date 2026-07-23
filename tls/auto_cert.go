@@ -9,21 +9,9 @@ import (
 	"github.com/dioad/generics"
 )
 
-// AutoCertConfig specifies automatic certificate configuration using ACME.
-type AutoCertConfig struct {
-	CacheDirectory string   `mapstructure:"cache-directory" json:",omitempty"`
-	Email          string   `mapstructure:"email" json:",omitempty"`
-	AllowedHosts   []string `mapstructure:"allowed-hosts" json:",omitempty"`
-	DirectoryURL   string   `mapstructure:"directory-url" json:",omitempty"`
-}
-
-// NewAutocertTLSConfigFunc creates a ConfigFunc for automatic certificate configuration.
-func NewAutocertTLSConfigFunc(c AutoCertConfig) ConfigFunc {
-	return func() (*tls.Config, error) { return NewAutocertTLSConfig(c) }
-}
-
-// NewAutocertTLSConfig creates a TLS configuration with automatic certificate management.
-func NewAutocertTLSConfig(c AutoCertConfig) (*tls.Config, error) {
+// newAutocertTLSConfig creates a TLS configuration with automatic
+// certificate management via the tls-alpn-01 ACME challenge.
+func newAutocertTLSConfig(c ACMEConfig) (*tls.Config, error) {
 	autoCertManager := NewAutocertManagerFromConfig(c)
 	if autoCertManager == nil {
 		return nil, nil
@@ -31,8 +19,9 @@ func NewAutocertTLSConfig(c AutoCertConfig) (*tls.Config, error) {
 	return autoCertManager.TLSConfig(), nil
 }
 
-// NewAutocertManagerFromConfig creates an ACME autocert manager from the given config.
-func NewAutocertManagerFromConfig(c AutoCertConfig) *autocert.Manager {
+// NewAutocertManagerFromConfig creates an ACME autocert manager from the
+// given config.
+func NewAutocertManagerFromConfig(c ACMEConfig) *autocert.Manager {
 	if generics.IsZeroValue(c) {
 		return nil
 	}
@@ -48,7 +37,7 @@ func NewAutocertManagerFromConfig(c AutoCertConfig) *autocert.Manager {
 		Client:     autocertClient,
 		Prompt:     autocert.AcceptTOS,
 		Cache:      autocert.DirCache(c.CacheDirectory),
-		HostPolicy: autocert.HostWhitelist(c.AllowedHosts...),
+		HostPolicy: autocert.HostWhitelist(c.Domains...),
 		Email:      c.Email,
 	}
 
