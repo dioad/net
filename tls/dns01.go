@@ -27,8 +27,6 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/acme/autocert"
 
-	"github.com/dioad/generics"
-
 	"github.com/dioad/util"
 )
 
@@ -54,7 +52,7 @@ const dns01ObtainTimeout = 2 * time.Minute
 // characters autocert.Cache's contract forbids (notably "*"), so wildcard
 // domains such as "*.example.com" are safe to include. Deriving the cache
 // key from the domain set - rather than a fixed name - is what lets multiple
-// DNS01Config instances for different domains share one CacheDirectory
+// ACMEConfig instances for different domains share one CacheDirectory
 // without their certificates and keys colliding.
 func domainSetCacheKey(domains []string) string {
 	sorted := make([]string, len(domains))
@@ -69,7 +67,7 @@ func domainSetCacheKey(domains []string) string {
 
 // accountCacheKey derives a stable cache key for the ACME account tied to
 // email and directoryURL. The account key is a distinct identity from any
-// certificate's domain set, so DNS01Config instances that share a
+// certificate's domain set, so ACMEConfig instances that share a
 // CacheDirectory but use different accounts (different email or ACME
 // directory) get separate account keys automatically, while instances
 // sharing the same account reuse one.
@@ -78,55 +76,13 @@ func accountCacheKey(email, directoryURL string) string {
 	return hex.EncodeToString(sum[:])[:16]
 }
 
-// DNS01Config specifies parameters for obtaining and renewing a certificate
-// via the ACME DNS-01 challenge.
-//
-// Provider cannot be populated via mapstructure/json decoding - it is a live
-// object implementing github.com/go-acme/lego/v5/challenge.Provider, which
-// presents and cleans up the _acme-challenge TXT record against whatever DNS
-// hosting mechanism the caller uses. Callers should decode the remaining
-// fields from configuration, then set Provider before passing the DNS01Config
-// into ServerConfig / NewServerTLSConfig.
-type DNS01Config struct {
-	// Domains are the SANs to include on the certificate. May include
-	// wildcard names (e.g. "*.example.com").
-	Domains []string `mapstructure:"domains" json:",omitempty"`
-
-	Email          string `mapstructure:"email" json:",omitempty"`
-	DirectoryURL   string `mapstructure:"directory-url" json:",omitempty"`
-	CacheDirectory string `mapstructure:"cache-directory" json:",omitempty"`
-
-	// PropagationTimeout bounds how long lego waits for DNS propagation of
-	// the challenge TXT record. Zero uses lego's default (60s).
-	PropagationTimeout time.Duration `mapstructure:"propagation-timeout" json:",omitempty"`
-
-	// PollingInterval controls how often lego polls while waiting for
-	// propagation. Zero uses lego's default (2s).
-	PollingInterval time.Duration `mapstructure:"polling-interval" json:",omitempty"`
-
-	// Provider performs Present/CleanUp of the ACME DNS-01 challenge TXT
-	// record. Must be set programmatically; it is not config-decodable.
-	Provider challenge.Provider `mapstructure:"-" json:"-"`
-}
-
-// NewDNS01TLSConfigFunc creates a ConfigFunc for ACME DNS-01 certificate
-// configuration. ctx bounds the lifetime of the background renewal
-// goroutine started by NewDNS01TLSConfig, and is also passed to every ACME
-// call lego makes on this arm's behalf.
-func NewDNS01TLSConfigFunc(ctx context.Context, c DNS01Config) ConfigFunc {
-	return func() (*tls.Config, error) { return NewDNS01TLSConfig(ctx, c) }
-}
-
-// NewDNS01TLSConfig obtains, or loads a cached, certificate via the ACME
-// DNS-01 challenge and returns a TLS configuration whose GetCertificate
+// newDNS01TLSConfig obtains, or loads a cached, certificate via the ACME
+// dns-01 challenge and returns a TLS configuration whose GetCertificate
 // serves the current certificate from memory. It starts a single background
 // goroutine that periodically reissues the certificate as it approaches
 // expiry; that goroutine exits when ctx is cancelled.
-func NewDNS01TLSConfig(ctx context.Context, c DNS01Config) (*tls.Config, error) {
-	if generics.IsZeroValue(c) {
-		return nil, nil
-	}
-	if c.Provider == nil {
+func newDNS01TLSConfig(ctx context.Context, c ACMEConfig) (*tls.Config, error) {
+	if c.DNS01.Provider == nil {
 		return nil, fmt.Errorf("dns01: provider must be set")
 	}
 	if len(c.Domains) == 0 {
@@ -156,17 +112,17 @@ type obtainedCert struct {
 	keyPEM  []byte
 }
 
-// certObtainFunc performs one ACME DNS-01 issuance for c.Domains, using the
+// certObtainFunc performs one ACME dns-01 issuance for c.Domains, using the
 // account key cached under accountKeyName (creating one if absent).
 // Production code wires this to obtainViaLego; tests inject a fake that
 // never touches the network.
-type certObtainFunc func(ctx context.Context, c DNS01Config, cache autocert.Cache, accountKeyName string) (*obtainedCert, error)
+type certObtainFunc func(ctx context.Context, c ACMEConfig, cache autocert.Cache, accountKeyName string) (*obtainedCert, error)
 
-// dns01Manager holds runtime state for a single DNS01Config-based TLS
-// config. A fresh manager is created per NewDNS01TLSConfig call, so no
-// mutable state lives on DNS01Config itself.
+// dns01Manager holds runtime state for a single ACMEConfig-based dns-01 TLS
+// config. A fresh manager is created per newDNS01TLSConfig call, so no
+// mutable state lives on ACMEConfig itself.
 type dns01Manager struct {
-	config DNS01Config
+	config ACMEConfig
 
 	// cache stores the ACME account key and issued certificate/key material,
 	// keyed by accountKeyName/certName/certKeyName. It is the same Cache
@@ -186,7 +142,7 @@ type dns01Manager struct {
 	startOnce sync.Once
 }
 
-func newDNS01Manager(c DNS01Config) (*dns01Manager, error) {
+func newDNS01Manager(c ACMEConfig) (*dns01Manager, error) {
 	cacheDir, err := util.CreateDirPath(c.CacheDirectory, ".")
 	if err != nil {
 		return nil, fmt.Errorf("error creating cache directory: %w", err)
@@ -387,10 +343,10 @@ func (u *dns01User) GetEmail() string                       { return u.email }
 func (u *dns01User) GetRegistration() *acme.ExtendedAccount { return u.reg }
 func (u *dns01User) GetPrivateKey() crypto.Signer           { return u.key }
 
-// obtainViaLego runs the ACME DNS-01 flow (client creation, provider
+// obtainViaLego runs the ACME dns-01 flow (client creation, provider
 // registration, account registration, certificate issuance) for c.Domains,
 // producing PEM-encoded certificate and private key material.
-func obtainViaLego(ctx context.Context, c DNS01Config, cache autocert.Cache, accountKeyName string) (*obtainedCert, error) {
+func obtainViaLego(ctx context.Context, c ACMEConfig, cache autocert.Cache, accountKeyName string) (*obtainedCert, error) {
 	accountKey, err := loadOrCreateAccountKey(ctx, cache, accountKeyName)
 	if err != nil {
 		return nil, fmt.Errorf("error loading acme account key: %w", err)
@@ -409,16 +365,16 @@ func obtainViaLego(ctx context.Context, c DNS01Config, cache autocert.Cache, acc
 		return nil, fmt.Errorf("error creating acme client: %w", err)
 	}
 
-	provider := c.Provider
-	if c.PropagationTimeout > 0 || c.PollingInterval > 0 {
-		timeout, interval := c.PropagationTimeout, c.PollingInterval
+	provider := c.DNS01.Provider
+	if c.DNS01.PropagationTimeout > 0 || c.DNS01.PollingInterval > 0 {
+		timeout, interval := c.DNS01.PropagationTimeout, c.DNS01.PollingInterval
 		if timeout == 0 {
 			timeout = 60 * time.Second
 		}
 		if interval == 0 {
 			interval = 2 * time.Second
 		}
-		provider = dns01ProviderWithTimeout{Provider: c.Provider, timeout: timeout, interval: interval}
+		provider = dns01ProviderWithTimeout{Provider: c.DNS01.Provider, timeout: timeout, interval: interval}
 	}
 
 	if err := client.Challenge.SetDNS01Provider(provider); err != nil {
