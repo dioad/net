@@ -30,8 +30,11 @@ func TestParseNetWithDefault(t *testing.T) {
 
 func TestContains(t *testing.T) {
 	_, cidrOne, err := net.ParseCIDR("127.0.0.0/24")
-	_, cidrTwo, err := net.ParseCIDR("10.0.0.0/30")
+	if err != nil {
+		t.Fatalf("failed to parse cidr")
+	}
 
+	_, cidrTwo, err := net.ParseCIDR("10.0.0.0/30")
 	if err != nil {
 		t.Fatalf("failed to parse cidr")
 	}

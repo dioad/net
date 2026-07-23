@@ -529,18 +529,6 @@ func TestMiddleware(t *testing.T) {
 	}
 }
 
-// mockAuthMiddleware is a simple implementation of auth.Middleware for testing
-type mockAuthMiddleware struct {
-	handler http.Handler
-}
-
-func (m *mockAuthMiddleware) Wrap(_ http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("unauthorized"))
-	})
-}
-
 func TestDefaultReadHeaderTimeout(t *testing.T) {
 	c := Config{}
 	s := newDefaultServer(c)
