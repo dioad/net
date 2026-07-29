@@ -45,6 +45,16 @@ func (s *connWithCloser) Closed() bool {
 	return s.conn.Closed()
 }
 
+// CloseWrite delegates to the wrapped connection's own CloseWrite when
+// available (true half-close), falling back to a full Close() otherwise.
+// See doneConn.CloseWrite for the full rationale.
+func (s *connWithCloser) CloseWrite() error {
+	if wc, ok := s.conn.(interface{ CloseWrite() error }); ok {
+		return wc.CloseWrite()
+	}
+	return s.Close()
+}
+
 func (s *connWithCloser) LocalAddr() net.Addr {
 	return s.conn.LocalAddr()
 }

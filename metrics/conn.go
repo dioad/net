@@ -168,6 +168,17 @@ func (s *Conn) Close() error {
 	return s.conn.Close()
 }
 
+// CloseWrite delegates to the wrapped connection's own CloseWrite when
+// available (true half-close), falling back to a full Close() otherwise.
+// See net2.doneConn.CloseWrite (dioad/net/conn_done.go) for the full
+// rationale.
+func (s *Conn) CloseWrite() error {
+	if wc, ok := s.conn.(interface{ CloseWrite() error }); ok {
+		return wc.CloseWrite()
+	}
+	return s.Close()
+}
+
 // LocalAddr returns the local network address.
 func (s *Conn) LocalAddr() net.Addr {
 	return s.conn.LocalAddr()

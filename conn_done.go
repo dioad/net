@@ -64,6 +64,23 @@ func (d *doneConn) Closed() bool {
 	return d.closed
 }
 
+// CloseWrite half-closes the connection for writing if the wrapped net.Conn
+// supports it (e.g. *net.TCPConn), delegating to it directly. Otherwise it
+// falls back to a full Close(): some connection types (e.g. yamux streams)
+// have no half-close primitive at all, and callers relying on CloseWrite to
+// signal "no more data" - such as tcpproxy's proxyCopy, propagating a
+// finished copy direction to the peer - would otherwise see it silently
+// no-op, leaving the other copy direction blocked forever waiting for an
+// EOF that never arrives. Falling back to Close() is safe in that context:
+// CloseWrite is only called once a direction's io.Copy has already
+// completed, so everything meant for the peer has already been written.
+func (d *doneConn) CloseWrite() error {
+	if wc, ok := d.c.(interface{ CloseWrite() error }); ok {
+		return wc.CloseWrite()
+	}
+	return d.Close()
+}
+
 func (d *doneConn) LocalAddr() net.Addr {
 	return d.c.LocalAddr()
 }
