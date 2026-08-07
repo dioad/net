@@ -8,6 +8,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -264,6 +265,68 @@ func TestDNS01ManagerReissueReturnsPromptlyOnContextCancellation(t *testing.T) {
 		assert.ErrorIs(t, err, context.Canceled, "reissue should return the context error, not wait for obtain")
 	case <-time.After(time.Second):
 		t.Fatal("reissue did not return promptly after context cancellation")
+	}
+}
+
+// TestDNS01ManagerReissueColdCacheConcurrentCallsCoalesce simulates the
+// scenario that motivates obtainGroup: several independent dns01Manager
+// instances (one per tunnel, as TunnelManagerService.StartAll constructs
+// them) sharing an identical domain set and cache directory, all starting
+// concurrently against a cold (empty) cache. Without coalescing, each
+// would call obtain (obtainViaLego in production) independently.
+func TestDNS01ManagerReissueColdCacheConcurrentCallsCoalesce(t *testing.T) {
+	dir := t.TempDir()
+
+	const n = 5
+	managers := make([]*dns01Manager, n)
+	for i := range managers {
+		managers[i] = newTestDNS01Manager(dir)
+	}
+
+	certPEM, keyPEM := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+
+	var calls atomic.Int32
+	release := make(chan struct{})
+	obtain := func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
+		calls.Add(1)
+		<-release
+		return &obtainedCert{certPEM: certPEM, keyPEM: keyPEM}, nil
+	}
+	for _, m := range managers {
+		m.obtain = obtain
+	}
+
+	var start, wg sync.WaitGroup
+	start.Add(1)
+	errCh := make(chan error, n)
+	for _, m := range managers {
+		wg.Add(1)
+		go func(m *dns01Manager) {
+			defer wg.Done()
+			start.Wait()
+			errCh <- m.reissue(context.Background())
+		}(m)
+	}
+	start.Done() // release all goroutines together so they race into obtainGroup.Do
+
+	// Give the goroutines a moment to reach and queue behind the in-flight
+	// obtainGroup.Do call before releasing it, so the race described above
+	// is actually exercised rather than each call running one at a time.
+	time.Sleep(50 * time.Millisecond)
+	close(release)
+
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		assert.NoError(t, err)
+	}
+
+	assert.Equal(t, int32(1), calls.Load(), "concurrent reissue calls sharing the same domain set and cache directory should coalesce into a single obtain call")
+
+	for i, m := range managers {
+		cert, err := m.getCertificate(nil)
+		require.NoError(t, err, "manager %d should have a certificate even though it did not perform the obtain call itself", i)
+		assert.NotNil(t, cert)
 	}
 }
 
