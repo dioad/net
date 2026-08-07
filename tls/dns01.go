@@ -26,9 +26,24 @@ import (
 	"github.com/go-acme/lego/v5/registration"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/dioad/util"
 )
+
+// obtainGroup coalesces concurrent first-time (cold-cache) issuance
+// requests for the same domain set, account, and cache directory into a
+// single obtainViaLego call. Without it, TunnelManagerService.StartAll
+// (in the connect repo) starting several tunnels concurrently, each with
+// its own independently-constructed dns01Manager but an identical Domains
+// list, can all miss cache.Get at once on a cold cache and each fire their
+// own ACME order for what is conceptually one certificate. This is a
+// package-level var, not a per-manager field, deliberately: it coalesces
+// across every dns01Manager instance in the process, not just calls on the
+// same instance, since a fresh dns01Manager is constructed per
+// newDNS01TLSConfig call (see the type's own doc comment) and mutexes are
+// already scoped per-instance.
+var obtainGroup singleflight.Group
 
 // dns01CertificateKeyType is the key algorithm used for issued certificates.
 const dns01CertificateKeyType = certcrypto.RSA2048
@@ -172,11 +187,26 @@ func (m *dns01Manager) ensureCertificate(ctx context.Context) error {
 	return m.reissue(ctx)
 }
 
+// reissue obtains a fresh certificate and persists it to the cache.
+// Concurrent reissue calls that share the same domain set, account, and
+// cache directory (i.e. the same obtainGroup key) coalesce into a single
+// obtainViaLego call via obtainGroup; every caller, winner or not, still
+// runs its own cache.Put/X509KeyPair/setCertificate below with the shared
+// result - each dns01Manager instance needs its own in-memory cert set
+// regardless of which caller actually performed the network request, and
+// re-writing identical cache bytes is idempotent. Note that the winning
+// caller's ctx is the one obtainWithContext actually runs under; a losing
+// caller's ctx cancellation does not interrupt an in-flight shared call,
+// matching the existing single-caller behaviour of obtainWithContext.
 func (m *dns01Manager) reissue(ctx context.Context) error {
-	obtained, err := m.obtainWithContext(ctx)
+	key := m.config.CacheDirectory + "|" + m.certName
+	v, err, _ := obtainGroup.Do(key, func() (any, error) {
+		return m.obtainWithContext(ctx)
+	})
 	if err != nil {
 		return fmt.Errorf("error obtaining certificate via acme dns-01: %w", err)
 	}
+	obtained := v.(*obtainedCert)
 
 	if err := m.cache.Put(ctx, m.certName, obtained.certPEM); err != nil {
 		return fmt.Errorf("error persisting certificate: %w", err)
