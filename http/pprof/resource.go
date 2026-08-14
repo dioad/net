@@ -2,6 +2,7 @@
 package pprof
 
 import (
+	"context"
 	"net/http"
 	"net/http/pprof"
 
@@ -38,7 +39,7 @@ func (dr *Resource) Handler() http.Handler {
 }
 
 // Status returns the status of the pprof resource.
-func (dr *Resource) Status() (any, error) {
+func (dr *Resource) Status(_ context.Context) (any, error) {
 	return Status{Status: "OK"}, nil
 }
 

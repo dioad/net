@@ -319,7 +319,7 @@ type MockStatusResource struct {
 	StatusError  bool
 }
 
-func (m *MockStatusResource) Status() (any, error) {
+func (m *MockStatusResource) Status(_ context.Context) (any, error) {
 	m.StatusCalled = true
 	if m.StatusError {
 		return nil, io.ErrUnexpectedEOF
@@ -418,7 +418,7 @@ type MockHealthResource struct {
 	ReadyError  bool
 }
 
-func (m *MockHealthResource) Live() error {
+func (m *MockHealthResource) Live(_ context.Context) error {
 	m.LiveCalled = true
 	if m.LiveError {
 		return io.ErrUnexpectedEOF
@@ -426,7 +426,7 @@ func (m *MockHealthResource) Live() error {
 	return nil
 }
 
-func (m *MockHealthResource) Ready() (any, error) {
+func (m *MockHealthResource) Ready(_ context.Context) (any, error) {
 	m.ReadyCalled = true
 	if m.ReadyError {
 		return nil, io.ErrUnexpectedEOF

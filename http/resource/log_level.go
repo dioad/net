@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -101,7 +102,7 @@ func (dr *LogLevelResource) Handler() http.Handler {
 }
 
 // Status returns the status of the log level resource.
-func (dr *LogLevelResource) Status() (any, error) {
+func (dr *LogLevelResource) Status(_ context.Context) (any, error) {
 	return LogLevelResourceStatus{
 		Status: "OK",
 	}, nil
