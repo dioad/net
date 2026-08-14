@@ -41,7 +41,7 @@ func (h *HealthRegistry) aggregateLivenessHandler() http.HandlerFunc {
 
 		for path, resource := range h.resources {
 			if sr, ok := resource.(LivenessResource); ok {
-				err := sr.Live()
+				err := sr.Live(r.Context())
 				if err != nil {
 					httpStatus = http.StatusInternalServerError
 					h.logger.Error().Err(err).Str("path", path).Msg("resource not alive")
@@ -73,7 +73,7 @@ func (h *HealthRegistry) aggregateReadinessHandler() http.HandlerFunc {
 
 		for path, resource := range h.resources {
 			if rr, ok := resource.(ReadinessResource); ok {
-				ready, err := rr.Ready()
+				ready, err := rr.Ready(r.Context())
 				if err != nil {
 					httpStatus = http.StatusServiceUnavailable
 					h.logger.Error().Err(err).Str("path", path).Msg("error checking resource readiness")
@@ -110,7 +110,7 @@ func (h *HealthRegistry) aggregateStatusHandler() http.HandlerFunc {
 		resourceErrors := make(map[string]string)
 		for path, resource := range h.resources {
 			if sr, ok := resource.(StatusResource); ok {
-				status, err := sr.Status()
+				status, err := sr.Status(r.Context())
 				if err != nil {
 					httpStatus = http.StatusInternalServerError
 					h.logger.Error().Err(err).Str("path", path).Msg("error getting resource status")

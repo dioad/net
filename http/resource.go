@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"net/http"
 )
 
@@ -28,17 +29,17 @@ func Chain(handler http.Handler, middlewares ...Middleware) http.Handler {
 
 // StatusResource is an interface for resources that can report their status.
 type StatusResource interface {
-	Status() (any, error)
+	Status(ctx context.Context) (any, error)
 }
 
 // LivenessResource is an interface for resources that can report their liveness.
 type LivenessResource interface {
-	Live() error
+	Live(ctx context.Context) error
 }
 
 // ReadinessResource is an interface for resources that can report their readiness.
 type ReadinessResource interface {
-	Ready() (any, error)
+	Ready(ctx context.Context) (any, error)
 }
 
 // RootResource is an interface for the root resource of the server.
