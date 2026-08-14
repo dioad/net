@@ -560,3 +560,91 @@ func TestIdleTimeoutPassthrough(t *testing.T) {
 	assert.Equal(t, idle, s.server.IdleTimeout,
 		"Config.IdleTimeout should be passed through to the underlying http.Server")
 }
+
+// stubRootResource is a minimal RootResource for testing AddRootResource.
+type stubRootResource struct{}
+
+func (stubRootResource) Index() http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("root index"))
+	}
+}
+
+func TestAddRootResource_DispatchesToIndex(t *testing.T) {
+	s := NewServer(Config{})
+	s.AddRootResource(stubRootResource{})
+	// Matches what Serve/ListenAndServe always do before accepting traffic;
+	// s.handler() alone (unlike AddResource/AddHandler) doesn't trigger "/"
+	// registration - that only happens inside initialiseServer.
+	s.initialiseServer()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	s.handler().ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "root index", w.Body.String())
+}
+
+func TestAddRootResource_NeverCalled_RootIs404(t *testing.T) {
+	s := NewServer(Config{})
+	s.initialiseServer()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	s.handler().ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// TestAddRootResource_SafeAfterEarlyInitialisation reproduces a real bug: any
+// caller that calls RegisterOnShutdown (or Shutdown) before AddRootResource -
+// both of which trigger the once-only initialiseServer, exactly as
+// Serve/ListenAndServe do - used to permanently lose the "/" route, because
+// "/" was only ever registered inside that one-time initialisation, at a
+// point when the root resource hadn't been set yet. AddRootResource must be
+// safe to call at any point before the server actually starts serving
+// traffic, regardless of what else has already triggered initialisation.
+func TestAddRootResource_SafeAfterEarlyInitialisation(t *testing.T) {
+	s := NewServer(Config{})
+
+	// Simulates internal/cmd/agent's registerControllerHandlers calling
+	// RegisterOnShutdown before the caller has finished configuring the
+	// server (root resource included) - this line alone used to be enough
+	// to make AddRootResource, called afterward, a silent no-op for "/".
+	s.RegisterOnShutdown(func() {})
+
+	s.AddRootResource(stubRootResource{})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	s.handler().ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, "AddRootResource, called after RegisterOnShutdown has already triggered initialisation, must still take effect")
+	assert.Equal(t, "root index", w.Body.String())
+}
+
+// TestServer_NeverCallingAddRootResource_DoesNotConflictWithOwnCatchAllRoute
+// guards the other half of the AddRootResource fix: "/" must never be
+// registered unconditionally by initialiseServer. A caller that never calls
+// AddRootResource at all (e.g. sdk/agent/server/file.Server, which registers
+// its own "/{path...}" catch-all directly) must not have that pattern
+// rejected as a duplicate of an unconditionally-registered "/" -
+// net/http.ServeMux panics on that conflict.
+func TestServer_NeverCallingAddRootResource_DoesNotConflictWithOwnCatchAllRoute(t *testing.T) {
+	s := NewServer(Config{})
+
+	assert.NotPanics(t, func() {
+		s.AddHandler("/{path...}", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte("catch-all"))
+		}))
+		s.initialiseServer()
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/anything", nil)
+	w := httptest.NewRecorder()
+	s.handler().ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "catch-all", w.Body.String())
+}

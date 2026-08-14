@@ -78,6 +78,7 @@ type Server struct {
 	// Private fields
 	server           *http.Server
 	serverInitOnce   sync.Once
+	rootRouteOnce    sync.Once
 	metricSet        *MetricSet
 	metricsGatherers prometheus.Gatherers
 	instrument       Instrument
@@ -288,10 +289,46 @@ func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middl
 	}
 }
 
-// AddRootResource sets the root resource for the server
-// The root resource's Index method will be called for any path that doesn't match other routes
+// AddRootResource sets the root resource for the server and registers its
+// "/" route. The root resource's Index method will be called for any path
+// that doesn't match other routes.
+//
+// Safe to call at any point before the server starts actually accepting
+// requests, regardless of whether some other method has already triggered
+// initialiseServer (RegisterOnShutdown and Shutdown do, besides
+// Serve/ListenAndServe): rootRouteOnce ensures "/" is registered exactly
+// once, whichever of AddRootResource or initialiseServer runs first, rather
+// than only ever inside initialiseServer's own one-time setup - a caller
+// that finishes configuring the server (mounting resources, then calling
+// AddRootResource) after something else already triggered initialisation
+// would otherwise have "/" silently, permanently unregistered. "/" is never
+// registered at all for servers that never call AddRootResource, so this
+// doesn't affect callers that register their own catch-all pattern (e.g.
+// "/{path...}") directly - registering "/" unconditionally would panic via
+// net/http.ServeMux's duplicate-pattern check against such a caller.
 func (s *Server) AddRootResource(r RootResource) {
 	s.rootResource = r
+	s.registerRootRoute()
+}
+
+func (s *Server) registerRootRoute() {
+	s.rootRouteOnce.Do(func() {
+		s.AddHandler("/", s.rootResourceHandler())
+	})
+}
+
+// rootResourceHandler returns a handler for "/" that reads s.rootResource
+// live, on every request, instead of being resolved once when the "/" route
+// is registered - so a later AddRootResource call (replacing the resource)
+// takes effect immediately, with no re-registration needed.
+func (s *Server) rootResourceHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.rootResource == nil {
+			http.NotFound(w, r)
+			return
+		}
+		s.rootResource.Index()(w, r)
+	}
 }
 
 // handler returns the HTTP handler for the server
@@ -353,13 +390,26 @@ func (s *Server) AddStatusStaticMetadataItem(key string, value any) {
 	s.HealthRegistry.AddStaticMetadata(key, value)
 }
 
-// initialiseServer initializes the HTTP server if it hasn't been initialized yet
+// initialiseServer initializes the HTTP server if it hasn't been initialized yet.
+// Guarded by serverInitOnce, so this can genuinely only run once - but several
+// methods besides Serve/ListenAndServe also call it (RegisterOnShutdown,
+// Shutdown), and any of those can fire before a caller has finished calling
+// AddRootResource. Root-resource dispatch is registered as a handler that
+// reads s.rootResource live, per request (see rootResourceHandler), rather
+// than baking in a single Index() closure at Once-time, specifically so
+// AddRootResource's call-time relative to those other methods doesn't matter.
 func (s *Server) initialiseServer() {
 	s.serverInitOnce.Do(func() {
 		s.addDefaultHandlers()
 
+		// Only registers "/" if a root resource has already been set by this
+		// point - see AddRootResource's doc comment. A caller that never
+		// calls AddRootResource at all must never have "/" registered here:
+		// some servers register their own catch-all pattern directly (e.g.
+		// "/{path...}"), which net/http.ServeMux would panic on as a
+		// duplicate of an unconditionally-registered "/".
 		if s.rootResource != nil {
-			s.AddHandler("/", s.rootResource.Index())
+			s.registerRootRoute()
 		}
 
 		errorLogger := stdlog.New(&tlsHandshakeErrorFilter{logger: s.Logger}, "", stdlog.Lshortfile)
