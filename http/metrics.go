@@ -15,6 +15,8 @@ package http
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -48,7 +50,7 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 				Help:    "Histogram of latencies for HTTP requests.",
 				Buckets: []float64{.1, .2, .4, 1, 3, 8, 20, 60, 120},
 			},
-			[]string{"route", "method"},
+			[]string{"route", "method", "ws"},
 		),
 		RequestSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -109,12 +111,16 @@ func (m *MetricSet) Middleware(mux *http.ServeMux, next http.Handler) http.Handl
 		labels := prometheus.Labels{
 			"route": route,
 		}
+		durationLabels := prometheus.Labels{
+			"route": route,
+			"ws":    strconv.FormatBool(isWebsocketHandshake(r)),
+		}
 		promhttp.InstrumentHandlerInFlight(
 			m.InFlightGauge,
 			promhttp.InstrumentHandlerCounter(
 				m.RequestCounter.MustCurryWith(labels),
 				promhttp.InstrumentHandlerDuration(
-					m.RequestDuration.MustCurryWith(labels),
+					m.RequestDuration.MustCurryWith(durationLabels),
 					promhttp.InstrumentHandlerResponseSize(
 						m.ResponseSize.MustCurryWith(labels),
 						promhttp.InstrumentHandlerRequestSize(
@@ -124,4 +130,21 @@ func (m *MetricSet) Middleware(mux *http.ServeMux, next http.Handler) http.Handl
 				),
 			)).ServeHTTP(w, r)
 	})
+}
+
+// isWebsocketHandshake reports whether r is a WebSocket upgrade request, per
+// RFC 6455: an Upgrade header of "websocket" together with a Connection
+// header listing "upgrade" among its (comma-separated) tokens.
+func isWebsocketHandshake(r *http.Request) bool {
+	if !strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+		return false
+	}
+
+	for token := range strings.SplitSeq(r.Header.Get("Connection"), ",") {
+		if strings.EqualFold(strings.TrimSpace(token), "upgrade") {
+			return true
+		}
+	}
+
+	return false
 }
