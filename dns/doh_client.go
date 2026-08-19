@@ -16,7 +16,7 @@ type DOHClient struct {
 
 // Exchange performs a DNS query using DNS over HTTPS.
 func (c *DOHClient) Exchange(msg *dns.Msg) (*dns.Msg, error) {
-	req, err := doh.NewRequest(http.MethodGet, c.URL.String(), msg)
+	req, err := doh.NewRequest(http.MethodGet, c.URL.String(), c.URL.Host, msg)
 	if err != nil {
 		return nil, err
 	}
