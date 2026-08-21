@@ -122,8 +122,7 @@ func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 		[]string{"result"},
 	)
 	if err := reg.Register(r.counter); err != nil {
-		var are prometheus.AlreadyRegisteredError
-		if errors.As(err, &are) {
+		if are, ok := errors.AsType[prometheus.AlreadyRegisteredError](err); ok {
 			if existing, ok := are.ExistingCollector.(*prometheus.CounterVec); ok {
 				r.counter = existing
 			} else {
@@ -161,6 +160,11 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			return
 		}
 		if !rl.limiter.Allow(p) {
+			zerolog.Ctx(r.Context()).Warn().
+				Str("principal", p).
+				Float64("rps", rl.requestsPerSecond).
+				Int("burst", rl.burst).
+				Msg("rate limit exceeded for principal")
 			rl.counter.WithLabelValues("blocked").Inc()
 			rl.setRetryAfterHeader(w, p)
 			http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
