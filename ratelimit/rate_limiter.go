@@ -295,6 +295,11 @@ func NewRateLimiterWithOptions(opts ...Option) *RateLimiter {
 }
 
 // Allow checks if a request from the given principal is allowed.
+//
+// Allow does not log rejections itself; it is a pure decision. Callers with
+// access to a request-scoped logger (e.g. an HTTP middleware) should log the
+// rejection themselves using that logger, rather than relying on a logger
+// captured at RateLimiter construction time.
 func (rl *RateLimiter) Allow(principal string) bool {
 	// Get rate limits (potentially from external source) before acquiring any locks
 	rps := rl.requestsPerSecond
@@ -346,15 +351,6 @@ func (rl *RateLimiter) Allow(principal string) bool {
 		entry.lastAllow = allowed
 	}
 	rl.mu.Unlock()
-
-	// Log rate limit exceeded outside of any locks
-	if !allowed {
-		rl.logger.Warn().
-			Str("principal", principal).
-			Float64("rps", rps).
-			Int("burst", burst).
-			Msg("rate limit exceeded for principal")
-	}
 
 	return allowed
 }

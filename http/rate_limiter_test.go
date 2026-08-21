@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRateLimiter_Middleware(t *testing.T) {
@@ -35,6 +37,42 @@ func TestRateLimiter_Middleware(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusTooManyRequests, rr.Code)
 	assert.Equal(t, "1", rr.Header().Get("Retry-After"), "Retry-After should be 1 second for 1 req/sec limiter")
+}
+
+func TestRateLimiter_Middleware_LogsRejectionViaRequestScopedLogger(t *testing.T) {
+	// The RateLimiter itself is constructed with a Nop logger to prove the
+	// rejection warning does NOT come from the construction-time logger -
+	// it must come from whatever logger is embedded in the request context.
+	rl := NewRateLimiter(
+		WithStaticRateLimit(1, 1),
+		WithRateLimitLogger(zerolog.Nop()),
+		WithPrincipalFunc(StaticPrincipalFunc("user1")),
+	)
+
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	var buf bytes.Buffer
+	requestLogger := zerolog.New(&buf)
+
+	req := httptest.NewRequest("GET", "/", nil)
+	req = req.WithContext(requestLogger.WithContext(req.Context()))
+
+	// First request - allowed, no log expected.
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+	assert.Empty(t, buf.String(), "no warning should be logged for an allowed request")
+
+	// Second request - rejected, must log via the request-scoped logger.
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusTooManyRequests, rr.Code)
+
+	logged := buf.String()
+	assert.Contains(t, logged, "rate limit exceeded for principal")
+	assert.Contains(t, logged, `"principal":"user1"`)
 }
 
 func TestRateLimiter_RetryAfterHeaderAccuracy(t *testing.T) {
