@@ -30,7 +30,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/miekg/dns v1.1.73
-	github.com/prometheus/client_model v0.6.2
+	github.com/prometheus/client_model v0.6.3
 	github.com/rs/cors v1.11.1
 	github.com/stretchr/testify v1.12.0
 	golang.org/x/exp v0.0.0-20260813180055-c1d0aacb2297
