@@ -73,6 +73,47 @@ func TestRateLimiter_Refill(t *testing.T) {
 	assert.True(t, rl.Allow("user1"))
 }
 
+func TestNewRateLimiterWithConfig_ClampsInvalidInputs(t *testing.T) {
+	logger := zerolog.Nop()
+
+	t.Run("negative rps clamps to zero, small positive rps is preserved", func(t *testing.T) {
+		clamped := NewRateLimiterWithConfig(-0.5, 5, time.Minute, time.Minute, logger)
+		defer clamped.Stop()
+		assert.Equal(t, 0.0, clamped.requestsPerSecond)
+
+		preserved := NewRateLimiterWithConfig(0.5, 5, time.Minute, time.Minute, logger)
+		defer preserved.Stop()
+		assert.Equal(t, 0.5, preserved.requestsPerSecond)
+	})
+
+	t.Run("negative burst clamps to zero", func(t *testing.T) {
+		rl := NewRateLimiterWithConfig(1, -1, time.Minute, time.Minute, logger)
+		defer rl.Stop()
+
+		assert.Equal(t, 0, rl.burst)
+	})
+
+	t.Run("non-positive cleanup interval falls back to default, tiny positive value is preserved", func(t *testing.T) {
+		clamped := NewRateLimiterWithConfig(1, 1, 0, time.Minute, logger)
+		defer clamped.Stop()
+		assert.Equal(t, 5*time.Minute, clamped.cleanupInterval)
+
+		preserved := NewRateLimiterWithConfig(1, 1, time.Nanosecond, time.Minute, logger)
+		assert.Equal(t, time.Nanosecond, preserved.cleanupInterval)
+		preserved.Stop()
+	})
+
+	t.Run("non-positive stale TTL falls back to default, tiny positive value is preserved", func(t *testing.T) {
+		clamped := NewRateLimiterWithConfig(1, 1, time.Minute, 0, logger)
+		defer clamped.Stop()
+		assert.Equal(t, 30*time.Minute, clamped.staleTTL)
+
+		preserved := NewRateLimiterWithConfig(1, 1, time.Minute, time.Nanosecond, logger)
+		assert.Equal(t, time.Nanosecond, preserved.staleTTL)
+		preserved.Stop()
+	})
+}
+
 func TestNewRateLimiterWithContextAndConfig_ClampsInvalidInputs(t *testing.T) {
 	logger := zerolog.Nop()
 
