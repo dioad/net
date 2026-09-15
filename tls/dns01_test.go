@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -408,6 +409,61 @@ func TestLoadOrCreateAccountKey(t *testing.T) {
 	der2, err := x509.MarshalECPrivateKey(key2)
 	require.NoError(t, err)
 	assert.Equal(t, der1, der2, "second call should load the persisted key rather than generating a new one")
+}
+
+// fakeCache is a minimal autocert.Cache whose Get/Put behaviour is
+// controlled per test, for error paths autocert.DirCache can't easily
+// produce (e.g. a Get error other than autocert.ErrCacheMiss).
+type fakeCache struct {
+	getFunc func(ctx context.Context, key string) ([]byte, error)
+	putFunc func(ctx context.Context, key string, data []byte) error
+}
+
+func (f *fakeCache) Get(ctx context.Context, key string) ([]byte, error) {
+	return f.getFunc(ctx, key)
+}
+
+func (f *fakeCache) Put(ctx context.Context, key string, data []byte) error {
+	return f.putFunc(ctx, key, data)
+}
+
+func (f *fakeCache) Delete(context.Context, string) error { return nil }
+
+func TestLoadOrCreateAccountKeyErrors(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("invalid PEM in the cached key", func(t *testing.T) {
+		cache := autocert.DirCache(t.TempDir())
+		require.NoError(t, cache.Put(ctx, "test+account", []byte("not a pem")))
+
+		_, err := loadOrCreateAccountKey(ctx, cache, "test+account")
+		assert.ErrorContains(t, err, "invalid PEM in account key")
+	})
+
+	t.Run("cache Get error other than a cache miss", func(t *testing.T) {
+		cache := &fakeCache{
+			getFunc: func(context.Context, string) ([]byte, error) {
+				return nil, errors.New("disk error")
+			},
+		}
+
+		_, err := loadOrCreateAccountKey(ctx, cache, "test+account")
+		assert.ErrorContains(t, err, "error reading account key")
+	})
+
+	t.Run("cache Put error when persisting a newly generated key", func(t *testing.T) {
+		cache := &fakeCache{
+			getFunc: func(context.Context, string) ([]byte, error) {
+				return nil, autocert.ErrCacheMiss
+			},
+			putFunc: func(context.Context, string, []byte) error {
+				return errors.New("disk full")
+			},
+		}
+
+		_, err := loadOrCreateAccountKey(ctx, cache, "test+account")
+		assert.ErrorContains(t, err, "error saving account key")
+	})
 }
 
 func TestDomainSetCacheKey(t *testing.T) {
