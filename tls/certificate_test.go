@@ -59,3 +59,54 @@ func TestSaveTLSCertificateToFile(t *testing.T) {
 		assert.Contains(t, string(content), "-----BEGIN CERTIFICATE-----")
 	})
 }
+
+func TestSaveTLSCertificateToFiles(t *testing.T) {
+	t.Run("writes the certificate and key with the documented permissions", func(t *testing.T) {
+		dir := t.TempDir()
+		cert, _ := helperCreateSelfSignedKeyPair(t, dir)
+		certPath := filepath.Join(dir, "cert.pem")
+		keyPath := filepath.Join(dir, "key.pem")
+
+		require.NoError(t, SaveTLSCertificateToFiles(cert, certPath, keyPath))
+
+		certInfo, err := os.Stat(certPath)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0644), certInfo.Mode())
+
+		keyInfo, err := os.Stat(keyPath)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0600), keyInfo.Mode())
+	})
+
+	t.Run("returns an error when the certificate file cannot be opened", func(t *testing.T) {
+		// A directory path can't be opened for writing as a regular file.
+		certDir := t.TempDir()
+		keyPath := filepath.Join(t.TempDir(), "key.pem")
+		cert := &tls.Certificate{Certificate: [][]byte{{0x01}}, PrivateKey: "irrelevant"}
+
+		err := SaveTLSCertificateToFiles(cert, certDir, keyPath)
+		assert.ErrorContains(t, err, "is a directory")
+
+		_, statErr := os.Stat(keyPath)
+		assert.True(t, os.IsNotExist(statErr), "the key file should not be written when the certificate file fails to open")
+	})
+
+	t.Run("returns an error when the private key cannot be marshalled", func(t *testing.T) {
+		certPath := filepath.Join(t.TempDir(), "cert.pem")
+		keyPath := filepath.Join(t.TempDir(), "key.pem")
+		cert := &tls.Certificate{
+			Certificate: [][]byte{{0x01, 0x02, 0x03}},
+			PrivateKey:  "not-a-supported-key-type",
+		}
+
+		err := SaveTLSCertificateToFiles(cert, certPath, keyPath)
+		assert.Error(t, err)
+
+		content, readErr := os.ReadFile(certPath)
+		require.NoError(t, readErr)
+		assert.Contains(t, string(content), "-----BEGIN CERTIFICATE-----")
+
+		_, statErr := os.Stat(keyPath)
+		assert.True(t, os.IsNotExist(statErr), "the key file should not be written when the private key fails to marshal")
+	})
+}
