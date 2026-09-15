@@ -179,7 +179,7 @@ func FormatMechanism(mechanism Mechanism) string {
 	}
 	outputs := make([]string, 0, len(mechanism.Values))
 	for _, m := range mechanism.Values {
-		outputs = append(outputs, fmt.Sprintf("%s:%s", mechanism.Name, m))
+		outputs = append(outputs, fmt.Sprintf("%s%s:%s", mechanism.Qualifier, mechanism.Name, m))
 	}
 
 	return strings.Join(outputs, " ")
