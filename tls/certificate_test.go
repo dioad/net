@@ -1,7 +1,11 @@
 package tls
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"testing"
@@ -108,5 +112,42 @@ func TestSaveTLSCertificateToFiles(t *testing.T) {
 
 		_, statErr := os.Stat(keyPath)
 		assert.True(t, os.IsNotExist(statErr), "the key file should not be written when the private key fails to marshal")
+	})
+}
+
+func TestLoadKeyPairAndCertsFromFile(t *testing.T) {
+	t.Run("returns an error when the file cannot be read", func(t *testing.T) {
+		_, err := LoadKeyPairAndCertsFromFile(filepath.Join(t.TempDir(), "missing.pem"))
+		assert.ErrorIs(t, err, os.ErrNotExist)
+	})
+
+	t.Run("returns an error for an unparseable private key block", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "bad-key.pem")
+		data := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: []byte("not a real key")})
+		require.NoError(t, os.WriteFile(path, data, 0600))
+
+		_, err := LoadKeyPairAndCertsFromFile(path)
+		assert.ErrorContains(t, err, "failure reading private key")
+	})
+
+	t.Run("returns an error when no certificate block is present", func(t *testing.T) {
+		key, err := rsa.GenerateKey(rand.Reader, 1024)
+		require.NoError(t, err)
+		path := filepath.Join(t.TempDir(), "key-only.pem")
+		data := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+		require.NoError(t, os.WriteFile(path, data, 0600))
+
+		_, err = LoadKeyPairAndCertsFromFile(path)
+		assert.ErrorContains(t, err, "no certificate found")
+	})
+
+	t.Run("returns an error when no private key block is present", func(t *testing.T) {
+		cert, _ := helperCreateSelfSignedKeyPair(t, t.TempDir())
+		path := filepath.Join(t.TempDir(), "cert-only.pem")
+		data := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]})
+		require.NoError(t, os.WriteFile(path, data, 0600))
+
+		_, err := LoadKeyPairAndCertsFromFile(path)
+		assert.ErrorContains(t, err, "no private key found")
 	})
 }
