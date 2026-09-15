@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/dioad/generics"
@@ -121,7 +122,11 @@ func NewServerTLSConfig(ctx context.Context, c ServerConfig) (*tls.Config, error
 	if len(tlsConfig.NextProtos) == 0 {
 		tlsConfig.NextProtos = defaultNextProtos
 	} else {
-		tlsConfig.NextProtos = append(tlsConfig.NextProtos, defaultNextProtos...)
+		for _, proto := range defaultNextProtos {
+			if !slices.Contains(tlsConfig.NextProtos, proto) {
+				tlsConfig.NextProtos = append(tlsConfig.NextProtos, proto)
+			}
+		}
 	}
 
 	if c.ClientCAFile != "" {
