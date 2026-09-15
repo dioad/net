@@ -318,6 +318,54 @@ func TestRateLimiter_DynamicUpdate(t *testing.T) {
 	assert.True(t, rl.Allow("user1"), "Should allow after limit increase and refill")
 }
 
+func TestRateLimiter_Allow_UpdatesBurstOnLimitChange(t *testing.T) {
+	logger := zerolog.Nop()
+	source := &mockSource{
+		limits: map[string]struct {
+			rps   float64
+			burst int
+		}{
+			"user1": {rps: 1000, burst: 1},
+		},
+	}
+	rl := NewRateLimiterWithSource(source, logger)
+	defer rl.Stop()
+
+	rl.Allow("user1")
+
+	source.limits["user1"] = struct {
+		rps   float64
+		burst int
+	}{rps: 1000, burst: 5}
+
+	rl.Allow("user1")
+
+	rl.mu.RLock()
+	burst := rl.limiters["user1"].limiter.Burst()
+	rl.mu.RUnlock()
+
+	assert.Equal(t, 5, burst, "the underlying limiter's burst should track a changed source limit")
+}
+
+func TestRateLimiter_Allow_RefreshesLastUsedOnEachCall(t *testing.T) {
+	logger := zerolog.Nop()
+	rl := NewRateLimiter(1000, 1000, logger)
+	defer rl.Stop()
+
+	rl.Allow("user1")
+	rl.mu.RLock()
+	first := rl.limiters["user1"].lastUsed
+	rl.mu.RUnlock()
+
+	time.Sleep(5 * time.Millisecond)
+	rl.Allow("user1")
+	rl.mu.RLock()
+	second := rl.limiters["user1"].lastUsed
+	rl.mu.RUnlock()
+
+	assert.True(t, second.After(first), "lastUsed should advance on every Allow call, not just entry creation")
+}
+
 func TestStaticRateLimitSource(t *testing.T) {
 	source := &StaticRateLimitSource{RequestsPerSecond: 10, Burst: 20}
 	rps, burst, ok := source.GetLimit("any")
