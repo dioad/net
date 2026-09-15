@@ -108,11 +108,13 @@ func SaveTLSCertificateToFile(cert *tls.Certificate, filename string, perm int) 
 
 	err = encodeCertificateBlock(f, cert.Certificate[0])
 	if err != nil {
+		_ = f.Close()
 		return err
 	}
 
 	err = encodePrivateKeyBlock(f, cert.PrivateKey)
 	if err != nil {
+		_ = f.Close()
 		return err
 	}
 
