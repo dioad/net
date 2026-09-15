@@ -48,8 +48,14 @@ func (s *connWithCloser) Closed() bool {
 // CloseWrite delegates to the wrapped connection's own CloseWrite when
 // available (true half-close), falling back to a full Close() otherwise.
 // See doneConn.CloseWrite for the full rationale.
+//
+// The check is against s.conn.NetConn(), the raw connection, rather than
+// s.conn itself: s.conn is always a *doneConn, which always implements
+// CloseWrite (with the same raw-conn-or-Close fallback), so asserting on
+// s.conn would always succeed and this method's own Close() fallback -
+// including its onClose callback - would never run.
 func (s *connWithCloser) CloseWrite() error {
-	if wc, ok := s.conn.(interface{ CloseWrite() error }); ok {
+	if wc, ok := s.conn.NetConn().(interface{ CloseWrite() error }); ok {
 		return wc.CloseWrite()
 	}
 	return s.Close()
