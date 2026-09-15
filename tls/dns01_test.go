@@ -174,6 +174,68 @@ func TestDNS01ManagerEnsureCertificateCacheHit(t *testing.T) {
 	assert.NotNil(t, cert)
 }
 
+// countingCache wraps an autocert.Cache and counts calls to Get, so tests
+// can tell whether loadCachedCertificate short-circuits after the first
+// failed lookup rather than just checking its (identical) return value.
+type countingCache struct {
+	autocert.Cache
+	getCalls int
+}
+
+func (c *countingCache) Get(ctx context.Context, key string) ([]byte, error) {
+	c.getCalls++
+	return c.Cache.Get(ctx, key)
+}
+
+func TestDNS01ManagerLoadCachedCertificate(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns false when the certificate is not cached", func(t *testing.T) {
+		m := newTestDNS01Manager(t.TempDir())
+		spy := &countingCache{Cache: m.cache}
+		m.cache = spy
+
+		cert, ok := m.loadCachedCertificate(ctx)
+		assert.False(t, ok)
+		assert.Nil(t, cert)
+		assert.Equal(t, 1, spy.getCalls, "should not look up the key once the certificate lookup has already failed")
+	})
+
+	t.Run("returns false when the key is not cached", func(t *testing.T) {
+		m := newTestDNS01Manager(t.TempDir())
+		certPEM, _ := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+		require.NoError(t, m.cache.Put(ctx, m.certName, certPEM))
+
+		cert, ok := m.loadCachedCertificate(ctx)
+		assert.False(t, ok)
+		assert.Nil(t, cert)
+	})
+
+	t.Run("returns false when the cached cert and key don't match", func(t *testing.T) {
+		m := newTestDNS01Manager(t.TempDir())
+		certPEM, _ := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+		_, otherKeyPEM := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+		require.NoError(t, m.cache.Put(ctx, m.certName, certPEM))
+		require.NoError(t, m.cache.Put(ctx, m.certKeyName, otherKeyPEM))
+
+		cert, ok := m.loadCachedCertificate(ctx)
+		assert.False(t, ok)
+		assert.Nil(t, cert)
+	})
+
+	t.Run("returns the certificate with a parsed leaf when cached", func(t *testing.T) {
+		m := newTestDNS01Manager(t.TempDir())
+		certPEM, keyPEM := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+		require.NoError(t, m.cache.Put(ctx, m.certName, certPEM))
+		require.NoError(t, m.cache.Put(ctx, m.certKeyName, keyPEM))
+
+		cert, ok := m.loadCachedCertificate(ctx)
+		require.True(t, ok)
+		require.NotNil(t, cert)
+		assert.NotNil(t, cert.Leaf)
+	})
+}
+
 func TestDNS01ManagerEnsureCertificateReissuesWhenNearExpiry(t *testing.T) {
 	dir := t.TempDir()
 	m := newTestDNS01Manager(dir)
