@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"bytes"
 	"context"
 	"strconv"
 	"sync"
@@ -57,6 +58,48 @@ func TestRateLimiter_Cleanup(t *testing.T) {
 	assert.NotContains(t, rl.limiters, "user1")
 	assert.NotContains(t, rl.limiters, "user2")
 	rl.mu.Unlock()
+}
+
+func TestRateLimiter_cleanupExpiredLimiters(t *testing.T) {
+	t.Run("logs and removes entries past the stale TTL", func(t *testing.T) {
+		var buf bytes.Buffer
+		logger := zerolog.New(&buf)
+		rl := NewRateLimiterWithConfig(1, 1, time.Hour, 5*time.Millisecond, logger)
+		defer rl.Stop()
+
+		rl.Allow("stale-user")
+		rl.Allow("fresh-user")
+
+		time.Sleep(20 * time.Millisecond)
+
+		// Refresh fresh-user so only stale-user is past the TTL.
+		rl.Allow("fresh-user")
+
+		rl.cleanupExpiredLimiters()
+
+		rl.mu.RLock()
+		_, staleStillPresent := rl.limiters["stale-user"]
+		_, freshStillPresent := rl.limiters["fresh-user"]
+		rl.mu.RUnlock()
+
+		assert.False(t, staleStillPresent, "the entry past the stale TTL should be removed")
+		assert.True(t, freshStillPresent, "the recently-used entry should be kept")
+		assert.Contains(t, buf.String(), `"removed_limiters":1`)
+		assert.Contains(t, buf.String(), `"remaining_limiters":1`)
+		assert.Contains(t, buf.String(), "cleaned up stale rate limiters")
+	})
+
+	t.Run("does not log when nothing is stale", func(t *testing.T) {
+		var buf bytes.Buffer
+		logger := zerolog.New(&buf)
+		rl := NewRateLimiterWithConfig(1, 1, time.Hour, time.Hour, logger)
+		defer rl.Stop()
+
+		rl.Allow("user1")
+		rl.cleanupExpiredLimiters()
+
+		assert.Empty(t, buf.String(), "cleanupExpiredLimiters should not log when no entries were removed")
+	})
 }
 
 func TestRateLimiter_Refill(t *testing.T) {
