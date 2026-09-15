@@ -73,12 +73,17 @@ func (m *MultiProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	return allPrefixes, nil
 }
 
-// Contains checks if an IP address is in any of the cached prefix lists
+// Contains checks if an IP address is in any of the wrapped providers'
+// prefix lists. Like the other Provider implementations in this package, it
+// fetches (and caches) prefixes on demand rather than requiring the caller
+// to call Prefixes first.
 func (m *MultiProvider) Contains(addr netip.Addr) bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	prefixes, err := m.Prefixes(context.Background())
+	if err != nil {
+		return false
+	}
 
-	for _, prefix := range m.prefixes {
+	for _, prefix := range prefixes {
 		if prefix.Contains(addr) {
 			return true
 		}
