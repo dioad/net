@@ -5,10 +5,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewClientTLSConfig(t *testing.T) {
@@ -158,6 +162,36 @@ func TestNewLocalTLSConfig(t *testing.T) {
 			// ignored for now until we have a way to test the generated certificate
 		})
 	}
+}
+
+func TestNewLocalTLSConfigErrors(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("single pem file load error is wrapped", func(t *testing.T) {
+		_, err := NewLocalTLSConfig(ctx, LocalConfig{SinglePEMFile: filepath.Join(t.TempDir(), "missing.pem")})
+		assert.ErrorContains(t, err, "error loading certificates from single pem file")
+	})
+
+	t.Run("certificate without key is rejected", func(t *testing.T) {
+		_, err := NewLocalTLSConfig(ctx, LocalConfig{Certificate: "cert.pem"})
+		assert.ErrorContains(t, err, "both certificate and key need to be specified")
+	})
+
+	t.Run("key without certificate is rejected", func(t *testing.T) {
+		_, err := NewLocalTLSConfig(ctx, LocalConfig{Key: "key.pem"})
+		assert.ErrorContains(t, err, "both certificate and key need to be specified")
+	})
+
+	t.Run("key pair load error is wrapped", func(t *testing.T) {
+		dir := t.TempDir()
+		_, err := NewLocalTLSConfig(ctx, LocalConfig{
+			Certificate: filepath.Join(dir, "missing-cert.pem"),
+			Key:         filepath.Join(dir, "missing-key.pem"),
+		})
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error loading key pair and certs from files")
+		assert.NotNil(t, errors.Unwrap(err), "the underlying error should be wrapped (%w), not just formatted as text")
+	})
 }
 
 func TestNewServerTLSConfig(t *testing.T) {
