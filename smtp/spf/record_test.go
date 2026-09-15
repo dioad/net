@@ -69,6 +69,14 @@ func TestFormatMechanism(t *testing.T) {
 			IP4Mechanism(),
 			"",
 		},
+		{
+			Mechanism{Qualifier: QualifierSoftFail, Name: "ip4", Values: []string{"1.2.3.4"}},
+			"~ip4:1.2.3.4",
+		},
+		{
+			Mechanism{Qualifier: QualifierFail, Name: "include", Values: []string{"example.com"}},
+			"-include:example.com",
+		},
 	}
 
 	for _, run := range tests {
