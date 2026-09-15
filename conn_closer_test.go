@@ -85,11 +85,13 @@ func TestConnWithCloser_CloseWrite_DelegatesWhenSupported(t *testing.T) {
 func TestConnWithCloser_CloseWrite_FallsBackToCloseWhenUnsupported(t *testing.T) {
 	t.Parallel()
 
+	onCloseCalled := false
 	_, client := net.Pipe()
-	c := NewConnWithCloser(client, nil)
+	c := NewConnWithCloser(client, func(c net.Conn) { onCloseCalled = true })
 
 	err := c.(interface{ CloseWrite() error }).CloseWrite()
 
 	require.NoError(t, err)
 	assert.True(t, c.Closed(), "CloseWrite must fall back to a full Close() when the wrapped conn has no half-close of its own")
+	assert.True(t, onCloseCalled, "falling back to a full Close() must invoke the onClose callback, exactly like calling Close() directly would")
 }
