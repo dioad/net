@@ -75,6 +75,15 @@ func WithRateLimiterRegistry(reg prometheus.Registerer) func(*RateLimiter) {
 type RateLimiterOption func(*RateLimiter)
 
 // ClientIPPrincipalFunc is a default PrincipalFunc that extracts the client's IP address from the request for rate limiting purposes.
+//
+// GetClientIP trusts the X-Forwarded-For, Forwarded, and X-Real-IP headers
+// unconditionally (see its doc comment). Used as the default principal
+// here, that means a client not behind a trusted, header-stripping proxy
+// can set any of those headers to a different value on every request and
+// get a fresh rate-limit bucket each time, defeating the limiter entirely.
+// Deploy this default only behind a proxy that strips or overwrites these
+// headers before they reach this process; otherwise supply a PrincipalFunc
+// that does not derive from client-supplied headers.
 func ClientIPPrincipalFunc(r *http.Request) (string, error) {
 	return GetClientIP(r), nil
 }

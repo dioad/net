@@ -36,6 +36,13 @@ func headerToSnakeCase(s string) string {
 // StandardLogger creates a zerolog.Logger with standard fields for HTTP access logging.
 // The "ip" field is resolved from X-Forwarded-For or X-Real-IP headers when present,
 // falling back to RemoteAddr. Raw proxy headers and RemoteAddr are also included when set.
+//
+// "resolved_client_ip" is only as trustworthy as GetClientIP's input: absent
+// a trusted, header-stripping proxy in front of this process, any client
+// can set it to an arbitrary value. It is logged alongside the raw
+// "remote_addr" and proxy headers precisely so a reader can cross-check it
+// rather than treat it as verified; do not use it alone as an audit trail
+// of a request's true origin.
 func StandardLogger(r *http.Request, status, size int, duration time.Duration) *zerolog.Logger {
 	ctx := hlog.FromRequest(r).With().
 		Str("method", r.Method).

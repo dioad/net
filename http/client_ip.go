@@ -27,6 +27,16 @@ func ClientIPFromContext(ctx context.Context) (string, bool) {
 // GetClientIP extracts the client IP address from a request.
 // It checks X-Forwarded-For and X-Real-IP headers first (for proxied requests),
 // then falls back to RemoteAddr.
+//
+// X-Forwarded-For, Forwarded, and X-Real-IP are ordinary request headers:
+// any client can set them to an arbitrary value, and this function trusts
+// them unconditionally with no allowlist of known proxy addresses. Unless
+// the caller has independently verified that the request reached this
+// process through a proxy it controls, which strips or overwrites these
+// headers before forwarding, the returned value must be treated as
+// attacker-controlled input -- not used as an identity or trust boundary
+// for rate limiting, access control, or audit logging without that
+// guarantee in place.
 func GetClientIP(r *http.Request) string {
 	// Check X-Forwarded-For header (may contain multiple IPs)
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
