@@ -1,6 +1,33 @@
 package tlsrpt
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func TestRecordLongValueIsNotSilentlyTruncated(t *testing.T) {
+	uris := make([]string, 0, 15)
+	for range 15 {
+		uris = append(uris, "https://tls-reports-subdomain-with-a-long-name.example.com/report")
+	}
+	r := Record{Version: "TLSRPTv1", ReportURIAggregate: uris}
+
+	value := r.String()
+	if len(value) <= 255 {
+		t.Fatalf("test setup: record value is only %d bytes, need > 255 to exercise chunking", len(value))
+	}
+
+	recordValue := r.RecordValue()
+	if !strings.Contains(recordValue, `\" \"`) {
+		t.Errorf("expected RecordValue to split the value into multiple quoted segments, got: %s", recordValue)
+	}
+
+	rejoined := strings.ReplaceAll(strings.ReplaceAll(recordValue, `\"`, ""), " ", "")
+	want := strings.ReplaceAll(value, " ", "")
+	if rejoined != want {
+		t.Errorf("RecordValue lost content: got %q, want (with spaces removed) %q", rejoined, want)
+	}
+}
 
 func TestRecord(t *testing.T) {
 	r := Record{

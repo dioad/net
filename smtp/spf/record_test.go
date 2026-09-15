@@ -1,6 +1,36 @@
 package spf
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func TestSPFRecordLongValueIsNotSilentlyTruncated(t *testing.T) {
+	// Enough "include" mechanisms to push the rendered record well past the
+	// 255-byte DNS character-string limit.
+	r := Record{}
+	for range 15 {
+		r.Add(IncludeMechanism("subdomain-with-a-long-name.example.com"))
+	}
+
+	value := r.String()
+	if len(value) <= 255 {
+		t.Fatalf("test setup: record value is only %d bytes, need > 255 to exercise chunking", len(value))
+	}
+
+	// The full, untruncated value must still be recoverable from RecordValue,
+	// split across multiple quoted DNS character-strings.
+	recordValue := r.RecordValue()
+	if !strings.Contains(recordValue, `\" \"`) {
+		t.Errorf("expected RecordValue to split the value into multiple quoted segments, got: %s", recordValue)
+	}
+
+	rejoined := strings.ReplaceAll(strings.ReplaceAll(recordValue, `\"`, ""), " ", "")
+	want := strings.ReplaceAll(value, " ", "")
+	if rejoined != want {
+		t.Errorf("RecordValue lost content: got %q, want (with spaces removed) %q", rejoined, want)
+	}
+}
 
 func TestIPMechanism(t *testing.T) {
 	tests := []struct {

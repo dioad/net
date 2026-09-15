@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+
+	"github.com/dioad/net/smtp/internal/txtchunk"
 )
 
 /*
@@ -115,7 +117,7 @@ func (r *Record) RecordPrefix() string {
 }
 
 func (r *Record) RecordValue() string {
-	return fmt.Sprintf("\\\"%v\\\"", r.String())
+	return txtchunk.Quote(r.String())
 }
 
 func (r *Record) String() string {
@@ -153,9 +155,5 @@ func (r *Record) String() string {
 		parts = append(parts, fmt.Sprintf("aspf=%s", r.AlignmentPolicySPF))
 	}
 
-	result := strings.Join(parts, "; ")
-	if len(result) > 255 {
-		result = result[:255]
-	}
-	return result
+	return strings.Join(parts, "; ")
 }

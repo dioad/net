@@ -8,6 +8,8 @@ import (
 	"github.com/dioad/filter"
 	"github.com/dioad/generics"
 	"github.com/dioad/util"
+
+	"github.com/dioad/net/smtp/internal/txtchunk"
 )
 
 const (
@@ -125,7 +127,7 @@ func (r *Record) RecordType() string {
 }
 
 func (r *Record) RecordValue() string {
-	return fmt.Sprintf("\\\"%v\\\"", r.String())
+	return txtchunk.Quote(r.String())
 }
 
 func (r *Record) String() string {
@@ -166,11 +168,7 @@ func (r *Record) String() string {
 		parts = append(parts, fmt.Sprintf("%sall", r.AllQualifier))
 	}
 
-	result := strings.Join(parts, " ")
-	if len(result) > 255 {
-		result = result[:255]
-	}
-	return result
+	return strings.Join(parts, " ")
 }
 
 func FormatMechanism(mechanism Mechanism) string {
