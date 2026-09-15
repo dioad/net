@@ -169,6 +169,46 @@ func TestNewRateLimiterWithContextAndConfig_StartsBackgroundCleanup(t *testing.T
 	}, 500*time.Millisecond, 10*time.Millisecond, "background cleanup goroutine should remove the stale limiter")
 }
 
+func TestNewRateLimiterWithSourceAndConfig_ClampsInvalidInputs(t *testing.T) {
+	logger := zerolog.Nop()
+	source := &StaticRateLimitSource{RequestsPerSecond: 1, Burst: 1}
+
+	t.Run("non-positive cleanup interval falls back to default, tiny positive value is preserved", func(t *testing.T) {
+		clamped := NewRateLimiterWithSourceAndConfig(source, 0, time.Minute, logger)
+		defer clamped.Stop()
+		assert.Equal(t, 5*time.Minute, clamped.cleanupInterval)
+
+		preserved := NewRateLimiterWithSourceAndConfig(source, time.Nanosecond, time.Minute, logger)
+		assert.Equal(t, time.Nanosecond, preserved.cleanupInterval)
+		preserved.Stop()
+	})
+
+	t.Run("non-positive stale TTL falls back to default, tiny positive value is preserved", func(t *testing.T) {
+		clamped := NewRateLimiterWithSourceAndConfig(source, time.Minute, 0, logger)
+		defer clamped.Stop()
+		assert.Equal(t, 30*time.Minute, clamped.staleTTL)
+
+		preserved := NewRateLimiterWithSourceAndConfig(source, time.Minute, time.Nanosecond, logger)
+		assert.Equal(t, time.Nanosecond, preserved.staleTTL)
+		preserved.Stop()
+	})
+}
+
+func TestNewRateLimiterWithSourceAndConfig_StartsBackgroundCleanup(t *testing.T) {
+	logger := zerolog.Nop()
+	source := &StaticRateLimitSource{RequestsPerSecond: 1000, Burst: 1000}
+	rl := NewRateLimiterWithSourceAndConfig(source, 20*time.Millisecond, 10*time.Millisecond, logger)
+	defer rl.Stop()
+
+	rl.Allow("user1")
+
+	require.Eventually(t, func() bool {
+		rl.mu.RLock()
+		defer rl.mu.RUnlock()
+		return len(rl.limiters) == 0
+	}, 500*time.Millisecond, 10*time.Millisecond, "background cleanup goroutine should remove the stale limiter")
+}
+
 type mockSource struct {
 	limits map[string]struct {
 		rps   float64
