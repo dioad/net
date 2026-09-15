@@ -207,8 +207,73 @@ func TestNewServerTLSConfig(t *testing.T) {
 			want: nil,
 		},
 		{
+			name: "configFunc error is wrapped",
+			c: ServerConfig{
+				LocalConfig: LocalConfig{
+					Certificate: filepath.Join(tempDir, "missing-cert.pem"),
+					Key:         filepath.Join(tempDir, "missing-key.pem"),
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "with a single next proto, default is not appended",
+			c: ServerConfig{
+				LocalConfig: LocalConfig{Certificate: certPath, Key: keyPath},
+				NextProtos:  []string{"custom-alpn"},
+			},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				if !slices.Equal(got.NextProtos, []string{"custom-alpn"}) {
+					t.Errorf("NextProtos = %v, want [custom-alpn]", got.NextProtos)
+				}
+			},
+		},
+		{
+			// ACME tls-alpn-01's config already carries "acme-tls/1" in
+			// NextProtos, so this is the only provider that exercises the
+			// append-to-existing-NextProtos path rather than the
+			// assign-when-empty path the other providers all take.
+			name: "with ACME config, defaults are appended to the existing NextProtos",
+			c: ServerConfig{
+				ACME: ACMEConfig{
+					Domains:        []string{"example.com"},
+					CacheDirectory: t.TempDir(),
+				},
+			},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				// newAutocertTLSConfig already populates NextProtos (with
+				// "acme-tls/1" among others), so the [h2, http/1.1] default
+				// must be appended to it rather than overwriting it.
+				base, err := newAutocertTLSConfig(ACMEConfig{Domains: []string{"example.com"}, CacheDirectory: t.TempDir()})
+				if err != nil {
+					t.Fatalf("newAutocertTLSConfig() error = %v", err)
+				}
+
+				wantLen := len(base.NextProtos) + 2
+				if len(got.NextProtos) != wantLen {
+					t.Errorf("NextProtos = %v (len %d), want len %d (base %v with [h2 http/1.1] appended)", got.NextProtos, len(got.NextProtos), wantLen, base.NextProtos)
+				}
+				if !slices.Contains(got.NextProtos, "acme-tls/1") {
+					t.Errorf("NextProtos = %v, should still contain [acme-tls/1]", got.NextProtos)
+				}
+			},
+		},
+		{
+			name: "client CA file read error is wrapped",
+			c: ServerConfig{
+				LocalConfig:  LocalConfig{Certificate: certPath, Key: keyPath},
+				ClientCAFile: filepath.Join(tempDir, "missing-ca.pem"),
+			},
+			expectError: true,
+		},
+		{
+			// A ServerConfig with only ClientCAFile set (no ACME/SelfSigned/
+			// LocalConfig) makes configFuncFromConfig return nil, so
+			// NewServerTLSConfig short-circuits to (nil, nil) before ever
+			// reaching the client-CA handling below - LocalConfig is
+			// required here so the code under test actually runs.
 			name: "with client CA file",
-			c:    ServerConfig{ClientCAFile: caPath},
+			c:    ServerConfig{LocalConfig: LocalConfig{Certificate: certPath, Key: keyPath}, ClientCAFile: caPath},
 			checkFunc: func(t *testing.T, got *tls.Config) {
 				if got.ClientCAs == nil {
 					t.Errorf("ClientCAs is nil, expected non-nil")
@@ -223,7 +288,11 @@ func TestNewServerTLSConfig(t *testing.T) {
 		},
 		{
 			name: "with client auth type",
-			c:    ServerConfig{ClientCAFile: caPath, ClientAuthType: "RequireAndVerifyClientCert"},
+			c: ServerConfig{
+				LocalConfig:    LocalConfig{Certificate: certPath, Key: keyPath},
+				ClientCAFile:   caPath,
+				ClientAuthType: "RequireAndVerifyClientCert",
+			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
 				if got.ClientAuth != tls.RequireAndVerifyClientCert {
 					t.Errorf("ClientAuth = %v, want %v", got.ClientAuth, tls.RequireAndVerifyClientCert)
@@ -232,7 +301,10 @@ func TestNewServerTLSConfig(t *testing.T) {
 		},
 		{
 			name: "with TLS min version",
-			c:    ServerConfig{TLSMinVersion: "TLS13"},
+			c: ServerConfig{
+				LocalConfig:   LocalConfig{Certificate: certPath, Key: keyPath},
+				TLSMinVersion: "TLS13",
+			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
 				if got.MinVersion != tls.VersionTLS13 {
 					t.Errorf("MinVersion = %v, want %v", got.MinVersion, tls.VersionTLS13)
@@ -241,7 +313,10 @@ func TestNewServerTLSConfig(t *testing.T) {
 		},
 		{
 			name: "with server name",
-			c:    ServerConfig{ServerName: "example.com"},
+			c: ServerConfig{
+				LocalConfig: LocalConfig{Certificate: certPath, Key: keyPath},
+				ServerName:  "example.com",
+			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
 				if got.ServerName != "example.com" {
 					t.Errorf("ServerName = %v, want %v", got.ServerName, "example.com")
@@ -250,13 +325,22 @@ func TestNewServerTLSConfig(t *testing.T) {
 		},
 		{
 			name: "with next protos",
-			c:    ServerConfig{NextProtos: []string{"http/1.1", "h2c"}},
+			c: ServerConfig{
+				LocalConfig: LocalConfig{Certificate: certPath, Key: keyPath},
+				NextProtos:  []string{"http/1.1", "h2c"},
+			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
 				if !slices.Contains(got.NextProtos, "http/1.1") {
 					t.Errorf("NextProtos = %v, should contain [http/1.1]", got.NextProtos)
 				}
 				if !slices.Contains(got.NextProtos, "h2c") {
 					t.Errorf("NextProtos = %v, should contain [h2c]", got.NextProtos)
+				}
+				// Since tlsConfig.NextProtos starts empty here, the "with
+				// next protos" input replaces the default entirely (the
+				// len==0 branch), so h2/http1.1 must NOT also be present.
+				if slices.Contains(got.NextProtos, "h2") {
+					t.Errorf("NextProtos = %v, should not contain the default [h2] when NextProtos is set", got.NextProtos)
 				}
 			},
 		},
@@ -314,12 +398,16 @@ func TestNewServerTLSConfig(t *testing.T) {
 			}
 
 			if got != nil {
-				// Check default next protos
-				if !slices.Contains(got.NextProtos, "h2") {
-					t.Errorf("NextProtos = %v, should contain [h2]", got.NextProtos)
-				}
-				if !slices.Contains(got.NextProtos, "http/1.1") {
-					t.Errorf("NextProtos = %v, should contain [http/1.1]", got.NextProtos)
+				// Cases that supply their own NextProtos replace the
+				// [h2, http/1.1] default entirely, so only check for it
+				// when the case left NextProtos unset.
+				if len(tt.c.NextProtos) == 0 {
+					if !slices.Contains(got.NextProtos, "h2") {
+						t.Errorf("NextProtos = %v, should contain [h2]", got.NextProtos)
+					}
+					if !slices.Contains(got.NextProtos, "http/1.1") {
+						t.Errorf("NextProtos = %v, should contain [http/1.1]", got.NextProtos)
+					}
 				}
 
 				// Run custom checks if provided
