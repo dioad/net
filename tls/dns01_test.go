@@ -84,12 +84,12 @@ func TestNewACMETLSConfigDNS01(t *testing.T) {
 
 	t.Run("missing provider is an error", func(t *testing.T) {
 		_, err := NewACMETLSConfig(ctx, ACMEConfig{Type: ACMEChallengeDNS01, Domains: []string{"example.com"}})
-		assert.Error(t, err)
+		assert.ErrorContains(t, err, "dns01: provider must be set")
 	})
 
 	t.Run("missing domains is an error", func(t *testing.T) {
 		_, err := NewACMETLSConfig(ctx, ACMEConfig{Type: ACMEChallengeDNS01, DNS01: DNS01Options{Provider: fakeDNS01Provider{}}})
-		assert.Error(t, err)
+		assert.ErrorContains(t, err, "dns01: at least one domain must be configured")
 	})
 }
 
