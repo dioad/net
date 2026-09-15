@@ -267,7 +267,7 @@ func TestNewServerTLSConfig(t *testing.T) {
 			// NextProtos, so this is the only provider that exercises the
 			// append-to-existing-NextProtos path rather than the
 			// assign-when-empty path the other providers all take.
-			name: "with ACME config, defaults are appended to the existing NextProtos",
+			name: "with ACME config, missing defaults are appended without duplicating existing entries",
 			c: ServerConfig{
 				ACME: ACMEConfig{
 					Domains:        []string{"example.com"},
@@ -275,17 +275,26 @@ func TestNewServerTLSConfig(t *testing.T) {
 				},
 			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
-				// newAutocertTLSConfig already populates NextProtos (with
-				// "acme-tls/1" among others), so the [h2, http/1.1] default
-				// must be appended to it rather than overwriting it.
+				// newAutocertTLSConfig already populates NextProtos with
+				// "acme-tls/1", "h2" and "http/1.1" (in that order), so the
+				// [h2, http/1.1] default is already fully covered and must
+				// not be appended again as duplicates.
 				base, err := newAutocertTLSConfig(ACMEConfig{Domains: []string{"example.com"}, CacheDirectory: t.TempDir()})
 				if err != nil {
 					t.Fatalf("newAutocertTLSConfig() error = %v", err)
 				}
 
-				wantLen := len(base.NextProtos) + 2
-				if len(got.NextProtos) != wantLen {
-					t.Errorf("NextProtos = %v (len %d), want len %d (base %v with [h2 http/1.1] appended)", got.NextProtos, len(got.NextProtos), wantLen, base.NextProtos)
+				if !slices.Equal(got.NextProtos, base.NextProtos) {
+					t.Errorf("NextProtos = %v, want %v unchanged (h2 and http/1.1 already present)", got.NextProtos, base.NextProtos)
+				}
+				h2Count := 0
+				for _, p := range got.NextProtos {
+					if p == "h2" {
+						h2Count++
+					}
+				}
+				if h2Count != 1 {
+					t.Errorf("NextProtos = %v, want exactly one [h2], got %d", got.NextProtos, h2Count)
 				}
 				if !slices.Contains(got.NextProtos, "acme-tls/1") {
 					t.Errorf("NextProtos = %v, should still contain [acme-tls/1]", got.NextProtos)
