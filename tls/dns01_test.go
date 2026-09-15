@@ -331,6 +331,57 @@ func TestDNS01ManagerReissueReturnsPromptlyOnContextCancellation(t *testing.T) {
 	}
 }
 
+func TestDNS01ManagerReissueErrors(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("cache Put error for the certificate is wrapped", func(t *testing.T) {
+		m := newTestDNS01Manager(t.TempDir())
+		certPEM, keyPEM := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+		m.cache = &fakeCache{
+			putFunc: func(context.Context, string, []byte) error { return errors.New("disk full") },
+		}
+		m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
+			return &obtainedCert{certPEM: certPEM, keyPEM: keyPEM}, nil
+		}
+
+		err := m.reissue(ctx)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error persisting certificate")
+		assert.NotNil(t, errors.Unwrap(err), "the underlying error should be wrapped (%w), not just formatted as text")
+	})
+
+	t.Run("cache Put error for the private key is wrapped", func(t *testing.T) {
+		m := newTestDNS01Manager(t.TempDir())
+		certPEM, keyPEM := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+		m.cache = &fakeCache{
+			putFunc: func(_ context.Context, key string, _ []byte) error {
+				if key == m.certKeyName {
+					return errors.New("disk full")
+				}
+				return nil
+			},
+		}
+		m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
+			return &obtainedCert{certPEM: certPEM, keyPEM: keyPEM}, nil
+		}
+
+		err := m.reissue(ctx)
+		assert.ErrorContains(t, err, "error persisting private key")
+	})
+
+	t.Run("mismatched obtained cert and key is an error", func(t *testing.T) {
+		m := newTestDNS01Manager(t.TempDir())
+		certPEM, _ := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+		_, otherKeyPEM := genTestCertPEM(t, time.Now().Add(90*24*time.Hour))
+		m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
+			return &obtainedCert{certPEM: certPEM, keyPEM: otherKeyPEM}, nil
+		}
+
+		err := m.reissue(ctx)
+		assert.ErrorContains(t, err, "error parsing obtained certificate")
+	})
+}
+
 // TestDNS01ManagerReissueColdCacheConcurrentCallsCoalesce simulates the
 // scenario that motivates obtainGroup: several independent dns01Manager
 // instances (one per tunnel, as TunnelManagerService.StartAll constructs
