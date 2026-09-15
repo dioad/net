@@ -69,6 +69,28 @@ func TestNewClientTLSConfigRequiresCertAndKey(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestNewClientTLSConfigZeroValueReturnsNil(t *testing.T) {
+	tlsConfig, err := NewClientTLSConfig(ClientConfig{})
+	require.NoError(t, err)
+	assert.Nil(t, tlsConfig)
+}
+
+func TestNewClientTLSConfigKeyPairLoadError(t *testing.T) {
+	dir := t.TempDir()
+	_, err := NewClientTLSConfig(ClientConfig{
+		Certificate: filepath.Join(dir, "missing-cert.pem"),
+		Key:         filepath.Join(dir, "missing-key.pem"),
+	})
+	assert.ErrorContains(t, err, "failed to load x509 key pair")
+}
+
+func TestNewClientTLSConfigRootCALoadError(t *testing.T) {
+	_, err := NewClientTLSConfig(ClientConfig{
+		RootCAFile: filepath.Join(t.TempDir(), "missing-ca.pem"),
+	})
+	assert.ErrorContains(t, err, "failed to load root CA file")
+}
+
 func TestNewClientTLSConfigLoadsCertificatesAndRootCA(t *testing.T) {
 	certPath, keyPath := writeTestCert(t)
 
