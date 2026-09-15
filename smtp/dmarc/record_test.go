@@ -1,10 +1,37 @@
 package dmarc
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/emersion/go-msgauth/dmarc"
 )
+
+func TestRecordLongValueIsNotSilentlyTruncated(t *testing.T) {
+	// Enough report-URI addresses to push the rendered record well past the
+	// 255-byte DNS character-string limit.
+	uris := make([]string, 0, 15)
+	for range 15 {
+		uris = append(uris, "dmarc-reports@subdomain-with-a-long-name.example.com")
+	}
+	r := Record{Version: "DMARC1", Policy: PolicyReject, ReportURIAggregate: uris}
+
+	value := r.String()
+	if len(value) <= 255 {
+		t.Fatalf("test setup: record value is only %d bytes, need > 255 to exercise chunking", len(value))
+	}
+
+	recordValue := r.RecordValue()
+	if !strings.Contains(recordValue, `\" \"`) {
+		t.Errorf("expected RecordValue to split the value into multiple quoted segments, got: %s", recordValue)
+	}
+
+	rejoined := strings.ReplaceAll(strings.ReplaceAll(recordValue, `\"`, ""), " ", "")
+	want := strings.ReplaceAll(value, " ", "")
+	if rejoined != want {
+		t.Errorf("RecordValue lost content: got %q, want (with spaces removed) %q", rejoined, want)
+	}
+}
 
 func TestFormatDMARCEmails(t *testing.T) {
 	label := "rua"

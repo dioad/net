@@ -3,6 +3,8 @@ package mtasts
 import (
 	"fmt"
 	"strings"
+
+	"github.com/dioad/net/smtp/internal/txtchunk"
 )
 
 // Record represents an MTA-STS DNS TXT record.
@@ -20,7 +22,7 @@ func (r *Record) RecordType() string {
 }
 
 func (r *Record) RecordValue() string {
-	return fmt.Sprintf("\\\"%v\\\"", r.String())
+	return txtchunk.Quote(r.String())
 }
 
 func (r *Record) String() string {
@@ -33,9 +35,5 @@ func (r *Record) String() string {
 	}
 	fmt.Fprintf(&sb, "id=%s", r.ID)
 
-	result := sb.String()
-	if len(result) > 255 {
-		result = result[:255]
-	}
-	return result
+	return sb.String()
 }
