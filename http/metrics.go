@@ -99,9 +99,12 @@ func (m *MetricSet) Register(r prometheus.Registerer) {
 func (m *MetricSet) Middleware(mux *http.ServeMux, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Use mux.Handler to derive the matched pattern before the mux routes
-		// the request. This avoids high-cardinality label values that would occur
-		// if we fell back to r.URL.Path (r.Pattern is empty outside the mux).
-		route := r.URL.Path
+		// the request. Requests that don't match a registered pattern (mux
+		// nil, or no match -- e.g. adversarial scanning across many
+		// nonexistent paths) collapse to a fixed label instead of the raw
+		// path, which would otherwise be exactly the high-cardinality label
+		// blowup this fallback exists to avoid.
+		route := "unmatched"
 		if mux != nil {
 			if _, pattern := mux.Handler(r); pattern != "" {
 				route = pattern
