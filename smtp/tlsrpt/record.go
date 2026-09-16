@@ -15,6 +15,15 @@ type Record struct {
 	ReportURIAggregate []string `mapstructure:"report-uri-aggregate"`
 }
 
+// encodeRUAURI percent-encodes the characters RFC 8460 3 requires to be
+// escaped within a "rua" URI -- "," and "!" -- since left as-is they would
+// be indistinguishable from the field's own comma-separated list syntax.
+func encodeRUAURI(uri string) string {
+	uri = strings.ReplaceAll(uri, "!", "%21")
+	uri = strings.ReplaceAll(uri, ",", "%2C")
+	return uri
+}
+
 func formatRUA(label string, locations []string) string {
 	if len(locations) == 0 {
 		return ""
@@ -22,10 +31,9 @@ func formatRUA(label string, locations []string) string {
 
 	addrs := generics.SafeMap(func(a string) string {
 		if strings.HasPrefix(a, "https://") {
-			// Need to encode a https://www.rfc-editor.org/rfc/rfc8460#section-3
-			return a
+			return encodeRUAURI(a)
 		}
-		return fmt.Sprintf("mailto:%s", a)
+		return encodeRUAURI(fmt.Sprintf("mailto:%s", a))
 	}, locations)
 
 	return fmt.Sprintf("%s=%s", label, strings.Join(addrs, ","))
