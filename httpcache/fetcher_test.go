@@ -214,6 +214,46 @@ func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
 	assert.Equal(t, int32(1), callCount.Load())
 }
 
+func TestCachingFetcher_ConcurrentAccess_CoalescesOnFailure(t *testing.T) {
+	callCount := atomic.Int32{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		time.Sleep(50 * time.Millisecond) // Simulate slow response
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	fetcher := NewCachingFetcher[testData](server.URL, CacheConfig{
+		StaticExpiry: 200 * time.Millisecond,
+		ReturnStale:  false,
+	})
+
+	ctx := context.Background()
+
+	// Launch multiple concurrent requests against a fetch that always
+	// fails and has no stale data to fall back to. Before this fix, every
+	// waiter woken from refreshCond.Wait() saw cachedData still nil and
+	// independently issued its own doFetch instead of sharing the leader's
+	// (failed) result -- a thundering herd against an already-struggling
+	// origin, which this asserts against via callCount.
+	const goroutines = 10
+	errs := make(chan error, goroutines)
+
+	for range goroutines {
+		go func() {
+			_, _, err := fetcher.Get(ctx)
+			errs <- err
+		}()
+	}
+
+	for range goroutines {
+		err := <-errs
+		assert.Error(t, err, "every waiter must see the shared fetch's error")
+	}
+
+	assert.Equal(t, int32(1), callCount.Load(), "a failed fetch with no stale data must still coalesce -- only one actual request should reach the origin")
+}
+
 func TestCachingFetcher_GetCachedData(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data := testData{Message: "hello", Count: 42}
