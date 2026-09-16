@@ -38,6 +38,7 @@ func (h *HealthRegistry) AddStaticMetadata(key string, value any) {
 func (h *HealthRegistry) aggregateLivenessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		httpStatus := http.StatusOK
+		resourceErrors := make(map[string]string)
 
 		for path, resource := range h.resources {
 			if sr, ok := resource.(LivenessResource); ok {
@@ -45,14 +46,15 @@ func (h *HealthRegistry) aggregateLivenessHandler() http.HandlerFunc {
 				if err != nil {
 					httpStatus = http.StatusInternalServerError
 					h.logger.Error().Err(err).Str("path", path).Msg("resource not alive")
-					break
+					resourceErrors[path] = err.Error()
 				}
 			}
 		}
 
 		res := diojson.NewResponseFromRequest(w, r)
 		res.Data(httpStatus, map[string]any{
-			"live": httpStatus == http.StatusOK,
+			"live":   httpStatus == http.StatusOK,
+			"errors": resourceErrors,
 		})
 
 		logEvent := h.logger.Debug()
