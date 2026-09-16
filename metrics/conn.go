@@ -96,11 +96,17 @@ func (m *connMetrics) EndTime() time.Time {
 	return m.endTime
 }
 
-// Duration returns the duration of the connection.
+// Duration returns the duration of the connection: the time between the
+// first and last byte transferred. It is 0 before any bytes have been
+// transferred, rather than a negative duration computed against a zero
+// endTime.
 func (m *connMetrics) Duration() time.Duration {
 	m.timeMutex.Lock()
 	defer m.timeMutex.Unlock()
 
+	if m.endTime.IsZero() {
+		return 0
+	}
 	return m.endTime.Sub(m.startTime)
 }
 
