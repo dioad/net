@@ -122,10 +122,16 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	}
 
 	// Need to fetch now (blocking)
-	// If already refreshing, wait for it
-	if f.refreshing {
+	// If already refreshing, wait for it and share its result instead of
+	// starting our own fetch. Looping on the condition (rather than a
+	// single check) also protects against spurious wakeups, per
+	// sync.Cond's documented contract.
+	waited := false
+	for f.refreshing {
+		waited = true
 		f.refreshCond.Wait()
-		// After wait, check if we now have data
+	}
+	if waited {
 		if f.cachedData != nil {
 			data := *f.cachedData
 			err := f.lastError
@@ -136,6 +142,14 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 			f.mu.Unlock()
 			return data, result, err
 		}
+		// The fetch we waited on failed and left no stale data to fall
+		// back to. Every waiter shares that single failure rather than
+		// each independently retrying against an already-struggling
+		// origin.
+		var zero T
+		err := f.lastError
+		f.mu.Unlock()
+		return zero, CacheResultFresh, err
 	}
 
 	// Mark as refreshing
