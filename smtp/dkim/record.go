@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"golang.org/x/exp/maps"
 )
 
 // KeyType represents the DKIM key type (e.g., "rsa").
@@ -102,11 +100,12 @@ func parseParams(validParams map[string]bool, s string) (map[string]string, erro
 			return nil, fmt.Errorf("invalid parameter format: %q", pair)
 		}
 
+		// RFC 6376 3.2: unrecognized tags must be ignored, not rejected --
+		// real-world key records commonly carry tags (h=, t=, s=, g=, n=)
+		// that this package doesn't extract.
 		strippedK := strings.TrimSpace(k)
 		if p, ok := validParams[strippedK]; ok && p {
 			params[strippedK] = strings.TrimSpace(v)
-		} else {
-			return nil, fmt.Errorf("invalid parameter %q not in %v", strippedK, strings.Join(maps.Keys(validParams), ","))
 		}
 	}
 	return params, nil
