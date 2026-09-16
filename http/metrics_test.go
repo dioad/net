@@ -89,6 +89,54 @@ func TestMetricSet_Middleware_WSLabel(t *testing.T) {
 	}
 }
 
+func TestMetricSet_Middleware_UnmatchedRouteDoesNotLeakRawPath(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	m := NewMetricSet(registry)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /widgets/{id}", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := m.Middleware(mux, mux)
+
+	// Every one of these should collapse to the same fixed label instead of
+	// producing a distinct Prometheus series per probed path -- the exact
+	// cardinality blowup this middleware's own doc comment claims to
+	// prevent, but that a scanner probing thousands of nonexistent paths
+	// would otherwise trigger via this fallback.
+	for _, path := range []string{"/does-not-exist", "/another-scan-attempt"} {
+		r := httptest.NewRequest(http.MethodGet, path, nil)
+		handler.ServeHTTP(httptest.NewRecorder(), r)
+	}
+
+	families, err := registry.Gather()
+	if err != nil {
+		t.Fatalf("Gather() error = %v", err)
+	}
+
+	if routeLabelExists(families, "dioad_net_http_request_duration_seconds", "/does-not-exist") {
+		t.Error("unmatched route leaked the raw request path as a label value")
+	}
+	if !routeLabelExists(families, "dioad_net_http_request_duration_seconds", "unmatched") {
+		t.Error("expected unmatched routes to collapse to a fixed \"unmatched\" route label")
+	}
+}
+
+func routeLabelExists(families []*dto.MetricFamily, name, routeWant string) bool {
+	for _, fam := range families {
+		if fam.GetName() != name {
+			continue
+		}
+		for _, metric := range fam.GetMetric() {
+			if labelValue(metric, "route") == routeWant {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func findHistogramMetric(t *testing.T, families []*dto.MetricFamily, name, labelName, labelValueWant string) *dto.Metric {
 	t.Helper()
 
