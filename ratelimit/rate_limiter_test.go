@@ -136,6 +136,32 @@ func TestNewRateLimiterWithConfig_ClampsInvalidInputs(t *testing.T) {
 		assert.Equal(t, 0, rl.burst)
 	})
 
+	t.Run("negative rps logs a warning naming the rejected value", func(t *testing.T) {
+		var buf bytes.Buffer
+		rl := NewRateLimiterWithConfig(-0.5, 5, time.Minute, time.Minute, zerolog.New(&buf))
+		defer rl.Stop()
+
+		assert.Contains(t, buf.String(), "requestsPerSecond")
+		assert.Contains(t, buf.String(), "-0.5")
+	})
+
+	t.Run("negative burst logs a warning naming the rejected value", func(t *testing.T) {
+		var buf bytes.Buffer
+		rl := NewRateLimiterWithConfig(1, -3, time.Minute, time.Minute, zerolog.New(&buf))
+		defer rl.Stop()
+
+		assert.Contains(t, buf.String(), "burst")
+		assert.Contains(t, buf.String(), "-3")
+	})
+
+	t.Run("valid inputs log no warning", func(t *testing.T) {
+		var buf bytes.Buffer
+		rl := NewRateLimiterWithConfig(1, 1, time.Minute, time.Minute, zerolog.New(&buf))
+		defer rl.Stop()
+
+		assert.Empty(t, buf.String())
+	})
+
 	t.Run("non-positive cleanup interval falls back to default, tiny positive value is preserved", func(t *testing.T) {
 		clamped := NewRateLimiterWithConfig(1, 1, 0, time.Minute, logger)
 		defer clamped.Stop()

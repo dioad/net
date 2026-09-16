@@ -80,17 +80,29 @@ func NewRateLimiterWithContext(ctx context.Context, requestsPerSecond float64, b
 	return NewRateLimiterWithContextAndConfig(ctx, requestsPerSecond, burst, 5*time.Minute, 30*time.Minute, logger)
 }
 
+// clampNonNegativeLimits clamps negative requestsPerSecond/burst values to
+// zero, logging a warning naming the rejected value. Without this, an
+// invalid configuration (e.g. a bad default or unit conversion upstream)
+// silently turns into a limiter that blocks all traffic, with nothing in
+// logs pointing at the actual misconfiguration.
+func clampNonNegativeLimits(requestsPerSecond float64, burst int, logger zerolog.Logger) (float64, int) {
+	if requestsPerSecond < 0 {
+		logger.Warn().Float64("requestsPerSecond", requestsPerSecond).Msg("negative requestsPerSecond clamped to 0")
+		requestsPerSecond = 0
+	}
+	if burst < 0 {
+		logger.Warn().Int("burst", burst).Msg("negative burst clamped to 0")
+		burst = 0
+	}
+	return requestsPerSecond, burst
+}
+
 // NewRateLimiterWithConfig creates a new rate limiter with custom configuration.
 //
 // Deprecated: Use NewRateLimiterWithOptions with WithRateLimiterStaticLimits,
 // WithRateLimiterCleanupConfig, and WithRateLimiterLogger instead.
 func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
-	if requestsPerSecond < 0 {
-		requestsPerSecond = 0
-	}
-	if burst < 0 {
-		burst = 0
-	}
+	requestsPerSecond, burst = clampNonNegativeLimits(requestsPerSecond, burst, logger)
 	if cleanupInterval <= 0 {
 		cleanupInterval = 5 * time.Minute
 	}
@@ -118,12 +130,7 @@ func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInter
 // Deprecated: Use NewRateLimiterWithOptions with WithRateLimiterContext,
 // WithRateLimiterStaticLimits, WithRateLimiterCleanupConfig, and WithRateLimiterLogger instead.
 func NewRateLimiterWithContextAndConfig(ctx context.Context, requestsPerSecond float64, burst int, cleanupInterval, staleTTL time.Duration, logger zerolog.Logger) *RateLimiter {
-	if requestsPerSecond < 0 {
-		requestsPerSecond = 0
-	}
-	if burst < 0 {
-		burst = 0
-	}
+	requestsPerSecond, burst = clampNonNegativeLimits(requestsPerSecond, burst, logger)
 	if cleanupInterval <= 0 {
 		cleanupInterval = 5 * time.Minute
 	}
