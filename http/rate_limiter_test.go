@@ -137,12 +137,21 @@ func TestRateLimiter_RetryAfterHeaderAccuracy(t *testing.T) {
 	}
 }
 
-func TestRateLimiter_DefaultClientIPPrincipalFunc(t *testing.T) {
+func TestRateLimiter_NewRateLimiterPanicsWithoutPrincipalFunc(t *testing.T) {
+	assert.Panics(t, func() {
+		NewRateLimiter(WithStaticRateLimit(1, 1))
+	}, "NewRateLimiter must not silently fall back to the unsafe ClientIPPrincipalFunc default; a PrincipalFunc must be configured explicitly")
+}
+
+func TestRateLimiter_ClientIPPrincipalFuncExplicitlyConfigured(t *testing.T) {
 	logger := zerolog.Nop()
-	// 1 token per second, burst of 1
+	// 1 token per second, burst of 1. ClientIPPrincipalFunc is no longer
+	// the silent default (see TestRateLimiter_NewRateLimiterPanicsWithoutPrincipalFunc);
+	// it remains available as an explicit, documented-unsafe opt-in.
 	rl := NewRateLimiter(
 		WithStaticRateLimit(1, 1),
 		WithRateLimitLogger(logger),
+		WithPrincipalFunc(ClientIPPrincipalFunc),
 	)
 
 	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
