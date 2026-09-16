@@ -445,7 +445,7 @@ func TestLiveEndpoint(t *testing.T) {
 	// Add the resource
 	server.AddResource("/api", mockResource)
 
-	expectLive := func(t *testing.T, wantLive bool, wantStatus int) {
+	expectLive := func(t *testing.T, wantLive bool, wantStatus int) map[string]any {
 		t.Helper()
 		server.initialiseServer()
 		req := httptest.NewRequest("GET", "/health/live", nil)
@@ -453,16 +453,49 @@ func TestLiveEndpoint(t *testing.T) {
 		server.handler().ServeHTTP(w, req)
 		assert.Equal(t, wantStatus, w.Code)
 
-		var liveResponse map[string]bool
+		var liveResponse map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &liveResponse)
 		require.NoError(t, err)
 		assert.Equal(t, wantLive, liveResponse["live"])
+		return liveResponse
 	}
 
 	expectLive(t, true, http.StatusOK)
 
 	mockResource.LiveError = true
 	expectLive(t, false, http.StatusInternalServerError)
+}
+
+// TestLiveEndpoint_ReportsEveryFailingResource verifies that, unlike the
+// pre-fix behavior of stopping at the first failure found while ranging a
+// map (Go map iteration order is randomized per run), the liveness handler
+// reports every unhealthy resource -- matching the readiness/status
+// handlers, which both already collect and report all failures.
+func TestLiveEndpoint_ReportsEveryFailingResource(t *testing.T) {
+	config := Config{EnableHealth: true}
+	server := NewServer(config)
+
+	first := &MockHealthResource{LiveError: true}
+	second := &MockHealthResource{LiveError: true}
+	server.AddResource("/api/first", first)
+	server.AddResource("/api/second", second)
+
+	server.initialiseServer()
+	req := httptest.NewRequest("GET", "/health/live", nil)
+	w := httptest.NewRecorder()
+	server.handler().ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	var liveResponse map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &liveResponse))
+
+	errs, ok := liveResponse["errors"].(map[string]any)
+	require.True(t, ok, "expected an \"errors\" map in the liveness response, got: %v", liveResponse)
+	assert.Len(t, errs, 2, "expected both failing resources to be reported, got: %v", errs)
+
+	assert.True(t, first.LiveCalled)
+	assert.True(t, second.LiveCalled, "every resource must be checked, not just the first one found while ranging the map")
 }
 
 func TestReadyEndpoint(t *testing.T) {
