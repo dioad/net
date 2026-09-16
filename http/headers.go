@@ -6,11 +6,13 @@ import "net/http"
 func CreateHTTPHeaderFromMap(headerMap map[string]string) http.Header {
 	outputHeaders := http.Header{}
 
-	return AddMapToHTTPHeader(outputHeaders, headerMap)
+	return MergedHTTPHeader(outputHeaders, headerMap)
 }
 
-// AddMapToHTTPHeader adds a map[string]string to an existing http.Header
-func AddMapToHTTPHeader(baseHeaders http.Header, headerMap map[string]string) http.Header {
+// MergedHTTPHeader returns a clone of baseHeaders with headerMap's entries
+// set on top of it. baseHeaders itself is not mutated; use the returned
+// http.Header.
+func MergedHTTPHeader(baseHeaders http.Header, headerMap map[string]string) http.Header {
 	outputHeaders := baseHeaders.Clone()
 	for key, value := range headerMap {
 		outputHeaders.Set(key, value)
