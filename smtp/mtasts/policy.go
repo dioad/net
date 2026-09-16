@@ -25,6 +25,13 @@ type Policy struct {
 // FormatPolicy https://www.mailhardener.com/kb/mta-sts
 // TODO: use text/template for this stuff?
 func FormatPolicy(p *Policy) (string, error) {
+	// RFC 8461 3.2: at least one "mx" field MUST appear in a policy record
+	// with mode "testing" or "enforce". Mode "none" has no such
+	// requirement, since MTA-STS enforcement is disabled either way.
+	if (p.Mode == ModeTesting || p.Mode == ModeEnforce) && len(p.MX) == 0 {
+		return "", fmt.Errorf("mtasts: mode %q requires at least one mx entry", p.Mode)
+	}
+
 	var sb strings.Builder
 
 	fmt.Fprintf(&sb, "version: %s\n", p.Version)
