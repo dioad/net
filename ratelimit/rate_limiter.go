@@ -336,6 +336,11 @@ func (rl *RateLimiter) Allow(principal string) bool {
 	// If entry doesn't exist, acquire write lock to create it
 	if !exists {
 		rl.mu.Lock()
+		// Zero-value RateLimiter safety: a caller that skipped the
+		// constructors (var rl RateLimiter) has a nil limiters map.
+		if rl.limiters == nil {
+			rl.limiters = make(map[string]*limiterEntry)
+		}
 		// Double-check that another goroutine didn't create it while we were waiting
 		entry, exists = rl.limiters[principal]
 		if !exists {
@@ -412,7 +417,12 @@ func (rl *RateLimiter) start() {
 // However, calling Stop after context cancellation is safe and will wait for cleanup to complete.
 func (rl *RateLimiter) Stop() {
 	rl.stopOnce.Do(func() {
-		rl.cancel()
+		// A zero-value RateLimiter (var rl RateLimiter) never had start()
+		// called, so cancel is nil and there is no background goroutine to
+		// stop.
+		if rl.cancel != nil {
+			rl.cancel()
+		}
 	})
 	rl.wg.Wait()
 }
