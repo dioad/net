@@ -26,13 +26,13 @@ func (r *Record) RecordValue() string {
 }
 
 func (r *Record) String() string {
-	var sb strings.Builder
-
-	if r.Version == "" {
-		sb.WriteString("v=STSv1; ")
-	} else {
-		fmt.Fprintf(&sb, "v=%s ", r.Version)
+	version := r.Version
+	if version == "" {
+		version = "STSv1"
 	}
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "v=%s; ", version)
 	fmt.Fprintf(&sb, "id=%s", r.ID)
 
 	return sb.String()
