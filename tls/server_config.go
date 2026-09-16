@@ -8,6 +8,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/dioad/generics"
 
 	"github.com/dioad/util"
@@ -79,14 +81,34 @@ type ConfigFunc func() (*tls.Config, error)
 
 // configFuncFromConfig selects the TLS config arm to use. Arms are checked
 // in a fixed order - ACME, then SelfSigned, then LocalConfig - and the
-// first non-zero-value config wins silently; no error is raised if more
-// than one arm is configured.
+// first non-zero-value config wins; if more than one arm is configured, a
+// warning is logged naming which ones and which one won, since this is
+// almost always an accidental leftover from switching config rather than
+// an intentional choice.
 func configFuncFromConfig(ctx context.Context, c ServerConfig) ConfigFunc {
-	if !generics.IsZeroValue(c.ACME) {
+	acmeSet := !generics.IsZeroValue(c.ACME)
+	selfSignedSet := !generics.IsZeroValue(c.SelfSigned)
+	localSet := !generics.IsZeroValue(c.LocalConfig)
+
+	configuredCount := 0
+	for _, set := range []bool{acmeSet, selfSignedSet, localSet} {
+		if set {
+			configuredCount++
+		}
+	}
+	if configuredCount > 1 {
+		zerolog.Ctx(ctx).Warn().
+			Bool("acme_configured", acmeSet).
+			Bool("self_signed_configured", selfSignedSet).
+			Bool("local_configured", localSet).
+			Msg("multiple TLS config arms are configured; only the first in precedence order (ACME, then SelfSigned, then LocalConfig) is used")
+	}
+
+	if acmeSet {
 		return NewACMETLSConfigFunc(ctx, c.ACME)
-	} else if !generics.IsZeroValue(c.SelfSigned) {
+	} else if selfSignedSet {
 		return NewSelfSignedTLSConfigFunc(c.SelfSigned)
-	} else if !generics.IsZeroValue(c.LocalConfig) {
+	} else if localSet {
 		return NewLocalTLSConfigFunc(ctx, c.LocalConfig)
 	}
 	return nil
