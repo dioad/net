@@ -88,6 +88,14 @@ func TestConnDuration(t *testing.T) {
 	// }
 }
 
+func TestConnDuration_ZeroBeforeAnyIO(t *testing.T) {
+	_, testConn := net.Pipe()
+	c := NewConn(testConn)
+	defer func() { _ = c.Close() }()
+
+	assert.Equal(t, time.Duration(0), c.(*Conn).Duration(), "Duration before any read/write must be 0, not endTime.Sub(startTime) with a zero endTime")
+}
+
 func TestConnBytesWritten(t *testing.T) {
 	server, client := net.Pipe()
 	c := NewConn(client)
