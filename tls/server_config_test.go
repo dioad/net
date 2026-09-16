@@ -1,6 +1,7 @@
 package tls
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -11,6 +12,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -498,4 +500,42 @@ func TestNewSelfSignedTLSConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConfigFuncFromConfig_WarnsWhenMultipleArmsConfigured(t *testing.T) {
+	tempDir := t.TempDir()
+	cert, _ := helperCreateSelfSignedKeyPair(t, tempDir)
+	certPath := filepath.Join(tempDir, "cert.pem")
+	keyPath := filepath.Join(tempDir, "key.pem")
+	require.NoError(t, SaveTLSCertificateToFiles(cert, certPath, keyPath))
+
+	t.Run("only one arm configured logs nothing", func(t *testing.T) {
+		var buf bytes.Buffer
+		ctx := zerolog.New(&buf).WithContext(context.Background())
+
+		configFuncFromConfig(ctx, ServerConfig{
+			LocalConfig: LocalConfig{Certificate: certPath, Key: keyPath},
+		})
+
+		assert.Empty(t, buf.String())
+	})
+
+	t.Run("two arms configured logs a warning naming the winner", func(t *testing.T) {
+		var buf bytes.Buffer
+		ctx := zerolog.New(&buf).WithContext(context.Background())
+
+		configFuncFromConfig(ctx, ServerConfig{
+			SelfSigned: SelfSignedConfig{
+				CacheDirectory: tempDir,
+				Subject:        CertificateSubject{CommonName: "test"},
+				Duration:       "1h",
+				Bits:           1024,
+			},
+			LocalConfig: LocalConfig{Certificate: certPath, Key: keyPath},
+		})
+
+		logged := buf.String()
+		assert.Contains(t, logged, "multiple TLS config arms")
+		assert.Contains(t, logged, `"level":"warn"`)
+	})
 }
