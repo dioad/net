@@ -38,9 +38,13 @@ func TestParseParam(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "invalid parameter",
+			// RFC 6376 3.2 requires unrecognized tags on a DKIM key record
+			// to be ignored, not rejected -- real-world records commonly
+			// carry tags like h=, t=, s=, g=, n= that this package doesn't
+			// extract.
+			name:    "unrecognized parameter is ignored, not rejected",
 			input:   "v=DKIM1; x=unknown",
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name:    "missing value",
@@ -61,6 +65,27 @@ func TestParseParam(t *testing.T) {
 				t.Errorf("ParseParams() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestParseParams_IgnoresUnrecognizedTagsButKeepsKnownOnes(t *testing.T) {
+	// A realistic key record carrying common tags this package doesn't
+	// extract (h=, t=, s=, g=, n=) alongside the three it does.
+	input := "v=DKIM1; h=sha256; k=rsa; t=s; s=email; g=*; n=notes; p=EXAMPLE="
+
+	got, err := ParseParams(input)
+	if err != nil {
+		t.Fatalf("ParseParams() error = %v, want nil", err)
+	}
+
+	want := map[string]string{"v": "DKIM1", "k": "rsa", "p": "EXAMPLE="}
+	if len(got) != len(want) {
+		t.Fatalf("ParseParams() = %v, want %v", got, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("ParseParams()[%q] = %q, want %q", k, got[k], v)
+		}
 	}
 }
 
