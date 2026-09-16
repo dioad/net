@@ -366,8 +366,7 @@ func unmarshalSliceField(field reflect.Value, values []string) error {
 
 // unmarshalIntField unmarshals an integer field from fieldSet values
 func unmarshalIntField(field reflect.Value, values []string) error {
-	var n int64
-	_, err := fmt.Sscanf(values[0], "%d", &n)
+	n, err := strconv.ParseInt(values[0], 10, 64)
 	if err != nil {
 		return fmt.Errorf("failed to parse int: %w", err)
 	}
@@ -377,8 +376,7 @@ func unmarshalIntField(field reflect.Value, values []string) error {
 
 // unmarshalUintField unmarshals an unsigned integer field from fieldSet values
 func unmarshalUintField(field reflect.Value, values []string) error {
-	var n uint64
-	_, err := fmt.Sscanf(values[0], "%d", &n)
+	n, err := strconv.ParseUint(values[0], 10, 64)
 	if err != nil {
 		return fmt.Errorf("failed to parse uint: %w", err)
 	}
