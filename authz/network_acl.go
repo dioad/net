@@ -64,8 +64,8 @@ func (a *NetworkACL) DenyFromString(n string) error {
 }
 
 // Deny adds a network to the deny list.
-func (a *NetworkACL) Deny(net *net.IPNet) {
-	a.denyNetworks = append(a.denyNetworks, net)
+func (a *NetworkACL) Deny(n *net.IPNet) {
+	a.denyNetworks = append(a.denyNetworks, n)
 }
 
 // AuthoriseConn checks if the provided connection is authorised.
