@@ -154,6 +154,14 @@ func (r *Response) respondWithStatus(code int, defaultMessage string, opts ...re
 		r.logError(cfg.logErr, msg)
 	}
 
+	// HTTP requires a 204 No Content response to have no body; drop
+	// whatever the caller supplied rather than silently writing one.
+	if code == http.StatusNoContent && (cfg.data != nil || cfg.publicMessage != "") {
+		r.logWarn("Data()/PublicMessage() is ignored on a 204 No Content response, which must not have a body")
+		cfg.data = nil
+		cfg.publicMessage = ""
+	}
+
 	// Build response body
 	var body any
 	if cfg.data != nil {
@@ -333,6 +341,12 @@ func (r *Response) ConflictWithMessages(responseMessage, logMessage string) {
 func (r *Response) logError(err error, message string) {
 	if r.logger != nil {
 		r.logger.Error().Err(err).Msg(message)
+	}
+}
+
+func (r *Response) logWarn(message string) {
+	if r.logger != nil {
+		r.logger.Warn().Msg(message)
 	}
 }
 

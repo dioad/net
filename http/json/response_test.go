@@ -350,6 +350,20 @@ func TestNoContent(t *testing.T) {
 	}
 }
 
+func TestNoContent_IgnoresDataAndPublicMessage(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := zerolog.New(&logOutput)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/test", nil)
+
+	resp := NewResponseWithLogger(w, req, logger)
+	resp.NoContent(Data(map[string]string{"id": "1"}), PublicMessage("done"))
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Zero(t, w.Body.Len(), "a 204 response must have no body, even when Data()/PublicMessage() are passed")
+	assert.NotZero(t, logOutput.Len(), "ignoring a caller-supplied Data()/PublicMessage() on a 204 should be logged, not silently dropped")
+}
+
 func TestAcceptedWithMessage(t *testing.T) {
 	w := httptest.NewRecorder()
 	resp := NewResponse(w)
