@@ -98,9 +98,15 @@ func StaticPrincipalFunc(principal string) PrincipalFunc {
 // NewRateLimiter creates a new rate limiter with static limits.
 // requestsPerSecond: allowed requests per second per principal
 // burst: maximum burst size
+//
+// A PrincipalFunc must be configured via WithPrincipalFunc; there is no
+// default, because the previous default (ClientIPPrincipalFunc) trusts
+// client-supplied headers unconditionally and is unsafe unless the
+// deployment is known to sit behind a trusted, header-stripping proxy --
+// see GetClientIP's doc comment and ClientIPResolver for safe alternatives.
+// NewRateLimiter panics if no PrincipalFunc ends up configured.
 func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 	r := &RateLimiter{
-		getPrincipal:      ClientIPPrincipalFunc,
 		requestsPerSecond: DefaultRequestsPerSecond,
 		burst:             DefaultBurst,
 		logger:            zerolog.Nop(),
@@ -108,6 +114,12 @@ func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 
 	for _, opt := range opts {
 		opt(r)
+	}
+
+	if r.getPrincipal == nil {
+		panic("http: NewRateLimiter requires a PrincipalFunc; pass WithPrincipalFunc explicitly " +
+			"(e.g. WithPrincipalFunc(ClientIPPrincipalFunc) to opt into the documented-unsafe header-trusting default, " +
+			"or a ClientIPResolver's PrincipalFunc for a safe, deployment-specific trust mode)")
 	}
 
 	rlOpts := []ratelimit.Option{
