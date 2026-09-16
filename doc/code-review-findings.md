@@ -24,7 +24,7 @@ The 7 most severe were fixed this session; this document is the remaining
 | 4 | Silent 255-byte truncation in `spf`/`dmarc`/`mtasts`/`tlsrpt` `String()` | `f646dc2` |
 | 6 | `SaveTLSCertificateToFile` leaks a file descriptor on error paths | `bc91b05` |
 | 7 | Duplicate ALPN protocols for ACME tls-alpn-01 | `c384f53` |
-| 5 | `GetClientIP` trusts spoofable proxy headers | `1d1f5f7` (**docs only** — see [Deferred design decisions](#deferred-design-decisions) below; the actual mitigation needs a trusted-proxy allowlist, a new config/API surface that wasn't picked unilaterally) |
+| 5 | `GetClientIP` trusts spoofable proxy headers | `1d1f5f7` (**docs only** — see [Deferred design decisions](#deferred-design-decisions) below; still open, needs more thought from the owner before the actual mitigation is designed) |
 
 ## How to work this list
 
@@ -103,9 +103,9 @@ with no validation rejecting a zero/negative `MaxAge`.
 `MaxAge` (an easy omission, since nothing requires it) and gets
 session-only cookies despite calling the "persistent" constructor.
 
-**Status: blocked on a design decision.** See
-[Deferred design decisions](#deferred-design-decisions) — does an unset
-`MaxAge` get a sensible default, or does the constructor error?
+**Status: decided, ready to implement.** See
+[Deferred design decisions](#deferred-design-decisions) for the chosen
+default and rationale.
 
 ### `http/http_marshal.go:368` — `Sscanf` int parsing silently accepts trailing garbage
 `unmarshalIntField`/`unmarshalUintField` use
@@ -355,45 +355,164 @@ favors the former if it's not too invasive.
 
 ## Deferred design decisions
 
-These items were deliberately **not** fixed this session because the
-correct fix requires a new config/API surface or a default-behavior choice
-that shouldn't be picked unilaterally. Each needs a short decision from
-whoever owns this repo's API surface before implementation.
+These items needed a decision from whoever owns this repo's API surface
+before implementation. Two are now decided; one is still open pending
+further thought from the owner.
 
 ### `http/client_ip.go` — trusted-proxy allowlist for `GetClientIP`
-The current fix (commit `1d1f5f7`) only documents that
-`X-Forwarded-For`/`Forwarded`/`X-Real-IP` are attacker-controlled absent a
-trusted proxy. The real mitigation needs:
 
-- A way to configure which source addresses (or CIDR ranges) are trusted
-  proxies — likely a new parameter on `GetClientIP`/`ContextWithClientIP`,
-  or a package-level configurable default.
-- A decision on behavior when the immediate peer (`r.RemoteAddr`) is *not*
-  in the trusted set: ignore the headers entirely and fall back to
-  `RemoteAddr`, or treat it as an error condition for callers that require
-  a verified IP.
-- Whether `ClientIPPrincipalFunc` (the rate limiter's default) should
-  change its default to *not* trust headers unless a trusted-proxy list is
-  explicitly configured, to make the safe behavior the default rather than
-  opt-in.
+**Status: still open — needs more thought, not ready to implement.**
+(Owner note, 2026-09-17: one of the intended deployments sits behind the
+fly.io platform proxy, and it wasn't clear whether a trusted-proxy source
+IP is even something that can be determined programmatically for that
+case. Researched below; the finding changes the shape of the eventual fix
+but doesn't settle it.)
+
+**Research: what fly.io actually guarantees.**
+
+- Fly Proxy sets `Fly-Client-IP` to "the IP address of the client from the
+  perspective of Fly Proxy" — this is Fly's own direct observation of the
+  TCP peer it accepted a connection from, not a value copied out of any
+  client-supplied header. A client cannot set or override it, because it
+  isn't derived from client input at all. [Fly Docs — Request headers]
+- Fly Proxy **appends** to `X-Forwarded-For` rather than replacing it —
+  the trustworthy entry is the **last** (rightmost) one, not the first.
+  `GetClientIP` currently takes the *first* entry of `X-Forwarded-For`,
+  which on fly.io is exactly the spoofable, client-supplied end of the
+  list — using XFF at all on this platform would need the parsing
+  direction reversed. [Fly Docs — Request headers]
+- A Fly staffer confirmed that `X-Forwarded-Port` — and, per the same
+  answer, headers other than `X-Forwarded-For` generally — do **not** get
+  the append treatment: clients can fully overwrite them. The `Forwarded`
+  header isn't addressed explicitly in Fly's docs; treat it as spoofable
+  like `X-Forwarded-Port` until proven otherwise. [Fly community: "Why are
+  clients allowed to spoof the X-Forwarded-Port header?"]
+- Fly does **not** publish a stable/static IP range for its edge proxy —
+  fly-proxy sits on an anycast network, and a community request for a
+  published range has stood unanswered. A classic CIDR-based
+  trusted-proxy allowlist (RFC 7239-style: trust these source IPs, walk
+  `X-Forwarded-For` from the right until leaving the trusted set) **is not
+  practical to build against fly.io specifically** — there's no stable
+  range to allowlist against. [Fly community: "Request: Fly IP ranges"]
+
+**What this means:** "hard to know the IP programmatically" turns out to
+be true for the CIDR-allowlist approach, but not fatal — fly.io offers a
+different trust model that sidesteps needing an IP range at all.
+`Fly-Client-IP` is trustworthy by **topology**, not by validating a source
+address: as long as the app is only reachable by going through fly-proxy
+(the normal fly.io deployment shape — Fly Machines aren't directly
+Internet-routable otherwise), fly-proxy is the sole author of that header
+for that hop, so there's nothing to spoof around. That guarantee breaks if
+another CDN or proxy is placed in front of fly.io, in which case
+`Fly-Client-IP` would reflect that intermediate hop instead of the real
+client — a caveat worth keeping in mind if that topology is ever in scope.
+
+**Recommended shape** (not yet a final decision — this is what the
+research points toward, still needs owner sign-off): make the trust model
+pluggable rather than hard-coding one platform's convention into
+`GetClientIP`:
+
+- A `TrustedHeader` mode: trust one named header verbatim (e.g.
+  `Fly-Client-IP`), for platforms whose edge sets a header the app can
+  only receive by going through that edge — no IP-range knowledge needed.
+- A `TrustedProxyCIDRs` mode: RFC-7239-style, walk `X-Forwarded-For` from
+  the right against a caller-supplied CIDR set, for platforms that *do*
+  publish stable ranges (AWS ALB, GCP LB, self-hosted nginx, etc.) — not a
+  fit for fly.io today, but worth keeping as the general-purpose option
+  for other deployments of this package.
+- Keep today's "trust the first `X-Forwarded-For` entry unconditionally"
+  behavior available, but opt-in and clearly labeled unsafe, rather than
+  the default `GetClientIP` falls back to.
+
+Still open: which mode(s) to build first, the exact config surface, and
+whether `ClientIPPrincipalFunc` (the rate limiter's default principal)
+should require one of the safe modes to be configured rather than
+defaulting to the unsafe one.
+
+Sources:
+- [Request headers · Fly Docs](https://fly.io/docs/networking/request-headers/)
+- [Why are clients allowed to spoof the X-Forwarded-Port header? — Fly.io community](https://community.fly.io/t/why-are-clients-allowed-to-spoof-the-x-forwarded-port-header/3278)
+- [Request: Fly IP ranges — Fly.io community](https://community.fly.io/t/request-fly-ip-ranges/127)
 
 ### `http/cookies.go` — `Base64EncryptionKey` wiring
-`CookieConfig.Base64EncryptionKey` is declared (with a `mapstructure` tag
-implying it's live config) but never passed to
-`sessions.NewCookieStore`, so cookie contents are signed but never
-encrypted. Wiring it in is mechanically simple — decode the key and pass it
-as the second argument — but touches a security-relevant default:
 
-- Should encryption become mandatory (error if the key is absent) or
-  remain optional or back-compatible with existing deployments that only
-  set an auth key?
-- Key rotation: `gorilla/sessions` supports multiple key pairs for
-  rotation; is that in scope now or later?
+**Status: decided, ready to implement.** (Owner decision, 2026-09-17:
+encryption stays optional, to keep cookie contents inspectable for local
+debugging; key rotation must be supported.)
+
+`gorilla/sessions.NewCookieStore(keyPairs ...[]byte)` already supports
+both requirements natively, per its own doc comment: keys are passed as an
+ordered sequence of `(auth, encryption)` pairs; the encryption key in a
+pair may be nil/omitted (optional); and passing multiple pairs is exactly
+gorilla's rotation mechanism — the first pair signs/encrypts new cookies,
+and older pairs are still tried when decoding a cookie issued before a
+rotation.
+
+That means `CookieConfig` needs to grow from a single `(auth, enc)` string
+pair to an **ordered list** of pairs:
+
+```go
+type CookieKeyPair struct {
+	Base64AuthenticationKey string `mapstructure:"base64-authentication-key"`
+	Base64EncryptionKey     string `mapstructure:"base64-encryption-key"` // optional
+}
+
+type CookieConfig struct {
+	// KeyPairs is ordered newest-first: the first pair signs/encrypts new
+	// cookies, and every pair is tried when decoding, so old pairs can be
+	// kept around during a rotation window and then dropped.
+	KeyPairs []CookieKeyPair `mapstructure:"key-pairs"`
+	MaxAge   int             `mapstructure:"max-age"`
+	Domain   string          `mapstructure:"domain"`
+}
+```
+
+`NewSessionCookieStore` would decode each pair's keys and build the
+`keyPairs ...[]byte` slice gorilla expects, passing `nil` for a pair's
+encryption key when `Base64EncryptionKey` is unset.
+
+This is a breaking config-shape change (single fields become a list), but
+since `Base64EncryptionKey` was already silently unused, no existing
+deployment relies on the old shape actually encrypting anything — this is
+a reasonable point to make the change rather than bolting rotation onto
+the single-pair shape and breaking it again later.
 
 ### `http/cookies.go` — `NewPersistentCookieStore` `MaxAge` default
-Covered above under Correctness — restated here because the fix requires
-picking one of: a sensible non-zero default when `MaxAge` is unset, or a
-constructor error requiring the caller to set it explicitly. Either is
-defensible; it's a behavior change for any existing caller currently
-relying on (possibly accidental) session-only cookies from this
-constructor.
+
+**Status: decided, ready to implement.** (Owner decision, 2026-09-17: use
+a sensible default.)
+
+When `config.MaxAge` is `0` (unset), default to **30 days**
+(`30 * 24 * 60 * 60` = `2592000` seconds) instead of passing the zero
+value through to `store.MaxAge()`, which currently produces session-only
+cookies — the opposite of what "persistent" promises. 30 days is a common
+default lifetime for persistent session cookies and a reasonable balance
+for this package's likely use case (long-lived auth sessions) without
+being indefinite; a caller that wants a different lifetime still sets
+`MaxAge` explicitly, this only changes what happens when it's left at the
+Go zero value.
+
+```go
+// DefaultPersistentCookieMaxAge is used by NewPersistentCookieStore when
+// CookieConfig.MaxAge is left at its zero value.
+const DefaultPersistentCookieMaxAge = 30 * 24 * 60 * 60 // 30 days, in seconds
+
+func NewPersistentCookieStore(config CookieConfig) (*sessions.CookieStore, error) {
+	store, err := NewSessionCookieStore(config)
+	if err != nil {
+		return nil, err
+	}
+
+	maxAge := config.MaxAge
+	if maxAge == 0 {
+		maxAge = DefaultPersistentCookieMaxAge
+	}
+	store.MaxAge(maxAge)
+
+	return store, nil
+}
+```
+
+A caller that explicitly wants the cookie deleted immediately (gorilla's
+documented meaning for `MaxAge < 0`) is unaffected — only the unset-zero
+case changes.
