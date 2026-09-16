@@ -618,6 +618,26 @@ func TestRateLimiter_StopMultipleTimes(t *testing.T) {
 	}
 }
 
+// TestRateLimiter_ZeroValueIsSafeToUse exercises the exported type's zero
+// value directly (var rl RateLimiter), the natural first attempt for an
+// exported struct type without knowing a constructor is required. It must
+// not panic -- a nil limiters map or nil cancel func should degrade
+// gracefully (no background cleanup, Stop a no-op) rather than crash on
+// first use.
+func TestRateLimiter_ZeroValueIsSafeToUse(t *testing.T) {
+	var rl RateLimiter
+
+	// The zero value has 0 rps/0 burst, so Allow denies every request --
+	// that's fine; the point of this test is that it doesn't panic.
+	assert.NotPanics(t, func() {
+		rl.Allow("user1")
+	})
+
+	assert.NotPanics(t, func() {
+		rl.Stop()
+	})
+}
+
 func TestRateLimiter_WithContext(t *testing.T) {
 	logger := zerolog.Nop()
 	ctx, cancel := context.WithCancel(context.Background())
