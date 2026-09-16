@@ -309,9 +309,9 @@ func TestRateLimiter_WithSourceAndFallback(t *testing.T) {
 	rl := NewRateLimiterWithConfig(5, 5, 5*time.Minute, 30*time.Minute, logger)
 	defer rl.Stop()
 
-	// Note: Setting LimitSource after construction can be done, but the source
-	// should be set before any Allow() calls to avoid race conditions
-	rl.LimitSource = source
+	// SetLimitSource is safe to call after construction, including
+	// concurrently with in-flight Allow() calls.
+	rl.SetLimitSource(source)
 
 	// Premium user should use source limits
 	for range 50 {
@@ -327,6 +327,38 @@ func TestRateLimiter_WithSourceAndFallback(t *testing.T) {
 		assert.True(t, rl.Allow("unknown"))
 	}
 	assert.False(t, rl.Allow("unknown"))
+}
+
+func TestRateLimiter_ConcurrentLimitSourceMutation(t *testing.T) {
+	// Regression test for a data race: SetLimitSource must be safe to call
+	// concurrently with Allow() from other goroutines -- the natural way to
+	// hot-reload limits for something documented as "dynamic". Run with
+	// -race; a direct field assignment to an unsynchronized LimitSource
+	// used to trip the race detector here.
+	logger := zerolog.Nop()
+	rl := NewRateLimiterWithConfig(5, 5, 5*time.Minute, 30*time.Minute, logger)
+	defer rl.Stop()
+
+	source := &mockSource{limits: map[string]struct {
+		rps   float64
+		burst int
+	}{"user": {rps: 10, burst: 10}}}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for range 200 {
+			rl.Allow("user")
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for range 200 {
+			rl.SetLimitSource(source)
+		}
+	}()
+	wg.Wait()
 }
 
 func TestRateLimiter_DynamicUpdate(t *testing.T) {
