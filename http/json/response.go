@@ -187,6 +187,9 @@ func (r *Response) respondWithStatus(code int, defaultMessage string, opts ...re
 func (r *Response) mergeResponseData(data any, message string, code int) any {
 	m, ok := data.(map[string]any)
 	if !ok {
+		if message != "" {
+			r.logWarn("PublicMessage is dropped: Data() payload is not a map[string]any, so it cannot be merged with a message")
+		}
 		return data
 	}
 
