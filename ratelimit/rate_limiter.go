@@ -50,8 +50,12 @@ type RateLimiter struct {
 	cleanupInterval   time.Duration
 	staleTTL          time.Duration
 
-	// LimitSource provides dynamic rate limits per principal.
-	LimitSource RateLimitSource
+	// limitSource provides dynamic rate limits per principal. Guarded by mu
+	// since, unlike requestsPerSecond/burst/cleanupInterval/staleTTL, it is
+	// documented as settable at runtime (SetLimitSource) for hot-reloading
+	// limits, and is read on every Allow() call from potentially many
+	// concurrent goroutines.
+	limitSource RateLimitSource
 
 	// Background cleanup
 	ctx      context.Context
@@ -174,7 +178,7 @@ func NewRateLimiterWithSourceAndConfig(source RateLimitSource, cleanupInterval, 
 	rl := &RateLimiter{
 		limiters:        make(map[string]*limiterEntry),
 		logger:          logger,
-		LimitSource:     source,
+		limitSource:     source,
 		cleanupInterval: cleanupInterval,
 		staleTTL:        staleTTL,
 		ctx:             ctx,
@@ -201,7 +205,7 @@ func NewRateLimiterWithSourceContextAndConfig(ctx context.Context, source RateLi
 	rl := &RateLimiter{
 		limiters:        make(map[string]*limiterEntry),
 		logger:          logger,
-		LimitSource:     source,
+		limitSource:     source,
 		cleanupInterval: cleanupInterval,
 		staleTTL:        staleTTL,
 		ctx:             derivedCtx,
@@ -286,7 +290,7 @@ func NewRateLimiterWithOptions(opts ...Option) *RateLimiter {
 		burst:             o.burst,
 		cleanupInterval:   o.cleanupInterval,
 		staleTTL:          o.staleTTL,
-		LimitSource:       o.limitSource,
+		limitSource:       o.limitSource,
 		ctx:               ctx,
 		cancel:            cancel,
 	}
@@ -301,12 +305,17 @@ func NewRateLimiterWithOptions(opts ...Option) *RateLimiter {
 // rejection themselves using that logger, rather than relying on a logger
 // captured at RateLimiter construction time.
 func (rl *RateLimiter) Allow(principal string) bool {
-	// Get rate limits (potentially from external source) before acquiring any locks
+	// Get rate limits (potentially from external source) before acquiring
+	// any further locks
 	rps := rl.requestsPerSecond
 	burst := rl.burst
 
-	if rl.LimitSource != nil {
-		if sRps, sBurst, ok := rl.LimitSource.GetLimit(principal); ok {
+	rl.mu.RLock()
+	limitSource := rl.limitSource
+	rl.mu.RUnlock()
+
+	if limitSource != nil {
+		if sRps, sBurst, ok := limitSource.GetLimit(principal); ok {
 			rps = sRps
 			burst = sBurst
 		}
@@ -399,6 +408,16 @@ func (rl *RateLimiter) Stop() {
 		rl.cancel()
 	})
 	rl.wg.Wait()
+}
+
+// SetLimitSource replaces the dynamic RateLimitSource used to look up
+// per-principal limits. Safe to call concurrently with Allow(), including
+// to hot-reload limits at runtime -- unlike a direct field assignment
+// would have been.
+func (rl *RateLimiter) SetLimitSource(source RateLimitSource) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	rl.limitSource = source
 }
 
 // cleanupLoop runs in the background and periodically cleans up expired limiters.
