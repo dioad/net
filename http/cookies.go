@@ -16,13 +16,22 @@ type CookieConfig struct {
 	Domain                  string `mapstructure:"domain"`
 }
 
+// DefaultPersistentCookieMaxAge is used by NewPersistentCookieStore when
+// CookieConfig.MaxAge is left at its zero value.
+const DefaultPersistentCookieMaxAge = 30 * 24 * 60 * 60 // 30 days, in seconds
+
 // NewPersistentCookieStore creates a persistent cookie store from the provided configuration.
 func NewPersistentCookieStore(config CookieConfig) (*sessions.CookieStore, error) {
 	store, err := NewSessionCookieStore(config)
 	if err != nil {
 		return nil, err
 	}
-	store.MaxAge(config.MaxAge)
+
+	maxAge := config.MaxAge
+	if maxAge == 0 {
+		maxAge = DefaultPersistentCookieMaxAge
+	}
+	store.MaxAge(maxAge)
 
 	return store, nil
 }
