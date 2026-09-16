@@ -376,11 +376,21 @@ but doesn't settle it.)
   client-supplied header. A client cannot set or override it, because it
   isn't derived from client input at all. [Fly Docs — Request headers]
 - Fly Proxy **appends** to `X-Forwarded-For` rather than replacing it —
-  the trustworthy entry is the **last** (rightmost) one, not the first.
-  `GetClientIP` currently takes the *first* entry of `X-Forwarded-For`,
-  which on fly.io is exactly the spoofable, client-supplied end of the
-  list — using XFF at all on this platform would need the parsing
-  direction reversed. [Fly Docs — Request headers]
+  and this is Fly following the standard convention correctly, not a
+  Fly-specific quirk. Per MDN's `X-Forwarded-For` reference: "the
+  rightmost IP address is the IP address of the most recent proxy and the
+  leftmost IP address is the address of the originating client (assuming
+  well-behaved client and proxies)," and "any security-related use of
+  X-Forwarded-For... must only use IP addresses added by a trusted proxy
+  ... [l]eftmost (untrusted) values must only be used for cases where
+  there is no negative impact from using spoofed values." `GetClientIP`
+  currently takes the *first* (leftmost) entry unconditionally — the
+  specific anti-pattern that guidance warns produces "rate-limiter
+  avoidance, access-control bypass" — so this isn't only a fly.io
+  mismatch, it's wrong against the general standard whenever XFF is used
+  for anything security-relevant, which is exactly how `ClientIPPrincipalFunc`
+  and the access-log field both use it today. [MDN — X-Forwarded-For;
+  Fly Docs — Request headers]
 - A Fly staffer confirmed that `X-Forwarded-Port` — and, per the same
   answer, headers other than `X-Forwarded-For` generally — do **not** get
   the append treatment: clients can fully overwrite them. The `Forwarded`
@@ -430,6 +440,7 @@ should require one of the safe modes to be configured rather than
 defaulting to the unsafe one.
 
 Sources:
+- [X-Forwarded-For · MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For)
 - [Request headers · Fly Docs](https://fly.io/docs/networking/request-headers/)
 - [Why are clients allowed to spoof the X-Forwarded-Port header? — Fly.io community](https://community.fly.io/t/why-are-clients-allowed-to-spoof-the-x-forwarded-port-header/3278)
 - [Request: Fly IP ranges — Fly.io community](https://community.fly.io/t/request-fly-ip-ranges/127)
