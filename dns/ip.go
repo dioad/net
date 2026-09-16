@@ -11,16 +11,18 @@ func uitoa(i uint64) string {
 	return strconv.FormatUint(i, 10)
 }
 
-// ReverseIP returns the reverse DNS notation for an IP address.
+// ReverseIP returns the reverse DNS notation for an IPv4 address (e.g.
+// "127.0.0.1" becomes "1.0.0.127"). It errors on IPv6 addresses rather than
+// returning an empty string, since it implements no IPv6 (ip6.arpa) form.
 func ReverseIP(addr string) (string, error) {
 	ip := net.ParseIP(addr)
 	if ip == nil {
 		return "", &net.DNSError{Err: "unrecognized address", Name: addr}
 	}
-	if ip.To4() != nil {
-		return uitoa(uint64(ip[15])) + "." + uitoa(uint64(ip[14])) + "." + uitoa(uint64(ip[13])) + "." + uitoa(uint64(ip[12])), nil
+	if ip.To4() == nil {
+		return "", &net.DNSError{Err: "reverse DNS notation is only supported for IPv4 addresses", Name: addr}
 	}
-	return "", nil
+	return uitoa(uint64(ip[15])) + "." + uitoa(uint64(ip[14])) + "." + uitoa(uint64(ip[13])) + "." + uitoa(uint64(ip[12])), nil
 }
 
 // BlocklistLookupAddr checks if the given IP address is listed in the Spamhaus blocklist.
