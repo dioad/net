@@ -452,6 +452,30 @@ func TestData_Nil(t *testing.T) {
 	}
 }
 
+func TestOK_StructDataWithMessage_LogsWarningWhenMessageIsDropped(t *testing.T) {
+	type user struct {
+		ID string `json:"id"`
+	}
+
+	var logOutput bytes.Buffer
+	logger := zerolog.New(&logOutput)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/test", nil)
+
+	resp := NewResponseWithLogger(w, req, logger)
+	resp.OK(Data(user{ID: "1"}), PublicMessage("done"))
+
+	// A non-map payload (the overwhelmingly common case) still can't carry
+	// PublicMessage today -- no wire-format change was made for a
+	// combination that has zero precedent among this package's callers --
+	// but the drop must now be visible in logs instead of silent.
+	var result user
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+	assert.Equal(t, "1", result.ID)
+	assert.NotContains(t, w.Body.String(), "done")
+	assert.NotZero(t, logOutput.Len(), "dropping PublicMessage for a non-map Data() payload should be logged")
+}
+
 func TestReadBody_ValidJSON(t *testing.T) {
 	type TestStruct struct {
 		Name  string `json:"name"`
