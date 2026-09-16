@@ -35,7 +35,7 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 		req.Header.Set("User-Agent", libraryUserAgent)
 	}
 
-	if req.Body != nil && req.ContentLength != 0 {
+	if req.Body != nil && req.ContentLength != 0 && req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
