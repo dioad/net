@@ -355,6 +355,56 @@ func TestRateLimiter_WithSourceAndFallback(t *testing.T) {
 	assert.False(t, rl.Allow("unknown"))
 }
 
+func TestRateLimiter_WarnsWhenSourceFallbackIsZeroValue(t *testing.T) {
+	source := &mockSource{
+		limits: map[string]struct {
+			rps   float64
+			burst int
+		}{
+			"known": {rps: 1000, burst: 1000},
+		},
+	}
+
+	t.Run("unmatched principal with no static fallback logs a warning once", func(t *testing.T) {
+		var buf bytes.Buffer
+		rl := NewRateLimiterWithSource(source, zerolog.New(&buf))
+		defer rl.Stop()
+
+		assert.False(t, rl.Allow("unknown"), "with no static fallback configured, an unmatched principal must be denied")
+		assert.Contains(t, buf.String(), "RateLimitSource returned ok=false")
+		assert.Contains(t, buf.String(), `"principal":"unknown"`)
+
+		// A second call for the same (or another) unmatched principal must
+		// not log again -- the warning fires once per RateLimiter.
+		buf.Reset()
+		rl.Allow("unknown")
+		rl.Allow("another-unknown")
+		assert.Empty(t, buf.String(), "the zero-value-fallback warning must only be logged once per RateLimiter")
+	})
+
+	t.Run("unmatched principal with an explicit static fallback logs nothing", func(t *testing.T) {
+		var buf bytes.Buffer
+		rl := NewRateLimiterWithOptions(
+			WithRateLimiterSource(source),
+			WithRateLimiterStaticLimits(5, 5),
+			WithRateLimiterLogger(zerolog.New(&buf)),
+		)
+		defer rl.Stop()
+
+		assert.True(t, rl.Allow("unknown"), "an explicit static fallback must still be usable for unmatched principals")
+		assert.Empty(t, buf.String(), "no warning should be logged when a static fallback is explicitly configured")
+	})
+
+	t.Run("matched principal never triggers the fallback warning", func(t *testing.T) {
+		var buf bytes.Buffer
+		rl := NewRateLimiterWithSource(source, zerolog.New(&buf))
+		defer rl.Stop()
+
+		rl.Allow("known")
+		assert.Empty(t, buf.String())
+	})
+}
+
 func TestRateLimiter_ConcurrentLimitSourceMutation(t *testing.T) {
 	// Regression test for a data race: SetLimitSource must be safe to call
 	// concurrently with Allow() from other goroutines -- the natural way to
