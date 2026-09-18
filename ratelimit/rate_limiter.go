@@ -3,6 +3,7 @@ package ratelimit
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -22,7 +23,13 @@ type limiterEntry struct {
 // RateLimitSource defines the interface for determining rate limits.
 type RateLimitSource interface {
 	// GetLimit returns the rate limits to apply for a principal.
-	// If it returns ok=false, the default limits of the RateLimiter will be used.
+	// If it returns ok=false, the RateLimiter's static requestsPerSecond/burst
+	// are used instead. Those default to the Go zero value (0, 0) -- which
+	// denies every request -- unless the RateLimiter was also configured
+	// with explicit static limits (e.g. WithRateLimiterStaticLimits). A
+	// RateLimitSource that can return ok=false should be paired with an
+	// explicit static fallback, or every unmatched principal is silently
+	// denied.
 	GetLimit(principal string) (requestsPerSecond float64, burst int, ok bool)
 }
 
@@ -56,6 +63,10 @@ type RateLimiter struct {
 	// limits, and is read on every Allow() call from potentially many
 	// concurrent goroutines.
 	limitSource RateLimitSource
+
+	// warnedZeroFallback ensures the zero-value-fallback warning below is
+	// logged at most once per RateLimiter, rather than once per Allow() call.
+	warnedZeroFallback atomic.Bool
 
 	// Background cleanup
 	ctx      context.Context
@@ -325,6 +336,14 @@ func (rl *RateLimiter) Allow(principal string) bool {
 		if sRps, sBurst, ok := limitSource.GetLimit(principal); ok {
 			rps = sRps
 			burst = sBurst
+		} else if rps == 0 && burst == 0 && rl.warnedZeroFallback.CompareAndSwap(false, true) {
+			// A RateLimitSource is configured but returned ok=false for this
+			// principal, and no static fallback limits were configured
+			// either -- every such principal is silently denied. Logged
+			// once per RateLimiter, not once per request.
+			rl.logger.Warn().
+				Str("principal", principal).
+				Msg("RateLimitSource returned ok=false and no static fallback limits are configured (WithRateLimiterStaticLimits); unmatched principals will be denied")
 		}
 	}
 
