@@ -93,6 +93,15 @@ func NewCachingFetcherWithFunc[T any](url string, config CacheConfig, fetchFunc 
 // Get fetches data from the URL with caching.
 // It returns the data, cache result status (Fresh, Cached, or Stale), and any error encountered.
 // If ReturnStale is enabled, it may return stale data immediately and start a background refresh.
+//
+// CacheResultStale is always returned with a nil error: the data is valid
+// and safe to use even though it came from a failed refresh attempt rather
+// than from fresh cache. This holds whether the stale data was returned
+// immediately (ReturnStale) or as a fallback after a blocking refresh
+// failed. A caller that follows the common `if err != nil { return }`
+// pattern must not have that discard perfectly usable stale data; check the
+// returned CacheResult, not just err, to distinguish "no data at all" from
+// "stale but usable."
 func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	f.mu.Lock()
 
@@ -134,13 +143,15 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	if waited {
 		if f.cachedData != nil {
 			data := *f.cachedData
-			err := f.lastError
 			result := CacheResultFresh
-			if err != nil {
+			if f.lastError != nil {
+				// The fetch we waited on failed, but there is still usable
+				// (stale) data -- CacheResultStale never carries a non-nil
+				// error; see Get's doc comment.
 				result = CacheResultStale
 			}
 			f.mu.Unlock()
-			return data, result, err
+			return data, result, nil
 		}
 		// The fetch we waited on failed and left no stale data to fall
 		// back to. Every waiter shares that single failure rather than
@@ -164,12 +175,15 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	f.lastError = err
 
 	if err != nil {
-		// If fetch failed and we have stale data, return it
+		// If fetch failed and we have stale data, return it. It is still
+		// usable data, so -- as with every other CacheResultStale return in
+		// this method -- the error is not surfaced here (see Get's doc
+		// comment); it remains available via LastError() for introspection.
 		if staleData != nil {
 			result := *staleData
 			f.mu.Unlock()
 			f.refreshCond.Broadcast()
-			return result, CacheResultStale, err
+			return result, CacheResultStale, nil
 		}
 		// No stale data, return zero value
 		var zero T
@@ -383,4 +397,14 @@ func (f *CachingFetcher[T]) GetCacheInfo() (cachedAt, expiresAt time.Time, hasDa
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	return f.cachedAt, f.expiresAt, f.cachedData != nil
+}
+
+// LastError returns the error from the most recently completed fetch
+// attempt (nil if the last attempt succeeded, or no fetch has completed
+// yet). Use this to inspect why Get returned a CacheResultStale result --
+// Get itself never pairs stale-but-usable data with a non-nil error.
+func (f *CachingFetcher[T]) LastError() error {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return f.lastError
 }
