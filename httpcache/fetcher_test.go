@@ -176,6 +176,111 @@ func TestCachingFetcher_Error_NoStaleData(t *testing.T) {
 	assert.Equal(t, 0, data.Count)
 }
 
+// TestCachingFetcher_BlockingRefreshFailure_StaleDataHasNilError exercises
+// the ReturnStale:false blocking-refresh path when prior data exists and
+// the synchronous refetch fails. CacheResultStale must come back with a
+// nil error -- the same convention TestCachingFetcher_ReturnStale pins for
+// the ReturnStale:true immediate-return path -- so that a caller doing
+// `if err != nil { return }` never discards perfectly usable stale data.
+func TestCachingFetcher_BlockingRefreshFailure_StaleDataHasNilError(t *testing.T) {
+	callCount := atomic.Int32{}
+	shouldFail := atomic.Bool{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		if shouldFail.Load() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		data := testData{Message: "hello", Count: int(callCount.Load())}
+		_ = json.NewEncoder(w).Encode(data)
+	}))
+	defer server.Close()
+
+	fetcher := NewCachingFetcher[testData](server.URL, CacheConfig{
+		StaticExpiry: 50 * time.Millisecond,
+		ReturnStale:  false,
+	})
+
+	ctx := context.Background()
+
+	data1, result1, err1 := fetcher.Get(ctx)
+	require.NoError(t, err1)
+	assert.Equal(t, CacheResultFresh, result1)
+	assert.Equal(t, 1, data1.Count)
+
+	// Expire the cache, then make the origin fail.
+	time.Sleep(100 * time.Millisecond)
+	shouldFail.Store(true)
+
+	data2, result2, err2 := fetcher.Get(ctx)
+	assert.NoError(t, err2, "CacheResultStale must not carry an error; the returned data is valid and usable")
+	assert.Equal(t, CacheResultStale, result2)
+	assert.Equal(t, 1, data2.Count, "the stale (pre-failure) data must still be returned")
+
+	// The swallowed error remains available via LastError for callers that
+	// want to know why the data is stale.
+	assert.Error(t, fetcher.LastError())
+}
+
+// TestCachingFetcher_ConcurrentAccess_WaiterSeesStaleWithNilError exercises
+// the "waited" branch of Get: a goroutine that finds a refresh already in
+// flight and waits on refreshCond, where that refresh then fails but prior
+// data exists. This must follow the same nil-error convention as every
+// other CacheResultStale return.
+func TestCachingFetcher_ConcurrentAccess_WaiterSeesStaleWithNilError(t *testing.T) {
+	callCount := atomic.Int32{}
+	shouldFail := atomic.Bool{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		if shouldFail.Load() {
+			time.Sleep(50 * time.Millisecond) // give other goroutines time to become waiters
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		data := testData{Message: "hello", Count: int(callCount.Load())}
+		_ = json.NewEncoder(w).Encode(data)
+	}))
+	defer server.Close()
+
+	fetcher := NewCachingFetcher[testData](server.URL, CacheConfig{
+		StaticExpiry: 50 * time.Millisecond,
+		ReturnStale:  false,
+	})
+
+	ctx := context.Background()
+
+	// Prime the cache.
+	_, _, err := fetcher.Get(ctx)
+	require.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond) // expire
+	shouldFail.Store(true)
+
+	const goroutines = 5
+	type getResult struct {
+		data   testData
+		result CacheResult
+		err    error
+	}
+	results := make(chan getResult, goroutines)
+
+	for range goroutines {
+		go func() {
+			data, result, err := fetcher.Get(ctx)
+			results <- getResult{data, result, err}
+		}()
+	}
+
+	for range goroutines {
+		r := <-results
+		assert.NoError(t, r.err, "a waiter sharing a failed refresh must still get a nil error when stale data is available")
+		assert.Equal(t, CacheResultStale, r.result)
+		assert.Equal(t, 1, r.data.Count)
+	}
+}
+
 func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
 	callCount := atomic.Int32{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
