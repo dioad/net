@@ -1,15 +1,13 @@
-name: net
+name: dioad/net
 version: 1.0.0
-description: APM project for net
+description: APM project for dioad/net
 author: Pat Downey
 targets:
 - claude
 - copilot
 dependencies:
   apm:
-  - ast-grep/agent-skill
-  - anthropics/claude-plugins-official/plugins/gopls-lsp
-  - anthropics/claude-plugins-official/plugins/pr-review-toolkit
+  - dioad/agent-skills
   mcp: []
 includes: auto
 scripts: {}
