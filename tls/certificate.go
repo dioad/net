@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -52,6 +53,7 @@ func LoadKeyPairFromFiles(certPath, keyPath string) (*tls.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &cert, nil
 }
 
@@ -63,8 +65,10 @@ func saveBlockToPEMFile(filename string, perm int, blockType string, data []byte
 		return err
 	}
 
-	if err = encodeBlock(f, blockType, data); err != nil {
+	err = encodeBlock(f, blockType, data)
+	if err != nil {
 		_ = f.Close()
+
 		return err
 	}
 
@@ -76,6 +80,7 @@ func encodeBlock(w io.Writer, blockType string, data []byte) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -97,7 +102,7 @@ func encodePrivateKeyBlock(w io.Writer, data crypto.PrivateKey) error {
 	return nil
 }
 
-// SaveTLSCertificateToFile saves a tls.Certificate to a file
+// SaveTLSCertificateToFile saves a tls.Certificate to a file.
 func SaveTLSCertificateToFile(cert *tls.Certificate, filename string, perm int) error {
 	filenameClean := filepath.Clean(filename)
 
@@ -109,19 +114,21 @@ func SaveTLSCertificateToFile(cert *tls.Certificate, filename string, perm int) 
 	err = encodeCertificateBlock(f, cert.Certificate[0])
 	if err != nil {
 		_ = f.Close()
+
 		return err
 	}
 
 	err = encodePrivateKeyBlock(f, cert.PrivateKey)
 	if err != nil {
 		_ = f.Close()
+
 		return err
 	}
 
 	return f.Close()
 }
 
-// SaveTLSCertificateToFiles saves a tls.Certificate to a certificate and key file
+// SaveTLSCertificateToFiles saves a tls.Certificate to a certificate and key file.
 func SaveTLSCertificateToFiles(cert *tls.Certificate, certPath, keyPath string) error {
 	err := saveBlockToPEMFile(certPath, 0644, "CERTIFICATE", cert.Certificate[0])
 	if err != nil {
@@ -137,7 +144,7 @@ func SaveTLSCertificateToFiles(cert *tls.Certificate, certPath, keyPath string) 
 }
 
 // LoadKeyPairAndCertsFromFile From: https://gist.github.com/ukautz/cd118e298bbd8f0a88fc
-// LoadKeyPairAndCertsFromFile reads file, divides into key and certificates
+// LoadKeyPairAndCertsFromFile reads file, divides into key and certificates.
 func LoadKeyPairAndCertsFromFile(path string) (*tls.Certificate, error) {
 	raw, err := os.ReadFile(path) // #nosec G304 -- path is caller-supplied server configuration, not untrusted user input
 	if err != nil {
@@ -155,7 +162,7 @@ func LoadKeyPairAndCertsFromFile(path string) (*tls.Certificate, error) {
 		} else {
 			cert.PrivateKey, err = parsePrivateKey(block.Bytes)
 			if err != nil {
-				return nil, fmt.Errorf("failure reading private key from \"%s\": %s", path, err)
+				return nil, fmt.Errorf("failure reading private key from \"%s\":w%s", path, err)
 			}
 		}
 		raw = rest
@@ -179,11 +186,12 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 		case *rsa.PrivateKey, *ecdsa.PrivateKey:
 			return key, nil
 		default:
-			return nil, fmt.Errorf("found unknown private key type in PKCS#8 wrapping")
+			return nil, errors.New("found unknown private key type in PKCS#8 wrapping")
 		}
 	}
 	if key, err := x509.ParseECPrivateKey(der); err == nil {
 		return key, nil
 	}
-	return nil, fmt.Errorf("failed to parse private key")
+
+	return nil, errors.New("failed to parse private key")
 }

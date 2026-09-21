@@ -47,6 +47,7 @@ type StructuredLoggerFormatter func(r *http.Request, status, size int, duration 
 
 func headerToSnakeCase(s string) string {
 	lower := strings.ToLower(s)
+
 	return strings.ReplaceAll(lower, "-", "_")
 }
 
@@ -100,12 +101,14 @@ func ZerologStructuredLogHandler(logger zerolog.Logger) HandlerWrapper {
 // ZerologStructuredLogHandlerWithFormatter returns a HandlerWrapper that uses a custom formatter for structured logging.
 func ZerologStructuredLogHandlerWithFormatter(logger zerolog.Logger, formatter StructuredLoggerFormatter) HandlerWrapper {
 	logReq := hlog.NewHandler(logger)
+
 	return func(next http.Handler) http.Handler {
 		structuredLogger := func(r *http.Request, status, size int, duration time.Duration) {
 			formatter(r, status, size, duration).Info().Msg("accessLog")
 		}
 
 		handler := logReq(hlog.AccessHandler(structuredLogger)(next))
+
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			injected := false
 			ctx := context.WithValue(r.Context(), requestFieldsInjectedKey{}, &injected)
@@ -165,13 +168,15 @@ func (z *zerologLevelSetter) SetLogLevel(level string) error {
 	}
 
 	zerolog.SetGlobalLevel(l)
+
 	return nil
 }
 
 // SetLogLevelWithDuration sets the log level and returns the time when it expires.
 func (z *zerologLevelSetter) SetLogLevelWithDuration(level string, duration time.Duration) (time.Time, error) {
 	// Set the level first and propagate any error back to the caller.
-	if err := z.SetLogLevel(level); err != nil {
+	err := z.SetLogLevel(level)
+	if err != nil {
 		return time.Time{}, err
 	}
 
@@ -197,6 +202,7 @@ func (z *zerologLevelSetter) SetLogLevelWithDuration(level string, duration time
 func (z *zerologLevelSetter) ExpiresAt() time.Time {
 	z.mu.Lock()
 	defer z.mu.Unlock()
+
 	return z.expiresAt
 }
 

@@ -134,6 +134,7 @@ func routeLabelExists(families []*dto.MetricFamily, name, routeWant string) bool
 			}
 		}
 	}
+
 	return false
 }
 
@@ -152,6 +153,7 @@ func findHistogramMetric(t *testing.T, families []*dto.MetricFamily, name, label
 	}
 
 	t.Fatalf("no metric found for family %q with label %s=%s", name, labelName, labelValueWant)
+
 	return nil
 }
 
@@ -161,5 +163,6 @@ func labelValue(m *dto.Metric, name string) string {
 			return lp.GetValue()
 		}
 	}
+
 	return ""
 }

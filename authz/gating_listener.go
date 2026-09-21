@@ -11,6 +11,7 @@ import "net"
 // to handle before returning.
 type GatingListener struct {
 	net.Listener
+
 	gate func(net.Conn) bool
 }
 

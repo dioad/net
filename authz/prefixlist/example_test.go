@@ -11,7 +11,7 @@ import (
 	"github.com/dioad/net/authz/prefixlist"
 )
 
-// Example demonstrates basic usage of the prefix list system
+// Example demonstrates basic usage of the prefix list system.
 func Example() {
 	logger := zerolog.Nop()
 
@@ -39,7 +39,7 @@ func Example() {
 	// Output: IP is allowed
 }
 
-// ExampleNewMultiProviderFromConfig demonstrates creating a multi-provider from configuration
+// ExampleNewMultiProviderFromConfig demonstrates creating a multi-provider from configuration.
 func ExampleNewMultiProviderFromConfig() {
 	logger := zerolog.Nop()
 
@@ -72,7 +72,7 @@ func ExampleNewMultiProviderFromConfig() {
 	// Output: MultiProvider created with multiple providers
 }
 
-// ExampleListener demonstrates using the prefix list listener
+// ExampleListener demonstrates using the prefix list listener.
 func ExampleListener() {
 	logger := zerolog.Nop()
 

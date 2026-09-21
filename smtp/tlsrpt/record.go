@@ -21,6 +21,7 @@ type Record struct {
 func encodeRUAURI(uri string) string {
 	uri = strings.ReplaceAll(uri, "!", "%21")
 	uri = strings.ReplaceAll(uri, ",", "%2C")
+
 	return uri
 }
 
@@ -33,7 +34,8 @@ func formatRUA(label string, locations []string) string {
 		if strings.HasPrefix(a, "https://") {
 			return encodeRUAURI(a)
 		}
-		return encodeRUAURI(fmt.Sprintf("mailto:%s", a))
+
+		return encodeRUAURI("mailto:" + a)
 	}, locations)
 
 	return fmt.Sprintf("%s=%s", label, strings.Join(addrs, ","))
@@ -56,7 +58,7 @@ func (r *Record) String() string {
 	if r.Version == "" {
 		parts = append(parts, "v=TLSRPTv1")
 	} else {
-		parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+		parts = append(parts, "v="+r.Version)
 	}
 
 	parts = append(parts, formatRUA("rua", r.ReportURIAggregate))

@@ -13,13 +13,15 @@ func init() {
 		// Google: support "scope" and "service" keys (comma-separated values)
 		scopes := parseCommaSeparated(cfg.Filter["scope"])
 		services := parseCommaSeparated(cfg.Filter["service"])
+
 		return NewGoogleProvider(scopes, services), nil
 	})
 }
 
-// GoogleProvider fetches IP ranges from Google Cloud
+// GoogleProvider fetches IP ranges from Google Cloud.
 type GoogleProvider struct {
 	*HTTPJSONProvider[googleIPRanges]
+
 	scopes   []string // optional filter for scopes (e.g., "us-central1", "europe-west1")
 	services []string // optional filter for services (e.g., "Google Cloud", "Google Cloud Storage")
 }
@@ -87,7 +89,7 @@ func (p *GoogleProvider) transformGoogleRanges(data googleIPRanges) ([]netip.Pre
 	return parseCIDRs(cidrs)
 }
 
-// contains checks if a slice contains a string (case-insensitive)
+// contains checks if a slice contains a string (case-insensitive).
 func contains(slice []string, item string) bool {
 	itemLower := strings.ToLower(item)
 	for _, s := range slice {
@@ -95,5 +97,6 @@ func contains(slice []string, item string) bool {
 			return true
 		}
 	}
+
 	return false
 }

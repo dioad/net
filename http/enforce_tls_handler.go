@@ -16,6 +16,7 @@ func (h *EnforceTLSHandler) Wrap(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if h.enforceTLS && r.TLS == nil {
 			http.Error(w, "TLS required", http.StatusForbidden)
+
 			return
 		}
 

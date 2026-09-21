@@ -88,7 +88,8 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		if err := server.Serve(ln); err != nil {
+		err := server.Serve(ln)
+		if err != nil {
 			log.Printf("Server error: %v\n", err)
 		}
 	}()

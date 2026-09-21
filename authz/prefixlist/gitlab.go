@@ -11,12 +11,12 @@ func init() {
 	})
 }
 
-// GitLabProvider provides static IP ranges for GitLab webhooks
+// GitLabProvider provides static IP ranges for GitLab webhooks.
 type GitLabProvider struct {
 	prefixes []netip.Prefix
 }
 
-// NewGitLabProvider creates a new GitLab prefix list provider
+// NewGitLabProvider creates a new GitLab prefix list provider.
 func NewGitLabProvider() *GitLabProvider {
 	// GitLab webhook static IPs
 	// Note: GitLab Actions come from GCP, so users should also enable Google provider
@@ -26,6 +26,7 @@ func NewGitLabProvider() *GitLabProvider {
 	}
 
 	prefixes, _ := parseCIDRs(cidrs) // Safe to ignore error as these are hard-coded valid CIDRs
+
 	return &GitLabProvider{
 		prefixes: prefixes,
 	}
@@ -45,5 +46,6 @@ func (p *GitLabProvider) Contains(addr netip.Addr) bool {
 			return true
 		}
 	}
+
 	return false
 }

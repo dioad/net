@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -18,7 +19,7 @@ type HTTPMarshalOptions struct {
 	DefaultKebabCase bool
 }
 
-// DefaultHTTPMarshalOptions returns default options with no prefix and no struct name
+// DefaultHTTPMarshalOptions returns default options with no prefix and no struct name.
 func DefaultHTTPMarshalOptions() HTTPMarshalOptions {
 	return HTTPMarshalOptions{
 		Prefix:            "",
@@ -87,6 +88,7 @@ func getTagDetails(tagName string, field reflect.StructField) tagDetails {
 	} else {
 		details.name = strings.TrimSpace(t)
 	}
+
 	return details
 }
 
@@ -97,14 +99,16 @@ func marshalFields(v any, tagName string, set fieldSet, opts HTTPMarshalOptions)
 	}
 
 	return walkStructFields(val, typ, tagName, opts, func(field reflect.Value, fieldType reflect.StructField, fieldName string) error {
-		if err := marshalField(set, fieldName, field); err != nil {
+		err := marshalField(set, fieldName, field)
+		if err != nil {
 			return fmt.Errorf("fieldSet %s: %w", fieldType.Name, err)
 		}
+
 		return nil
 	})
 }
 
-// unmarshalFields unmarshals values from a fieldSet into a struct based on struct tags and options
+// unmarshalFields unmarshals values from a fieldSet into a struct based on struct tags and options.
 func unmarshalFields(set fieldSet, v any, tagName string, opts HTTPMarshalOptions) error {
 	val, typ, err := normalizeStructValue(v, true, false)
 	if err != nil {
@@ -112,9 +116,11 @@ func unmarshalFields(set fieldSet, v any, tagName string, opts HTTPMarshalOption
 	}
 
 	return walkStructFields(val, typ, tagName, opts, func(field reflect.Value, fieldType reflect.StructField, fieldName string) error {
-		if err := unmarshalField(set, fieldName, field); err != nil {
+		err := unmarshalField(set, fieldName, field)
+		if err != nil {
 			return fmt.Errorf("fieldSet %s: %w", fieldType.Name, err)
 		}
+
 		return nil
 	})
 }
@@ -124,7 +130,8 @@ func normalizeStructValue(v any, requirePointer bool, allowNil bool) (reflect.Va
 		if allowNil {
 			return reflect.Value{}, nil, nil
 		}
-		return reflect.Value{}, nil, fmt.Errorf("nil destination")
+
+		return reflect.Value{}, nil, errors.New("nil destination")
 	}
 
 	val := reflect.ValueOf(v)
@@ -137,7 +144,8 @@ func normalizeStructValue(v any, requirePointer bool, allowNil bool) (reflect.Va
 			if allowNil {
 				return reflect.Value{}, nil, nil
 			}
-			return reflect.Value{}, nil, fmt.Errorf("nil pointer")
+
+			return reflect.Value{}, nil, errors.New("nil pointer")
 		}
 		val = val.Elem()
 	} else if val.Kind() == reflect.Pointer {
@@ -145,7 +153,8 @@ func normalizeStructValue(v any, requirePointer bool, allowNil bool) (reflect.Va
 			if allowNil {
 				return reflect.Value{}, nil, nil
 			}
-			return reflect.Value{}, nil, fmt.Errorf("nil pointer")
+
+			return reflect.Value{}, nil, errors.New("nil pointer")
 		}
 		val = val.Elem()
 	}
@@ -154,6 +163,7 @@ func normalizeStructValue(v any, requirePointer bool, allowNil bool) (reflect.Va
 		if requirePointer {
 			return reflect.Value{}, nil, fmt.Errorf("expected pointer to struct, got pointer to %s", val.Kind())
 		}
+
 		return reflect.Value{}, nil, fmt.Errorf("expected struct, got %s", val.Kind())
 	}
 
@@ -175,10 +185,12 @@ func walkStructFields(val reflect.Value, typ reflect.Type, tagName string, opts 
 		// Get the field name from struct tag or fieldSet name
 		fieldName := getFieldName(tagName, fieldType, structName, opts)
 
-		if err := fn(field, fieldType, fieldName); err != nil {
+		err := fn(field, fieldType, fieldName)
+		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -219,7 +231,7 @@ func buildFieldName(fieldName string, structName string, opts HTTPMarshalOptions
 
 // toKebabCase converts CamelCase to kebab-case
 // It inserts a hyphen before each uppercase letter (except the first)
-// Examples: "FieldOne" -> "field-one", "UserID" -> "user-id", "HTTPHeader" -> "http-header"
+// Examples: "FieldOne" -> "field-one", "UserID" -> "user-id", "HTTPHeader" -> "http-header".
 func toKebabCase(s string) string {
 	if s == "" {
 		return ""
@@ -247,7 +259,7 @@ func toKebabCase(s string) string {
 	return result.String()
 }
 
-// marshalField marshals a single field value to the fieldSet based on its type
+// marshalField marshals a single field value to the fieldSet based on its type.
 func marshalField(set fieldSet, fieldName string, field reflect.Value) error {
 	if fieldName == "" {
 		return nil // Skip fields with empty field names
@@ -269,16 +281,17 @@ func marshalField(set fieldSet, fieldName string, field reflect.Value) error {
 	}
 }
 
-// marshalStringField marshals a string field to the fieldSet
+// marshalStringField marshals a string field to the fieldSet.
 func marshalStringField(set fieldSet, fieldName string, field reflect.Value) error {
 	value := field.String()
 	if value != "" {
 		set.Set(fieldName, value)
 	}
+
 	return nil
 }
 
-// marshalSliceField marshals a slice field to the fieldSet
+// marshalSliceField marshals a slice field to the fieldSet.
 func marshalSliceField(set fieldSet, fieldName string, field reflect.Value) error {
 	if field.Type().Elem().Kind() != reflect.String {
 		return fmt.Errorf("unsupported slice type: []%s", field.Type().Elem().Kind())
@@ -291,35 +304,39 @@ func marshalSliceField(set fieldSet, fieldName string, field reflect.Value) erro
 			set.Add(fieldName, value)
 		}
 	}
+
 	return nil
 }
 
-// marshalIntField marshals an integer field to the fieldSet
+// marshalIntField marshals an integer field to the fieldSet.
 func marshalIntField(set fieldSet, fieldName string, field reflect.Value) error {
-	set.Set(fieldName, fmt.Sprintf("%d", field.Int()))
+	set.Set(fieldName, strconv.FormatInt(field.Int(), 10))
+
 	return nil
 }
 
-// marshalUintField marshals an unsigned integer field to the fieldSet
+// marshalUintField marshals an unsigned integer field to the fieldSet.
 func marshalUintField(set fieldSet, fieldName string, field reflect.Value) error {
-	set.Set(fieldName, fmt.Sprintf("%d", field.Uint()))
+	set.Set(fieldName, strconv.FormatUint(field.Uint(), 10))
+
 	return nil
 }
 
-// marshalBoolField marshals a boolean field to the fieldSet
+// marshalBoolField marshals a boolean field to the fieldSet.
 func marshalBoolField(set fieldSet, fieldName string, field reflect.Value) error {
-	set.Set(fieldName, fmt.Sprintf("%t", field.Bool()))
+	set.Set(fieldName, strconv.FormatBool(field.Bool()))
+
 	return nil
 }
 
-// unmarshalField unmarshals a field value into a fieldSet
+// unmarshalField unmarshals a field value into a fieldSet.
 func unmarshalField(set fieldSet, fieldName string, field reflect.Value) error {
 	if fieldName == "" {
 		return nil // Skip fields with empty filter names
 	}
 
 	if !field.CanSet() {
-		return fmt.Errorf("fieldSet is not settable")
+		return errors.New("fieldSet is not settable")
 	}
 
 	values := set.Values(fieldName)
@@ -343,13 +360,14 @@ func unmarshalField(set fieldSet, fieldName string, field reflect.Value) error {
 	}
 }
 
-// unmarshalStringField unmarshals a string field from fieldSet values
+// unmarshalStringField unmarshals a string field from fieldSet values.
 func unmarshalStringField(field reflect.Value, values []string) error {
 	field.SetString(values[0])
+
 	return nil
 }
 
-// unmarshalSliceField unmarshals a slice field from fieldSet values
+// unmarshalSliceField unmarshals a slice field from fieldSet values.
 func unmarshalSliceField(field reflect.Value, values []string) error {
 	if field.Type().Elem().Kind() != reflect.String {
 		return fmt.Errorf("unsupported slice type: []%s", field.Type().Elem().Kind())
@@ -361,30 +379,33 @@ func unmarshalSliceField(field reflect.Value, values []string) error {
 		slice.Index(i).SetString(v)
 	}
 	field.Set(slice)
+
 	return nil
 }
 
-// unmarshalIntField unmarshals an integer field from fieldSet values
+// unmarshalIntField unmarshals an integer field from fieldSet values.
 func unmarshalIntField(field reflect.Value, values []string) error {
 	n, err := strconv.ParseInt(values[0], 10, 64)
 	if err != nil {
 		return fmt.Errorf("failed to parse int: %w", err)
 	}
 	field.SetInt(n)
+
 	return nil
 }
 
-// unmarshalUintField unmarshals an unsigned integer field from fieldSet values
+// unmarshalUintField unmarshals an unsigned integer field from fieldSet values.
 func unmarshalUintField(field reflect.Value, values []string) error {
 	n, err := strconv.ParseUint(values[0], 10, 64)
 	if err != nil {
 		return fmt.Errorf("failed to parse uint: %w", err)
 	}
 	field.SetUint(n)
+
 	return nil
 }
 
-// unmarshalBoolField unmarshals a boolean field from fieldSet values
+// unmarshalBoolField unmarshals a boolean field from fieldSet values.
 func unmarshalBoolField(field reflect.Value, values []string) error {
 	b, err := strconv.ParseBool(values[0])
 	if err != nil {
@@ -392,5 +413,6 @@ func unmarshalBoolField(field reflect.Value, values []string) error {
 	}
 
 	field.SetBool(b)
+
 	return nil
 }

@@ -25,6 +25,7 @@ func Chain(handler http.Handler, middlewares ...Middleware) http.Handler {
 			handler = middleware(handler)
 		}
 	}
+
 	return handler
 }
 

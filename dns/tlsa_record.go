@@ -64,6 +64,7 @@ func (r *TLSARecord) fetchDNSContents(data any) (string, error) {
 
 func (r *TLSARecord) Render(data any) error {
 	period := time.Duration(r.AutoRefreshPeriodSeconds) * time.Second
+
 	return r.content.Render(func() (string, error) { return r.fetchDNSContents(data) }, r.AutoRefresh, period)
 }
 

@@ -15,6 +15,7 @@ func HandlerFunc(cfg authz.NetworkACLConfig, next http.Handler) (http.HandlerFun
 	if err != nil {
 		return nil, err
 	}
+
 	return h.Wrap(next).ServeHTTP, nil
 }
 
@@ -24,6 +25,7 @@ func NewHandler(cfg authz.NetworkACLConfig) (*Handler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ip.NewHandler: invalid ACL config: %w", err)
 	}
+
 	return &Handler{Authoriser: authoriser}, nil
 }
 
@@ -52,6 +54,7 @@ func (h *Handler) Wrap(handler http.Handler) http.Handler {
 		ctx, err := h.AuthRequest(r)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+
 			return
 		}
 		handler.ServeHTTP(w, r.WithContext(ctx))

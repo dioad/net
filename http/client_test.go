@@ -14,12 +14,13 @@ func newTestClient(t *testing.T) *Client {
 	t.Helper()
 	c, err := NewClient(&ClientConfig{Client: &http.Client{}})
 	require.NoError(t, err)
+
 	return c
 }
 
 func TestClient_Request_DefaultsContentTypeToJSONWhenUnset(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("echo-content-type", r.Header.Get("Content-Type"))
+		w.Header().Set("Echo-Content-Type", r.Header.Get("Content-Type"))
 	}))
 	defer server.Close()
 
@@ -32,12 +33,12 @@ func TestClient_Request_DefaultsContentTypeToJSONWhenUnset(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 
-	assert.Equal(t, "application/json", resp.Header.Get("echo-content-type"))
+	assert.Equal(t, "application/json", resp.Header.Get("Echo-Content-Type"))
 }
 
 func TestClient_Request_DoesNotOverrideCallerSetContentType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("echo-content-type", r.Header.Get("Content-Type"))
+		w.Header().Set("Echo-Content-Type", r.Header.Get("Content-Type"))
 	}))
 	defer server.Close()
 
@@ -51,5 +52,5 @@ func TestClient_Request_DoesNotOverrideCallerSetContentType(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 
-	assert.Equal(t, "application/x-www-form-urlencoded", resp.Header.Get("echo-content-type"), "a caller-set Content-Type must not be overwritten by the client's default")
+	assert.Equal(t, "application/x-www-form-urlencoded", resp.Header.Get("Echo-Content-Type"), "a caller-set Content-Type must not be overwritten by the client's default")
 }

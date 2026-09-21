@@ -22,6 +22,7 @@ func ReverseIP(addr string) (string, error) {
 	if ip.To4() == nil {
 		return "", &net.DNSError{Err: "reverse DNS notation is only supported for IPv4 addresses", Name: addr}
 	}
+
 	return uitoa(uint64(ip[15])) + "." + uitoa(uint64(ip[14])) + "." + uitoa(uint64(ip[13])) + "." + uitoa(uint64(ip[12])), nil
 }
 
@@ -37,6 +38,7 @@ func BlocklistLookupAddr(addr string) (bool, error) {
 		if _, ok := errors.AsType[*net.DNSError](err); ok {
 			return false, nil
 		}
+
 		return false, err
 	}
 	if len(responseCodes) == 0 {

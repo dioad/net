@@ -6,7 +6,7 @@ import (
 	"net/netip"
 )
 
-// Provider defines the interface for fetching IP prefix lists from different sources
+// Provider defines the interface for fetching IP prefix lists from different sources.
 type Provider interface {
 	// Name returns the provider name (e.g., "github", "cloudflare")
 	Name() string

@@ -30,7 +30,7 @@ func writeDANECertFixture(t *testing.T, stateDir, mxDomain string) {
 	t.Helper()
 
 	dir := filepath.Join(stateDir, "autocert", mxDomain)
-	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.MkdirAll(dir, 0o750))
 
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
@@ -113,6 +113,7 @@ func TestTLSARecord_Render_AutoRefresh_NoRace(t *testing.T) {
 		case <-deadline:
 			assert.NotEmpty(t, r.RecordValue())
 			assert.NotEmpty(t, r.String())
+
 			return
 		default:
 			_ = r.RecordValue()

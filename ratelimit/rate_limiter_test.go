@@ -234,6 +234,7 @@ func TestNewRateLimiterWithContextAndConfig_StartsBackgroundCleanup(t *testing.T
 	require.Eventually(t, func() bool {
 		rl.mu.RLock()
 		defer rl.mu.RUnlock()
+
 		return len(rl.limiters) == 0
 	}, 500*time.Millisecond, 10*time.Millisecond, "background cleanup goroutine should remove the stale limiter")
 }
@@ -274,6 +275,7 @@ func TestNewRateLimiterWithSourceAndConfig_StartsBackgroundCleanup(t *testing.T)
 	require.Eventually(t, func() bool {
 		rl.mu.RLock()
 		defer rl.mu.RUnlock()
+
 		return len(rl.limiters) == 0
 	}, 500*time.Millisecond, 10*time.Millisecond, "background cleanup goroutine should remove the stale limiter")
 }
@@ -290,6 +292,7 @@ func (m *mockSource) GetLimit(principal string) (float64, int, bool) {
 	if !ok {
 		return 0, 0, false
 	}
+
 	return l.rps, l.burst, true
 }
 
@@ -531,7 +534,7 @@ func BenchmarkRateLimiter_Allow_Sequential(b *testing.B) {
 	defer rl.Stop()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rl.Allow("user1")
 	}
 }
@@ -809,7 +812,7 @@ func TestRateLimiter_ConcurrentAccess(t *testing.T) {
 
 	// Verify no panics occurred and limiters were created
 	rl.mu.RLock()
-	assert.True(t, len(rl.limiters) > 0)
-	assert.True(t, len(rl.limiters) <= 10) // Max 10 unique principals
+	assert.Positive(t, len(rl.limiters))
+	assert.LessOrEqual(t, len(rl.limiters), 10) // Max 10 unique principals
 	rl.mu.RUnlock()
 }

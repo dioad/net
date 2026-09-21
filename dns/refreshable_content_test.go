@@ -18,6 +18,7 @@ func TestRefreshableContent_Render_FetchesOnce(t *testing.T) {
 
 	fetch := func() (string, error) {
 		calls.Add(1)
+
 		return "first", nil
 	}
 
@@ -49,6 +50,7 @@ func TestRefreshableContent_Render_RetriesAfterFailedFetch(t *testing.T) {
 		if calls.Add(1) == 1 {
 			return "", errors.New("boom")
 		}
+
 		return "second", nil
 	}
 
@@ -81,6 +83,7 @@ func TestRefreshableContent_Render_AutoRefresh_NoRace(t *testing.T) {
 		select {
 		case <-deadline:
 			assert.Equal(t, "value", c.Value())
+
 			return
 		default:
 			_ = c.Value()

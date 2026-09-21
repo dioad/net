@@ -105,6 +105,7 @@ func clampNonNegativeLimits(requestsPerSecond float64, burst int, logger zerolog
 		logger.Warn().Int("burst", burst).Msg("negative burst clamped to 0")
 		burst = 0
 	}
+
 	return requestsPerSecond, burst
 }
 
@@ -133,6 +134,7 @@ func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInter
 		cancel:            cancel,
 	}
 	rl.start()
+
 	return rl
 }
 
@@ -161,6 +163,7 @@ func NewRateLimiterWithContextAndConfig(ctx context.Context, requestsPerSecond f
 		cancel:            cancel,
 	}
 	rl.start()
+
 	return rl
 }
 
@@ -203,6 +206,7 @@ func NewRateLimiterWithSourceAndConfig(source RateLimitSource, cleanupInterval, 
 		cancel:          cancel,
 	}
 	rl.start()
+
 	return rl
 }
 
@@ -230,6 +234,7 @@ func NewRateLimiterWithSourceContextAndConfig(ctx context.Context, source RateLi
 		cancel:          cancel,
 	}
 	rl.start()
+
 	return rl
 }
 
@@ -313,6 +318,7 @@ func NewRateLimiterWithOptions(opts ...Option) *RateLimiter {
 		cancel:            cancel,
 	}
 	rl.start()
+
 	return rl
 }
 

@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -54,7 +55,7 @@ func NewPersistentCookieStore(config CookieConfig) (*sessions.CookieStore, error
 // NewSessionCookieStore creates a session cookie store from the provided configuration.
 func NewSessionCookieStore(config CookieConfig) (*sessions.CookieStore, error) {
 	if len(config.KeyPairs) == 0 {
-		return nil, fmt.Errorf("no cookie key pairs configured")
+		return nil, errors.New("no cookie key pairs configured")
 	}
 
 	// sessions.NewCookieStore takes a flat (auth, encryption) sequence; the

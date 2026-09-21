@@ -7,14 +7,14 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Listener wraps a net.Listener and filters connections based on prefix lists
+// Listener wraps a net.Listener and filters connections based on prefix lists.
 type Listener struct {
 	listener net.Listener
 	provider Provider
 	logger   zerolog.Logger
 }
 
-// NewListener creates a new prefix list filtering listener
+// NewListener creates a new prefix list filtering listener.
 func NewListener(listener net.Listener, provider Provider, logger zerolog.Logger) *Listener {
 	return &Listener{
 		listener: listener,
@@ -23,7 +23,7 @@ func NewListener(listener net.Listener, provider Provider, logger zerolog.Logger
 	}
 }
 
-// Accept waits for and returns the next connection, filtering based on prefix lists
+// Accept waits for and returns the next connection, filtering based on prefix lists.
 func (l *Listener) Accept() (net.Conn, error) {
 	for {
 		conn, err := l.listener.Accept()
@@ -37,9 +37,11 @@ func (l *Listener) Accept() (net.Conn, error) {
 			l.logger.Warn().
 				Str("remoteAddr", conn.RemoteAddr().String()).
 				Msg("non-TCP connection, rejecting")
-			if err := conn.Close(); err != nil {
+			err := conn.Close()
+			if err != nil {
 				l.logger.Debug().Err(err).Msg("error closing rejected connection")
 			}
+
 			continue
 		}
 
@@ -49,9 +51,11 @@ func (l *Listener) Accept() (net.Conn, error) {
 			l.logger.Warn().
 				Str("remoteAddr", tcpAddr.IP.String()).
 				Msg("invalid IP address, rejecting")
-			if err := conn.Close(); err != nil {
+			err := conn.Close()
+			if err != nil {
 				l.logger.Debug().Err(err).Msg("error closing rejected connection")
 			}
+
 			continue
 		}
 
@@ -60,9 +64,11 @@ func (l *Listener) Accept() (net.Conn, error) {
 			l.logger.Warn().
 				Str("remoteAddr", addr.String()).
 				Msg("connection not in allowed prefix lists, rejecting")
-			if err := conn.Close(); err != nil {
+			err := conn.Close()
+			if err != nil {
 				l.logger.Debug().Err(err).Msg("error closing rejected connection")
 			}
+
 			continue
 		}
 
@@ -74,12 +80,12 @@ func (l *Listener) Accept() (net.Conn, error) {
 	}
 }
 
-// Close closes the underlying listener
+// Close closes the underlying listener.
 func (l *Listener) Close() error {
 	return l.listener.Close()
 }
 
-// Addr returns the listener's network address
+// Addr returns the listener's network address.
 func (l *Listener) Addr() net.Addr {
 	return l.listener.Addr()
 }

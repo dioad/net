@@ -25,7 +25,7 @@ func TestHandlerFunc(t *testing.T) {
 	}
 
 	// Test allowed IP
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.RemoteAddr = "127.0.0.1:12345"
 	w := httptest.NewRecorder()
 
@@ -69,7 +69,7 @@ func TestAuthRequest_Allowed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.RemoteAddr = "192.168.1.100:8080"
 
 	ctx, err := handler.AuthRequest(req)
@@ -93,7 +93,7 @@ func TestAuthRequest_Denied(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.RemoteAddr = "192.168.1.1:8080"
 
 	_, err = handler.AuthRequest(req)
@@ -114,7 +114,7 @@ func TestAuthRequest_InvalidAddress(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.RemoteAddr = "invalid-address"
 
 	_, err = handler.AuthRequest(req)
@@ -142,7 +142,7 @@ func TestWrap_Allowed(t *testing.T) {
 
 	wrappedHandler := handler.Wrap(nextHandler)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.RemoteAddr = "172.16.100.50:9000"
 	w := httptest.NewRecorder()
 
@@ -174,7 +174,7 @@ func TestWrap_Forbidden(t *testing.T) {
 
 	wrappedHandler := handler.Wrap(nextHandler)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.RemoteAddr = "203.0.113.100:1234"
 	w := httptest.NewRecorder()
 
@@ -204,7 +204,7 @@ func TestWrap_AllowByDefault(t *testing.T) {
 	wrappedHandler := handler.Wrap(nextHandler)
 
 	// Test allowed IP (not in deny list)
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.RemoteAddr = "192.168.1.1:8080"
 	w := httptest.NewRecorder()
 

@@ -35,7 +35,7 @@ func TestNewResponseWithLogger(t *testing.T) {
 	var logOutput bytes.Buffer
 	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 
 	resp := NewResponseWithLogger(w, req, logger)
 
@@ -52,7 +52,8 @@ func TestNewResponseWithLogger(t *testing.T) {
 	// Trigger a log entry and verify snake_case field names.
 	resp.InternalServerError(LogErr(errors.New("oops")), LogMessage("test error"))
 	var entry map[string]any
-	if err := json.Unmarshal(logOutput.Bytes(), &entry); err != nil {
+	err := json.Unmarshal(logOutput.Bytes(), &entry)
+	if err != nil {
 		t.Fatalf("Failed to parse log output: %v", err)
 	}
 	if _, ok := entry["remote_addr"]; !ok {
@@ -84,7 +85,7 @@ func TestNewResponseFromRequest(t *testing.T) {
 		Logger()
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req = req.WithContext(ctxLogger.WithContext(req.Context()))
 
 	resp := NewResponseFromRequest(w, req)
@@ -111,7 +112,8 @@ func TestBadRequestWithMessage(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -173,7 +175,8 @@ func TestForbiddenWithMessage(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -193,7 +196,8 @@ func TestUnauthorizedWithMessage(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -213,7 +217,8 @@ func TestConflictWithMessage(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -233,7 +238,8 @@ func TestNotFoundWithMessage(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -253,7 +259,8 @@ func TestNotAcceptableWithMessage(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -273,7 +280,8 @@ func TestCreatedWithMessage(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -298,7 +306,8 @@ func TestCreatedWithURI(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -323,7 +332,8 @@ func TestCreatedWithURIAndMessage(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -354,7 +364,7 @@ func TestNoContent_IgnoresDataAndPublicMessage(t *testing.T) {
 	var logOutput bytes.Buffer
 	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 
 	resp := NewResponseWithLogger(w, req, logger)
 	resp.NoContent(Data(map[string]string{"id": "1"}), PublicMessage("done"))
@@ -375,7 +385,8 @@ func TestAcceptedWithMessage(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -400,7 +411,8 @@ func TestOK(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -432,7 +444,8 @@ func TestData(t *testing.T) {
 	}
 
 	var result map[string]int
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -460,7 +473,7 @@ func TestOK_StructDataWithMessage_LogsWarningWhenMessageIsDropped(t *testing.T) 
 	var logOutput bytes.Buffer
 	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 
 	resp := NewResponseWithLogger(w, req, logger)
 	resp.OK(Data(user{ID: "1"}), PublicMessage("done"))
@@ -483,7 +496,7 @@ func TestReadBody_ValidJSON(t *testing.T) {
 	}
 
 	jsonData := `{"name":"test","value":123}`
-	req := httptest.NewRequest("POST", "/test", bytes.NewBufferString(jsonData))
+	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(jsonData))
 
 	result, err := ReadBody[TestStruct](req)
 
@@ -505,7 +518,7 @@ func TestReadBody_InvalidJSON(t *testing.T) {
 	}
 
 	invalidJSON := `{"name": "test"`
-	req := httptest.NewRequest("POST", "/test", bytes.NewBufferString(invalidJSON))
+	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(invalidJSON))
 
 	_, err := ReadBody[TestStruct](req)
 
@@ -519,7 +532,7 @@ func TestReadBody_EmptyBody(t *testing.T) {
 		Name string `json:"name"`
 	}
 
-	req := httptest.NewRequest("POST", "/test", bytes.NewBufferString(""))
+	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(""))
 
 	_, err := ReadBody[TestStruct](req)
 
@@ -532,7 +545,7 @@ func TestResponseWithLogger_ErrorLogging(t *testing.T) {
 	var logOutput bytes.Buffer
 	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 
 	resp := NewResponseWithLogger(w, req, logger)
 	err := errors.New("test error")
@@ -553,7 +566,7 @@ func TestBadRequestWithMessages(t *testing.T) {
 	var logOutput bytes.Buffer
 	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 
 	resp := NewResponseWithLogger(w, req, logger)
 	resp.BadRequestWithMessages("client error", "server log message")
@@ -563,7 +576,8 @@ func TestBadRequestWithMessages(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -625,7 +639,8 @@ func TestForbiddenWithMessages(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -645,7 +660,8 @@ func TestUnauthorizedWithMessages(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -665,7 +681,8 @@ func TestConflictWithMessages(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
@@ -685,7 +702,8 @@ func TestNotFoundWithMessages(t *testing.T) {
 	}
 
 	var result map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 

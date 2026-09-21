@@ -42,6 +42,7 @@ func (r *TemplatedFileTXTRecord) fetchDNSContents(data any) (string, error) {
 	contents, err := io.ReadAll(f)
 	if err != nil {
 		_ = f.Close()
+
 		return "", err
 	}
 
@@ -54,6 +55,7 @@ func (r *TemplatedFileTXTRecord) fetchDNSContents(data any) (string, error) {
 
 func (r *TemplatedFileTXTRecord) Render(data any) error {
 	period := time.Duration(r.AutoRefreshPeriodSeconds) * time.Second
+
 	return r.content.Render(func() (string, error) { return r.fetchDNSContents(data) }, r.AutoRefresh, period)
 }
 
@@ -67,6 +69,7 @@ func (r *TemplatedFileTXTRecord) RecordPrefix() string {
 	if r.Name == "" {
 		return ""
 	}
+
 	return r.Name + "."
 }
 

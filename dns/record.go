@@ -34,17 +34,18 @@ type TemplatedRecord interface {
 // TXTRecord is a generic DNS TXT record with optional Go template expansion in Value.
 type TXTRecord struct {
 	// Name is the DNS owner label relative to the base domain. "" = apex.
-	Name string `mapstructure:"name" json:"name,omitempty"`
+	Name string `json:"name,omitempty" mapstructure:"name"`
 	// Value is a Go template string for the TXT record content (e.g. "v=spf1 {{.OutboundIPList}} -all").
-	Value string `mapstructure:"value" json:"value"`
+	Value string `json:"value" mapstructure:"value"`
 	// TTL is the DNS TTL in seconds advertised to resolvers. Zero uses DefaultTTL.
-	TTL uint32 `mapstructure:"ttl" json:"ttl,omitempty"`
+	TTL uint32 `json:"ttl,omitempty" mapstructure:"ttl"`
 }
 
 func (r *TXTRecord) RecordPrefix() string {
 	if r.Name == "" {
 		return ""
 	}
+
 	return r.Name + "."
 }
 
@@ -59,6 +60,7 @@ func (r *TXTRecord) RecordTTL() uint32 {
 	if r.TTL == 0 {
 		return DefaultTTL
 	}
+
 	return r.TTL
 }
 
@@ -69,6 +71,7 @@ func (r *TXTRecord) Render(data any) error {
 		return fmt.Errorf("rendering TXT value: %w", err)
 	}
 	r.Value = rendered
+
 	return nil
 }
 

@@ -2,9 +2,9 @@ package http
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
@@ -142,7 +142,8 @@ func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 		},
 		[]string{"result"},
 	)
-	if err := reg.Register(r.counter); err != nil {
+	err := reg.Register(r.counter)
+	if err != nil {
 		if are, ok := errors.AsType[prometheus.AlreadyRegisteredError](err); ok {
 			if existing, ok := are.ExistingCollector.(*prometheus.CounterVec); ok {
 				r.counter = existing
@@ -169,7 +170,7 @@ func (rl *RateLimiter) setRetryAfterHeader(w http.ResponseWriter, principal stri
 	retryAfter := rl.limiter.RetryAfter(principal)
 	retryAfterSeconds := max(
 		int(math.Ceil(retryAfter.Seconds())), 1)
-	w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
+	w.Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds))
 }
 
 // Middleware returns an HTTP middleware for rate limiting.
@@ -178,6 +179,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		p, err := rl.getPrincipal(r)
 		if err != nil {
 			http.Error(w, "unable to determine principal for rate limiting", http.StatusBadRequest)
+
 			return
 		}
 		if !rl.limiter.Allow(p) {
@@ -189,6 +191,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			rl.counter.WithLabelValues("blocked").Inc()
 			rl.setRetryAfterHeader(w, p)
 			http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+
 			return
 		}
 		rl.counter.WithLabelValues("allowed").Inc()

@@ -51,6 +51,7 @@ func TestLimitBodySize_OverLimit_MaxBytesReader(t *testing.T) {
 		_, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "body too large", http.StatusRequestEntityTooLarge)
+
 			return
 		}
 		w.WriteHeader(http.StatusOK)

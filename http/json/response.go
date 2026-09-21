@@ -114,6 +114,7 @@ func NewResponseWithLogger(w http.ResponseWriter, r *http.Request, l zerolog.Log
 		Str("remote_addr", r.RemoteAddr).
 		Str("user_agent", r.UserAgent()).
 		Logger()
+
 	return &Response{
 		Writer: w,
 		logger: &logger,
@@ -190,6 +191,7 @@ func (r *Response) mergeResponseData(data any, message string, code int) any {
 		if message != "" {
 			r.logWarn("PublicMessage is dropped: Data() payload is not a map[string]any, so it cannot be merged with a message")
 		}
+
 		return data
 	}
 
@@ -417,7 +419,9 @@ func ReadBody[T any](req *http.Request) (T, error) {
 	err := decoder.Decode(&t)
 	if err != nil {
 		_ = req.Body.Close()
+
 		return t, err
 	}
+
 	return t, req.Body.Close()
 }

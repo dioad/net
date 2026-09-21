@@ -17,23 +17,29 @@ import (
 // tell delegation apart from a full Close() fallback.
 type fakeCloseWriteConn struct {
 	net.Conn
+
 	closeWriteCalled bool
 	closeCalled      bool
 }
 
 func (f *fakeCloseWriteConn) CloseWrite() error {
 	f.closeWriteCalled = true
+
 	return nil
 }
 
 func (f *fakeCloseWriteConn) Close() error {
 	f.closeCalled = true
+
 	return nil
 }
 
 func TestConnDuration(t *testing.T) {
 	controlConn, testConn := net.Pipe()
 	c := NewConn(testConn)
+
+	conn, ok := c.(*Conn)
+	require.True(t, ok, "NewConn must return a *Conn")
 
 	wg := sync.WaitGroup{}
 
@@ -54,13 +60,13 @@ func TestConnDuration(t *testing.T) {
 
 		_, _ = c.Read(dest)
 
-		midDuration = c.(*Conn).Duration()
+		midDuration = conn.Duration()
 
 		time.Sleep(50 * time.Millisecond)
 
 		_, _ = c.Write([]byte("b"))
 
-		endDuration = c.(*Conn).Duration()
+		endDuration = conn.Duration()
 	})
 
 	wg.Wait()
@@ -75,7 +81,7 @@ func TestConnDuration(t *testing.T) {
 		t.Errorf("end duration mismatch: %v(rounded=%v) != %v", endDuration, roundedEndDuration, 200*time.Millisecond)
 	}
 
-	_ = c.(*Conn).Close()
+	_ = conn.Close()
 
 	// roundedD1 := d1.Round(10 * time.Millisecond)
 	// if roundedD1 != 250*time.Millisecond {
@@ -93,7 +99,9 @@ func TestConnDuration_ZeroBeforeAnyIO(t *testing.T) {
 	c := NewConn(testConn)
 	defer func() { _ = c.Close() }()
 
-	assert.Equal(t, time.Duration(0), c.(*Conn).Duration(), "Duration before any read/write must be 0, not endTime.Sub(startTime) with a zero endTime")
+	conn, ok := c.(*Conn)
+	require.True(t, ok, "NewConn must return a *Conn")
+	assert.Equal(t, time.Duration(0), conn.Duration(), "Duration before any read/write must be 0, not endTime.Sub(startTime) with a zero endTime")
 }
 
 func TestConnBytesWritten(t *testing.T) {
@@ -112,7 +120,10 @@ func TestConnBytesWritten(t *testing.T) {
 		t.Fatalf("failed to pass-through write")
 	}
 
-	if uint64(len(bytesWritten)) != c.(*Conn).BytesWritten() {
+	conn, ok := c.(*Conn)
+	require.True(t, ok, "NewConn must return a *Conn")
+
+	if uint64(len(bytesWritten)) != conn.BytesWritten() {
 		t.Fatalf("c.BytesWritten() not equal to bytes written")
 	}
 }
@@ -133,7 +144,10 @@ func TestConnBytesRead(t *testing.T) {
 		t.Fatalf("failed to pass-through read")
 	}
 
-	if uint64(len(bytesToWrite)) != c.(*Conn).BytesRead() {
+	conn, ok := c.(*Conn)
+	require.True(t, ok, "NewConn must return a *Conn")
+
+	if uint64(len(bytesToWrite)) != conn.BytesRead() {
 		t.Fatalf("c.BytesRead() not equal to bytes read")
 	}
 }
@@ -144,12 +158,18 @@ func TestConn_CloseWrite_DelegatesWhenSupported(t *testing.T) {
 	fake := &fakeCloseWriteConn{}
 	c := NewConn(fake)
 
-	err := c.(interface{ CloseWrite() error }).CloseWrite()
+	closeWriter, ok := c.(interface{ CloseWrite() error })
+	require.True(t, ok, "Conn must implement CloseWrite() error")
+
+	err := closeWriter.CloseWrite()
 
 	require.NoError(t, err)
 	assert.True(t, fake.closeWriteCalled, "expected CloseWrite to delegate to the wrapped conn's own CloseWrite")
 	assert.False(t, fake.closeCalled, "delegating to a real half-close must not also fully close the wrapped conn")
-	assert.False(t, c.(*Conn).conn.Closed(), "CloseWrite must not mark the connection as closed when it only half-closed the wrapped conn")
+
+	conn, ok := c.(*Conn)
+	require.True(t, ok, "NewConn must return a *Conn")
+	assert.False(t, conn.conn.Closed(), "CloseWrite must not mark the connection as closed when it only half-closed the wrapped conn")
 }
 
 func TestConn_CloseWrite_FallsBackToCloseWhenUnsupported(t *testing.T) {
@@ -161,8 +181,14 @@ func TestConn_CloseWrite_FallsBackToCloseWhenUnsupported(t *testing.T) {
 	_, client := net.Pipe()
 	c := NewConn(client)
 
-	err := c.(interface{ CloseWrite() error }).CloseWrite()
+	closeWriter, ok := c.(interface{ CloseWrite() error })
+	require.True(t, ok, "Conn must implement CloseWrite() error")
+
+	err := closeWriter.CloseWrite()
 
 	require.NoError(t, err)
-	assert.True(t, c.(*Conn).conn.Closed(), "CloseWrite must fall back to a full Close() when the wrapped conn has no half-close of its own")
+
+	conn, ok := c.(*Conn)
+	require.True(t, ok, "NewConn must return a *Conn")
+	assert.True(t, conn.conn.Closed(), "CloseWrite must fall back to a full Close() when the wrapped conn has no half-close of its own")
 }

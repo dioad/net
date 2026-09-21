@@ -77,6 +77,7 @@ func domainSetCacheKey(domains []string) string {
 	sort.Strings(sorted)
 
 	sum := sha256.Sum256([]byte(strings.Join(sorted, "\n")))
+
 	return hex.EncodeToString(sum[:])[:16]
 }
 
@@ -88,6 +89,7 @@ func domainSetCacheKey(domains []string) string {
 // sharing the same account reuse one.
 func accountCacheKey(email, directoryURL string) string {
 	sum := sha256.Sum256([]byte(strings.ToLower(email) + "\n" + directoryURL))
+
 	return hex.EncodeToString(sum[:])[:16]
 }
 
@@ -98,10 +100,10 @@ func accountCacheKey(email, directoryURL string) string {
 // expiry; that goroutine exits when ctx is cancelled.
 func newDNS01TLSConfig(ctx context.Context, c ACMEConfig) (*tls.Config, error) {
 	if c.DNS01.Provider == nil {
-		return nil, fmt.Errorf("dns01: provider must be set")
+		return nil, errors.New("dns01: provider must be set")
 	}
 	if len(c.Domains) == 0 {
-		return nil, fmt.Errorf("dns01: at least one domain must be configured")
+		return nil, errors.New("dns01: at least one domain must be configured")
 	}
 
 	mgr, err := newDNS01Manager(c)
@@ -182,8 +184,10 @@ func newDNS01Manager(c ACMEConfig) (*dns01Manager, error) {
 func (m *dns01Manager) ensureCertificate(ctx context.Context) error {
 	if cert, ok := m.loadCachedCertificate(ctx); ok && !needsRenewal(cert.Leaf.NotAfter, time.Now(), dns01RenewBefore) {
 		m.setCertificate(cert)
+
 		return nil
 	}
+
 	return m.reissue(ctx)
 }
 
@@ -206,7 +210,10 @@ func (m *dns01Manager) reissue(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error obtaining certificate via acme dns-01: %w", err)
 	}
-	obtained := v.(*obtainedCert)
+	obtained, ok := v.(*obtainedCert)
+	if !ok {
+		return fmt.Errorf("internal error: obtainGroup returned unexpected type %T", v)
+	}
 
 	if err := m.cache.Put(ctx, m.certName, obtained.certPEM); err != nil {
 		return fmt.Errorf("error persisting certificate: %w", err)
@@ -221,6 +228,7 @@ func (m *dns01Manager) reissue(ctx context.Context) error {
 	}
 
 	m.setCertificate(&cert)
+
 	return nil
 }
 
@@ -292,8 +300,9 @@ func (m *dns01Manager) getCertificate(*tls.ClientHelloInfo) (*tls.Certificate, e
 	defer m.mu.Unlock()
 
 	if m.cert == nil {
-		return nil, fmt.Errorf("dns-01: no certificate available")
+		return nil, errors.New("dns-01: no certificate available")
 	}
+
 	return m.cert, nil
 }
 
@@ -324,7 +333,8 @@ func (m *dns01Manager) renewalLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := m.renewIfDue(ctx); err != nil {
+			err := m.renewIfDue(ctx)
+			if err != nil {
 				zerolog.Ctx(ctx).Error().Err(err).Msg("dns-01: certificate renewal failed, will retry next tick")
 			}
 		}
@@ -345,6 +355,7 @@ func (m *dns01Manager) renewIfDue(ctx context.Context) error {
 	if cert != nil && !needsRenewal(cert.Leaf.NotAfter, time.Now(), dns01RenewBefore) {
 		return nil
 	}
+
 	return m.reissue(ctx)
 }
 
@@ -354,6 +365,7 @@ func (m *dns01Manager) renewIfDue(ctx context.Context) error {
 // whether the caller's own Provider implementation exposes a Timeout method.
 type dns01ProviderWithTimeout struct {
 	challenge.Provider
+
 	timeout  time.Duration
 	interval time.Duration
 }
@@ -437,6 +449,7 @@ func loadOrCreateAccountKey(ctx context.Context, cache autocert.Cache, key strin
 		if block == nil {
 			return nil, fmt.Errorf("invalid PEM in account key %s", key)
 		}
+
 		return x509.ParseECPrivateKey(block.Bytes)
 	} else if !errors.Is(err, autocert.ErrCacheMiss) {
 		return nil, fmt.Errorf("error reading account key: %w", err)

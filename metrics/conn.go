@@ -107,6 +107,7 @@ func (m *connMetrics) Duration() time.Duration {
 	if m.endTime.IsZero() {
 		return 0
 	}
+
 	return m.endTime.Sub(m.startTime)
 }
 
@@ -155,6 +156,7 @@ func (s *Conn) ResetMetrics() {
 func (s *Conn) Read(b []byte) (int, error) {
 	n, err := s.conn.Read(b)
 	s.metrics.IncBytesRead(n)
+
 	return n, err
 }
 
@@ -162,6 +164,7 @@ func (s *Conn) Read(b []byte) (int, error) {
 func (s *Conn) Write(b []byte) (int, error) {
 	n, err := s.conn.Write(b)
 	s.metrics.IncBytesWritten(n)
+
 	return n, err
 }
 
@@ -182,6 +185,7 @@ func (s *Conn) CloseWrite() error {
 	if wc, ok := s.conn.(interface{ CloseWrite() error }); ok {
 		return wc.CloseWrite()
 	}
+
 	return s.Close()
 }
 
@@ -195,7 +199,7 @@ func (s *Conn) RemoteAddr() net.Addr {
 	return s.conn.RemoteAddr()
 }
 
-// SetDeadline sets the read and write deadlines associated with the
+// SetDeadline sets the read and write deadlines associated with the.
 func (s *Conn) SetDeadline(t time.Time) error {
 	return s.conn.SetDeadline(t)
 }
@@ -210,11 +214,12 @@ func (s *Conn) SetWriteDeadline(t time.Time) error {
 	return s.conn.SetWriteDeadline(t)
 }
 
-// SetKeepAlive sets whether the operating system should send keepalive
+// SetKeepAlive sets whether the operating system should send keepalive.
 func (s *Conn) SetKeepAlive(keepalive bool) error {
 	if c, ok := s.conn.(net2.RawConn).NetConn().(*net.TCPConn); ok {
 		return c.SetKeepAlive(keepalive)
 	}
+
 	return nil
 }
 
@@ -223,6 +228,7 @@ func (s *Conn) SetKeepAlivePeriod(d time.Duration) error {
 	if c, ok := s.conn.(net2.RawConn).NetConn().(*net.TCPConn); ok {
 		return c.SetKeepAlivePeriod(d)
 	}
+
 	return nil
 }
 
@@ -251,7 +257,7 @@ func NewConnWithStartTime(c net.Conn, startTime time.Time) net.Conn {
 	return conn
 }
 
-// NewConnWithCloser returns a new net.Conn that wraps the given net.Conn and
+// NewConnWithCloser returns a new net.Conn that wraps the given net.Conn and.
 func NewConnWithCloser(c net.Conn, closer func(net.Conn)) net2.DoneConn {
 	conn := NewConn(c)
 

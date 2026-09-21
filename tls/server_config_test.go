@@ -66,7 +66,7 @@ func TestNewClientTLSConfig(t *testing.T) {
 			c:    ClientConfig{InsecureSkipVerify: true},
 			want: &tls.Config{
 				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: true, //nolint:gosec // asserting NewClientTLSConfig propagates the caller's opt-in InsecureSkipVerify setting
 			},
 		},
 	}
@@ -104,6 +104,7 @@ func helperCreateSelfSignedKeyPair(t *testing.T, tempDir string) (*tls.Certifica
 	if err != nil {
 		t.Fatalf("CreateSelfSignedKeyPair() error = %v", err)
 	}
+
 	return cert, certPool
 }
 
@@ -192,7 +193,7 @@ func TestNewLocalTLSConfigErrors(t *testing.T) {
 		})
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "error loading key pair and certs from files")
-		assert.NotNil(t, errors.Unwrap(err), "the underlying error should be wrapped (%w), not just formatted as text")
+		assert.Error(t, errors.Unwrap(err), "the underlying error should be wrapped (%w), not just formatted as text")
 	})
 }
 
@@ -218,7 +219,7 @@ func TestNewServerTLSConfig(t *testing.T) {
 
 	// Create a CA file for testing
 	caPath := filepath.Join(tempDir, "ca.pem")
-	caFile, err := os.Create(caPath)
+	caFile, err := os.Create(caPath) //nolint:gosec // caPath is a test-generated temp file, not external input
 	if err != nil {
 		t.Fatalf("Failed to create CA file: %v", err)
 	}
@@ -430,11 +431,13 @@ func TestNewServerTLSConfig(t *testing.T) {
 				if err == nil {
 					t.Errorf("NewServerTLSConfig() expected error, got nil")
 				}
+
 				return
 			}
 
 			if err != nil {
 				t.Errorf("NewServerTLSConfig() error = %v", err)
+
 				return
 			}
 

@@ -12,20 +12,21 @@ import (
 // and spf.Record: fields may contain Go template strings expanded at render time.
 type Record struct {
 	// Priority is the MX preference value.
-	Priority uint16 `mapstructure:"priority" json:"priority"`
+	Priority uint16 `json:"priority" mapstructure:"priority"`
 	// Host is a Go template string for the mail exchange FQDN (must end in ".").
 	// Empty defaults to "{{.Domain}}." at render time — the tunnel's own FQDN.
-	Host string `mapstructure:"host" json:"host,omitempty"`
+	Host string `json:"host,omitempty" mapstructure:"host"`
 	// Prefix is the DNS owner label relative to the base domain. "" = apex.
-	Prefix string `mapstructure:"prefix" json:"prefix,omitempty"`
+	Prefix string `json:"prefix,omitempty" mapstructure:"prefix"`
 	// TTL is the DNS TTL in seconds advertised to resolvers. Zero uses dns.DefaultTTL.
-	TTL uint32 `mapstructure:"ttl" json:"ttl,omitempty"`
+	TTL uint32 `json:"ttl,omitempty" mapstructure:"ttl"`
 }
 
 func (r *Record) RecordPrefix() string {
 	if r.Prefix == "" {
 		return ""
 	}
+
 	return r.Prefix + "."
 }
 
@@ -40,6 +41,7 @@ func (r *Record) RecordTTL() uint32 {
 	if r.TTL == 0 {
 		return dns.DefaultTTL
 	}
+
 	return r.TTL
 }
 
@@ -55,6 +57,7 @@ func (r *Record) Render(data any) error {
 		return fmt.Errorf("rendering MX host: %w", err)
 	}
 	r.Host = rendered
+
 	return nil
 }
 

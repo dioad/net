@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestIntegrationProviders tests actual provider endpoints (skipped by default)
+// TestIntegrationProviders tests actual provider endpoints (skipped by default).
 func TestIntegrationProviders(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -90,7 +90,7 @@ func TestIntegrationProviders(t *testing.T) {
 	}
 }
 
-// TestProviderResponseFormat tests that providers return valid CIDR ranges
+// TestProviderResponseFormat tests that providers return valid CIDR ranges.
 func TestProviderResponseFormat(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -138,6 +138,7 @@ func TestProviderResponseFormat(t *testing.T) {
 			for _, prefix := range prefixes {
 				if prefix.Contains(addr) {
 					found = true
+
 					break
 				}
 			}

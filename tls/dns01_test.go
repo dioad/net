@@ -164,6 +164,7 @@ func TestDNS01ManagerEnsureCertificateCacheHit(t *testing.T) {
 	var calls int
 	m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls++
+
 		return nil, assert.AnError
 	}
 
@@ -180,11 +181,13 @@ func TestDNS01ManagerEnsureCertificateCacheHit(t *testing.T) {
 // failed lookup rather than just checking its (identical) return value.
 type countingCache struct {
 	autocert.Cache
+
 	getCalls int
 }
 
 func (c *countingCache) Get(ctx context.Context, key string) ([]byte, error) {
 	c.getCalls++
+
 	return c.Cache.Get(ctx, key)
 }
 
@@ -250,6 +253,7 @@ func TestDNS01ManagerEnsureCertificateReissuesWhenNearExpiry(t *testing.T) {
 	var calls int
 	m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls++
+
 		return &obtainedCert{certPEM: newCertPEM, keyPEM: newKeyPEM}, nil
 	}
 
@@ -273,6 +277,7 @@ func TestDNS01ManagerRenewalLoopExitsOnContextCancellation(t *testing.T) {
 	var calls atomic.Int32
 	m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls.Add(1)
+
 		return &obtainedCert{certPEM: freshCertPEM, keyPEM: freshKeyPEM}, nil
 	}
 
@@ -309,6 +314,7 @@ func TestDNS01ManagerReissueReturnsPromptlyOnContextCancellation(t *testing.T) {
 	m.obtain = func(ctx context.Context, _ ACMEConfig, _ autocert.Cache, _ string) (*obtainedCert, error) {
 		close(obtainStarted)
 		<-unblock
+
 		return nil, ctx.Err()
 	}
 	t.Cleanup(func() { close(unblock) })
@@ -347,7 +353,7 @@ func TestDNS01ManagerReissueErrors(t *testing.T) {
 		err := m.reissue(ctx)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "error persisting certificate")
-		assert.NotNil(t, errors.Unwrap(err), "the underlying error should be wrapped (%w), not just formatted as text")
+		assert.Error(t, errors.Unwrap(err), "the underlying error should be wrapped (%w), not just formatted as text")
 	})
 
 	t.Run("cache Put error for the private key is wrapped", func(t *testing.T) {
@@ -358,6 +364,7 @@ func TestDNS01ManagerReissueErrors(t *testing.T) {
 				if key == m.certKeyName {
 					return errors.New("disk full")
 				}
+
 				return nil
 			},
 		}
@@ -404,6 +411,7 @@ func TestDNS01ManagerReissueColdCacheConcurrentCallsCoalesce(t *testing.T) {
 	obtain := func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls.Add(1)
 		<-release
+
 		return &obtainedCert{certPEM: certPEM, keyPEM: keyPEM}, nil
 	}
 	for _, m := range managers {

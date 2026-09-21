@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestMarshalQueryWithPrefixAndStructName tests the example from the issue
+// TestMarshalQueryWithPrefixAndStructName tests the example from the issue.
 func TestMarshalQueryWithPrefixAndStructName(t *testing.T) {
 	example := Example{
 		FieldOne: "value1",
@@ -33,7 +33,7 @@ func TestMarshalQueryWithPrefixAndStructName(t *testing.T) {
 	assert.Equalf(t, []string{"value2", "value3"}, values["X-example-field-two"], "X-example-field-two mismatch")
 }
 
-// TestMarshalQueryWithoutStructName tests encoding without struct name
+// TestMarshalQueryWithoutStructName tests encoding without struct name.
 func TestMarshalQueryWithoutStructName(t *testing.T) {
 	example := Example{
 		FieldOne: "value1",
@@ -52,13 +52,13 @@ func TestMarshalQueryWithoutStructName(t *testing.T) {
 	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
 
 	// Check fieldSet one (without struct name)
-	assert.Equal(t, values.Get("X-FieldOne"), "value1")
+	assert.Equal(t, "value1", values.Get("X-FieldOne"))
 
 	// Check fieldSet two
-	assert.Equal(t, values.Get("X-FieldTwo"), "value2")
+	assert.Equal(t, "value2", values.Get("X-FieldTwo"))
 }
 
-// TestMarshalQueryNoPrefix tests encoding without prefix
+// TestMarshalQueryNoPrefix tests encoding without prefix.
 func TestMarshalQueryNoPrefix(t *testing.T) {
 	example := Example{
 		FieldOne: "value1",
@@ -74,10 +74,10 @@ func TestMarshalQueryNoPrefix(t *testing.T) {
 	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	// Check fieldSet one (no prefix, no struct name)
-	assert.Equal(t, values.Get("FieldOne"), "value1")
+	assert.Equal(t, "value1", values.Get("FieldOne"))
 
 	// Check fieldSet two
-	assert.Equal(t, values.Get("FieldTwo"), "value2")
+	assert.Equal(t, "value2", values.Get("FieldTwo"))
 }
 
 func TestUnmarshalQuery(t *testing.T) {
@@ -93,7 +93,7 @@ func TestUnmarshalQuery(t *testing.T) {
 	assert.Equal(t, []string{"value2", "value3"}, example.FieldTwo)
 }
 
-// TestUnmarshalQueryWithPrefixAndStructName tests decoding with prefix and struct name
+// TestUnmarshalQueryWithPrefixAndStructName tests decoding with prefix and struct name.
 func TestUnmarshalQueryWithPrefixAndStructName(t *testing.T) {
 	values := url.Values{}
 	values.Set("X-example-field-one", "value1")
@@ -115,7 +115,7 @@ func TestUnmarshalQueryWithPrefixAndStructName(t *testing.T) {
 	assert.Equal(t, []string{"value2", "value3"}, example.FieldTwo)
 }
 
-// TestUnmarshalQueryWithoutStructName tests decoding without struct name
+// TestUnmarshalQueryWithoutStructName tests decoding without struct name.
 func TestUnmarshalQueryWithoutStructName(t *testing.T) {
 	values := url.Values{}
 	values.Set("X-field-one", "value1")
@@ -136,7 +136,7 @@ func TestUnmarshalQueryWithoutStructName(t *testing.T) {
 	assert.Equalf(t, []string{"value2"}, example.FieldTwo, "FieldTwo mismatch")
 }
 
-// TestMarshalUnmarshalQueryRoundTrip tests that marshal followed by unmarshal returns the original
+// TestMarshalUnmarshalQueryRoundTrip tests that marshal followed by unmarshal returns the original.
 func TestMarshalUnmarshalQueryRoundTrip(t *testing.T) {
 	original := Example{
 		FieldOne: "test-value",
@@ -161,7 +161,7 @@ func TestMarshalUnmarshalQueryRoundTrip(t *testing.T) {
 	assert.Equalf(t, original, result, "Round trip mismatch")
 }
 
-// TestStructWithQueryTags tests struct with custom query tags
+// TestStructWithQueryTags tests struct with custom query tags.
 func TestStructWithQueryTags(t *testing.T) {
 	type CustomStruct struct {
 		Field1 string   `query:"custom-name"`
@@ -195,7 +195,7 @@ func TestStructWithQueryTags(t *testing.T) {
 	assert.NotContains(t, values.Get("X-Field3"), "X-Field3 should not be present (marked with '-' tag)")
 }
 
-// TestMarshalQueryEmptyStruct tests marshaling an empty struct
+// TestMarshalQueryEmptyStruct tests marshaling an empty struct.
 func TestMarshalQueryEmptyStruct(t *testing.T) {
 	example := Example{}
 
@@ -208,7 +208,7 @@ func TestMarshalQueryEmptyStruct(t *testing.T) {
 	assert.Emptyf(t, query, "Expected empty query,")
 }
 
-// TestMarshalQueryNilPointer tests marshaling a nil pointer
+// TestMarshalQueryNilPointer tests marshaling a nil pointer.
 func TestMarshalQueryNilPointer(t *testing.T) {
 	var example *Example
 
@@ -220,7 +220,7 @@ func TestMarshalQueryNilPointer(t *testing.T) {
 	assert.Emptyf(t, query, "Expected an empty string")
 }
 
-// TestMarshalQueryPointerToStruct tests marshaling a pointer to a struct
+// TestMarshalQueryPointerToStruct tests marshaling a pointer to a struct.
 func TestMarshalQueryPointerToStruct(t *testing.T) {
 	example := &Example{
 		FieldOne: "value1",
@@ -235,10 +235,10 @@ func TestMarshalQueryPointerToStruct(t *testing.T) {
 	values, err := url.ParseQuery(query)
 	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
 
-	assert.Equalf(t, values.Get("FieldOne"), "value1", "FieldOne mismatch")
+	assert.Equalf(t, "value1", values.Get("FieldOne"), "FieldOne mismatch")
 }
 
-// TestUnmarshalQueryInvalidDestination tests error handling for invalid destinations
+// TestUnmarshalQueryInvalidDestination tests error handling for invalid destinations.
 func TestUnmarshalQueryInvalidDestination(t *testing.T) {
 	values := url.Values{}
 	values.Set("field-one", "value1")
@@ -260,7 +260,7 @@ func TestUnmarshalQueryInvalidDestination(t *testing.T) {
 	assert.Error(t, err, "Expected error when unmarshaling to nil")
 }
 
-// TestMarshalQueryNonStruct tests error handling for non-struct types
+// TestMarshalQueryNonStruct tests error handling for non-struct types.
 func TestMarshalQueryNonStruct(t *testing.T) {
 	notAStruct := "string"
 
@@ -270,7 +270,7 @@ func TestMarshalQueryNonStruct(t *testing.T) {
 	assert.Error(t, err, "Expected error when unmarshaling to non-struct")
 }
 
-// TestMultipleQueryTypes tests marshaling different fieldSet types
+// TestMultipleQueryTypes tests marshaling different fieldSet types.
 func TestMultipleQueryTypes(t *testing.T) {
 	type MultiTypeStruct struct {
 		StringField string
@@ -300,11 +300,11 @@ func TestMultipleQueryTypes(t *testing.T) {
 	}
 
 	assert.Equalf(t, values.Get("StringField"), mt.StringField, "StringField mismatch")
-	assert.Equalf(t, values.Get("IntField"), "42", "IntField mismatch")
-	assert.Equalf(t, values.Get("UintField"), "100", "UintField mismatch")
-	assert.Equalf(t, values.Get("BoolField"), "true", "BoolField mismatch")
+	assert.Equalf(t, "42", values.Get("IntField"), "IntField mismatch")
+	assert.Equalf(t, "100", values.Get("UintField"), "UintField mismatch")
+	assert.Equalf(t, "true", values.Get("BoolField"), "BoolField mismatch")
 
-	assert.Equalf(t, values["SliceField"], []string{"a", "b"}, "SliceField mismatch")
+	assert.Equalf(t, []string{"a", "b"}, values["SliceField"], "SliceField mismatch")
 
 	// Test unmarshal
 	var result MultiTypeStruct
@@ -314,7 +314,7 @@ func TestMultipleQueryTypes(t *testing.T) {
 	assert.Equalf(t, result, mt, "Round trip mismatch")
 }
 
-// TestUnexportedQueryFields tests that unexported fields are skipped
+// TestUnexportedQueryFields tests that unexported fields are skipped.
 func TestUnexportedQueryFields(t *testing.T) {
 	type StructWithUnexported struct {
 		ExportedField   string
@@ -335,13 +335,13 @@ func TestUnexportedQueryFields(t *testing.T) {
 	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
 
 	// Only exported fieldSet should be present
-	assert.Equalf(t, values.Get("ExportedField"), "visible", "exported fieldSet mismatch")
+	assert.Equalf(t, "visible", values.Get("ExportedField"), "exported fieldSet mismatch")
 
 	// Unexported fieldSet should not be present
 	assert.NotContainsf(t, values, "UnexportedFfield", "unexported fieldSet should not be present")
 }
 
-// TestEmptyQuerySlice tests handling of empty slices
+// TestEmptyQuerySlice tests handling of empty slices.
 func TestEmptyQuerySlice(t *testing.T) {
 	type StructWithSlice struct {
 		EmptySlice []string
@@ -361,7 +361,7 @@ func TestEmptyQuerySlice(t *testing.T) {
 	assert.Emptyf(t, query, "Expected empty query, got %q", query)
 }
 
-// TestRFC3986MultipleQueryOccurrences verifies repeated query params are unmarshaled into a slice
+// TestRFC3986MultipleQueryOccurrences verifies repeated query params are unmarshaled into a slice.
 func TestRFC3986MultipleQueryOccurrences(t *testing.T) {
 	values := url.Values{}
 	values.Add("X-example-field-two", "value1")
@@ -390,7 +390,7 @@ func TestRFC3986MultipleQueryOccurrences(t *testing.T) {
 	assert.Equalf(t, []string{"value1", "value2", "value3"}, parsed["X-example-field-two"], "Multiple values not marshaled correctly")
 }
 
-// TestQueryValuesWithCommas tests that values containing commas are preserved
+// TestQueryValuesWithCommas tests that values containing commas are preserved.
 func TestQueryValuesWithCommas(t *testing.T) {
 	type CommaStruct struct {
 		Values []string
@@ -424,7 +424,7 @@ func TestQueryValuesWithCommas(t *testing.T) {
 	assert.Equalf(t, "value,with,comma", params[1], "Comma not preserved in value:")
 }
 
-// TestQueryValuesWithSpecialCharacters tests handling of quotes and other special characters
+// TestQueryValuesWithSpecialCharacters tests handling of quotes and other special characters.
 func TestQueryValuesWithSpecialCharacters(t *testing.T) {
 	type SpecialStruct struct {
 		Values []string
@@ -451,7 +451,7 @@ func TestQueryValuesWithSpecialCharacters(t *testing.T) {
 	assert.Equalf(t, ss, result, "Special characters not preserved")
 }
 
-// TestQueryOrderPreservation verifies that the order of values is preserved
+// TestQueryOrderPreservation verifies that the order of values is preserved.
 func TestQueryOrderPreservation(t *testing.T) {
 	type OrderStruct struct {
 		Ordered []string

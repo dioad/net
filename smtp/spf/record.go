@@ -29,7 +29,7 @@ type Mechanism struct {
 	Name       string              `mapstructure:"name"`
 	Values     []string            `mapstructure:"values"`
 	ValueList  string              `mapstructure:"value-list"`
-	ValuesFunc MechanismValuesFunc `mapstructure:"-" json:"-"`
+	ValuesFunc MechanismValuesFunc `json:"-"                  mapstructure:"-"`
 }
 
 func IPMechanisms(values ...string) (*Mechanism, *Mechanism) {
@@ -95,6 +95,7 @@ func resolveValues(mech Mechanism, data any) []string {
 	if len(mech.Values) > 0 {
 		expandedValues := generics.SafeMap(func(s string) string {
 			expanded, _ := util.ExpandStringTemplate(s, data)
+
 			return expanded
 		}, mech.Values)
 		values = append(values, expandedValues...)
@@ -108,6 +109,7 @@ func resolveValues(mech Mechanism, data any) []string {
 	if mech.ValuesFunc != nil {
 		values = append(values, mech.ValuesFunc()...)
 	}
+
 	return values
 }
 
@@ -115,6 +117,7 @@ func (r *Record) Render(data any) error {
 	for i := range r.Mechanisms {
 		r.Mechanisms[i].Values = resolveValues(r.Mechanisms[i], data)
 	}
+
 	return nil
 }
 
@@ -136,7 +139,7 @@ func (r *Record) String() string {
 	if r.Version == "" {
 		parts = append(parts, "v=spf1")
 	} else {
-		parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+		parts = append(parts, "v="+r.Version)
 	}
 
 	//

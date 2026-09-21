@@ -57,6 +57,7 @@ func main() {
 				break
 			}
 			log.Printf("Error accepting connection: %v\n", err)
+
 			continue
 		}
 
@@ -80,9 +81,10 @@ func handleConnection(conn net.Conn) {
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
-			if err != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				log.Printf("Error reading from connection: %v\n", err)
 			}
+
 			break
 		}
 
@@ -90,6 +92,7 @@ func handleConnection(conn net.Conn) {
 			msg := string(buf[:n])
 			if msg == "quit\n" || msg == "quit\r\n" {
 				_, _ = io.WriteString(conn, "Goodbye!\n")
+
 				break
 			}
 			_, _ = conn.Write(buf[:n])

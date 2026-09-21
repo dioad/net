@@ -18,11 +18,13 @@ type DomainRecords struct {
 }
 
 func (r *DomainRecords) Render(data any) error {
-	if err := r.DMARC.Render(data); err != nil {
+	err := r.DMARC.Render(data)
+	if err != nil {
 		return err
 	}
 
-	if err := r.SPF.Render(data); err != nil {
+	err = r.SPF.Render(data)
+	if err != nil {
 		return err
 	}
 

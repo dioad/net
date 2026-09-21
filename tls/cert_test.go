@@ -14,7 +14,7 @@ import (
 
 func TestLoadCertPoolFromFile(t *testing.T) {
 	certPath, _ := writeTestCert(t)
-	certPEM, err := os.ReadFile(certPath)
+	certPEM, err := os.ReadFile(certPath) //nolint:gosec // certPath is a test-generated temp file, not external input
 	require.NoError(t, err)
 
 	pool, err := LoadCertPoolFromFile(certPath)
@@ -28,7 +28,7 @@ func TestLoadCertPoolFromFile(t *testing.T) {
 
 func TestLoadCertPoolFromFS(t *testing.T) {
 	certPath, _ := writeTestCert(t)
-	certPEM, err := os.ReadFile(certPath)
+	certPEM, err := os.ReadFile(certPath) //nolint:gosec // certPath is a test-generated temp file, not external input
 	require.NoError(t, err)
 
 	fsys := fstest.MapFS{

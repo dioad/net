@@ -23,6 +23,7 @@ func HTTPHandler(p *Policy) (http.HandlerFunc, error) {
 		if err != nil {
 			zerolog.Ctx(r.Context()).Error().Err(err).Msg("failed to format mta-sts policy")
 			http.Error(w, "internal server error", http.StatusInternalServerError)
+
 			return
 		}
 

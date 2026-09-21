@@ -7,13 +7,13 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// Example struct from the issue
+// Example struct from the issue.
 type Example struct {
 	FieldOne string
 	FieldTwo []string
 }
 
-// TestMarshalHeaderWithPrefixAndStructName tests the example from the issue
+// TestMarshalHeaderWithPrefixAndStructName tests the example from the issue.
 func TestMarshalHeaderWithPrefixAndStructName(t *testing.T) {
 	example := Example{
 		FieldOne: "value1",
@@ -31,19 +31,19 @@ func TestMarshalHeaderWithPrefixAndStructName(t *testing.T) {
 	}
 
 	// Check fieldSet one
-	if got := header.Get("X-Example-FieldOne"); got != "value1" {
+	if got := header.Get("X-Example-Fieldone"); got != "value1" {
 		t.Errorf("X-Example-FieldOne = %q, want %q", got, "value1")
 	}
 
 	// Check fieldSet two (multiple values)
-	values := header.Values("X-Example-FieldTwo")
+	values := header.Values("X-Example-Fieldtwo")
 	want := []string{"value2", "value3"}
 	if diff := cmp.Diff(want, values); diff != "" {
 		t.Errorf("X-Example-FieldTwo mismatch (-want +got):\n%s", diff)
 	}
 }
 
-// TestMarshalHeaderWithoutStructName tests encoding without struct name
+// TestMarshalHeaderWithoutStructName tests encoding without struct name.
 func TestMarshalHeaderWithoutStructName(t *testing.T) {
 	example := Example{
 		FieldOne: "value1",
@@ -61,17 +61,17 @@ func TestMarshalHeaderWithoutStructName(t *testing.T) {
 	}
 
 	// Check fieldSet one (without struct name)
-	if got := header.Get("X-FieldOne"); got != "value1" {
+	if got := header.Get("X-Fieldone"); got != "value1" {
 		t.Errorf("X-FieldOne = %q, want %q", got, "value1")
 	}
 
 	// Check fieldSet two
-	if got := header.Get("X-FieldTwo"); got != "value2" {
+	if got := header.Get("X-Fieldtwo"); got != "value2" {
 		t.Errorf("X-FieldTwo = %q, want %q", got, "value2")
 	}
 }
 
-// TestMarshalHeaderNoPrefix tests encoding without prefix
+// TestMarshalHeaderNoPrefix tests encoding without prefix.
 func TestMarshalHeaderNoPrefix(t *testing.T) {
 	example := Example{
 		FieldOne: "value1",
@@ -86,22 +86,22 @@ func TestMarshalHeaderNoPrefix(t *testing.T) {
 	}
 
 	// Check fieldSet one (no prefix, no struct name)
-	if got := header.Get("FieldOne"); got != "value1" {
+	if got := header.Get("Fieldone"); got != "value1" {
 		t.Errorf("FieldOne = %q, want %q", got, "value1")
 	}
 
 	// Check fieldSet two
-	if got := header.Get("FieldTwo"); got != "value2" {
+	if got := header.Get("Fieldtwo"); got != "value2" {
 		t.Errorf("FieldTwo = %q, want %q", got, "value2")
 	}
 }
 
-// TestUnmarshalHeaderWithPrefixAndStructName tests decoding with prefix and struct name
+// TestUnmarshalHeaderWithPrefixAndStructName tests decoding with prefix and struct name.
 func TestUnmarshalHeaderWithPrefixAndStructName(t *testing.T) {
 	header := http.Header{}
-	header.Set("X-Example-FieldOne", "value1")
-	header.Add("X-Example-FieldTwo", "value2")
-	header.Add("X-Example-FieldTwo", "value3")
+	header.Set("X-Example-Fieldone", "value1")
+	header.Add("X-Example-Fieldtwo", "value2")
+	header.Add("X-Example-Fieldtwo", "value3")
 
 	opts := HTTPMarshalOptions{
 		Prefix:            "X",
@@ -124,11 +124,11 @@ func TestUnmarshalHeaderWithPrefixAndStructName(t *testing.T) {
 	}
 }
 
-// TestUnmarshalHeaderWithoutStructName tests decoding without struct name
+// TestUnmarshalHeaderWithoutStructName tests decoding without struct name.
 func TestUnmarshalHeaderWithoutStructName(t *testing.T) {
 	header := http.Header{}
-	header.Set("X-FieldOne", "value1")
-	header.Set("X-FieldTwo", "value2")
+	header.Set("X-Fieldone", "value1")
+	header.Set("X-Fieldtwo", "value2")
 
 	opts := HTTPMarshalOptions{
 		Prefix:            "X",
@@ -151,7 +151,7 @@ func TestUnmarshalHeaderWithoutStructName(t *testing.T) {
 	}
 }
 
-// TestMarshalUnmarshalRoundTrip tests that marshal followed by unmarshal returns the original
+// TestMarshalUnmarshalRoundTrip tests that marshal followed by unmarshal returns the original.
 func TestMarshalUnmarshalRoundTrip(t *testing.T) {
 	original := Example{
 		FieldOne: "test-value",
@@ -182,7 +182,7 @@ func TestMarshalUnmarshalRoundTrip(t *testing.T) {
 	}
 }
 
-// TestStructWithTags tests struct with custom header tags
+// TestStructWithTags tests struct with custom header tags.
 func TestStructWithTags(t *testing.T) {
 	type CustomStruct struct {
 		Field1 string   `header:"custom-name"`
@@ -207,11 +207,11 @@ func TestStructWithTags(t *testing.T) {
 	}
 
 	// Check custom names
-	if got := header.Get("X-custom-name"); got != "value1" {
+	if got := header.Get("X-Custom-Name"); got != "value1" {
 		t.Errorf("X-custom-name = %q, want %q", got, "value1")
 	}
 
-	if got := header.Get("X-another-name"); got != "value2" {
+	if got := header.Get("X-Another-Name"); got != "value2" {
 		t.Errorf("X-another-name = %q, want %q", got, "value2")
 	}
 
@@ -221,7 +221,7 @@ func TestStructWithTags(t *testing.T) {
 	}
 }
 
-// TestMarshalEmptyStruct tests marshaling an empty struct
+// TestMarshalEmptyStruct tests marshaling an empty struct.
 func TestMarshalEmptyStruct(t *testing.T) {
 	example := Example{}
 
@@ -238,7 +238,7 @@ func TestMarshalEmptyStruct(t *testing.T) {
 	}
 }
 
-// TestMarshalNilPointer tests marshaling a nil pointer
+// TestMarshalNilPointer tests marshaling a nil pointer.
 func TestMarshalNilPointer(t *testing.T) {
 	var example *Example
 
@@ -254,7 +254,7 @@ func TestMarshalNilPointer(t *testing.T) {
 	}
 }
 
-// TestMarshalPointerToStruct tests marshaling a pointer to a struct
+// TestMarshalPointerToStruct tests marshaling a pointer to a struct.
 func TestMarshalPointerToStruct(t *testing.T) {
 	example := &Example{
 		FieldOne: "value1",
@@ -268,15 +268,15 @@ func TestMarshalPointerToStruct(t *testing.T) {
 		t.Fatalf("MarshalHeader failed: %v", err)
 	}
 
-	if got := header.Get("FieldOne"); got != "value1" {
+	if got := header.Get("Fieldone"); got != "value1" {
 		t.Errorf("FieldOne = %q, want %q", got, "value1")
 	}
 }
 
-// TestUnmarshalInvalidDestination tests error handling for invalid destinations
+// TestUnmarshalInvalidDestination tests error handling for invalid destinations.
 func TestUnmarshalInvalidDestination(t *testing.T) {
 	header := http.Header{}
-	header.Set("field-one", "value1")
+	header.Set("Field-One", "value1")
 
 	opts := DefaultHTTPMarshalOptions()
 
@@ -301,7 +301,7 @@ func TestUnmarshalInvalidDestination(t *testing.T) {
 	}
 }
 
-// TestMarshalNonStruct tests error handling for non-struct types
+// TestMarshalNonStruct tests error handling for non-struct types.
 func TestMarshalNonStruct(t *testing.T) {
 	notAStruct := "string"
 
@@ -313,7 +313,7 @@ func TestMarshalNonStruct(t *testing.T) {
 	}
 }
 
-// TestKebabCase tests the toKebabCase function
+// TestKebabCase tests the toKebabCase function.
 func TestKebabCase(t *testing.T) {
 	tests := []struct {
 		input string
@@ -339,7 +339,7 @@ func TestKebabCase(t *testing.T) {
 	}
 }
 
-// TestMultipleTypes tests marshaling different fieldSet types
+// TestMultipleTypes tests marshaling different fieldSet types.
 func TestMultipleTypes(t *testing.T) {
 	type MultiTypeStruct struct {
 		StringField string
@@ -364,23 +364,23 @@ func TestMultipleTypes(t *testing.T) {
 		t.Fatalf("MarshalHeader failed: %v", err)
 	}
 
-	if got := header.Get("StringField"); got != "test" {
+	if got := header.Get("Stringfield"); got != "test" {
 		t.Errorf("StringField = %q, want %q", got, "test")
 	}
 
-	if got := header.Get("IntField"); got != "42" {
+	if got := header.Get("Intfield"); got != "42" {
 		t.Errorf("IntField = %q, want %q", got, "42")
 	}
 
-	if got := header.Get("UintField"); got != "100" {
+	if got := header.Get("Uintfield"); got != "100" {
 		t.Errorf("UintField = %q, want %q", got, "100")
 	}
 
-	if got := header.Get("BoolField"); got != "true" {
+	if got := header.Get("Boolfield"); got != "true" {
 		t.Errorf("BoolField = %q, want %q", got, "true")
 	}
 
-	values := header.Values("SliceField")
+	values := header.Values("Slicefield")
 	want := []string{"a", "b"}
 	if diff := cmp.Diff(want, values); diff != "" {
 		t.Errorf("SliceField mismatch (-want +got):\n%s", diff)
@@ -398,7 +398,7 @@ func TestMultipleTypes(t *testing.T) {
 	}
 }
 
-// TestUnexportedFields tests that unexported fields are skipped
+// TestUnexportedFields tests that unexported fields are skipped.
 func TestUnexportedFields(t *testing.T) {
 	type StructWithUnexported struct {
 		ExportedField   string
@@ -418,17 +418,17 @@ func TestUnexportedFields(t *testing.T) {
 	}
 
 	// Only exported fieldSet should be present
-	if got := header.Get("ExportedField"); got != "visible" {
+	if got := header.Get("Exportedfield"); got != "visible" {
 		t.Errorf("ExportedField = %q, want %q", got, "visible")
 	}
 
 	// Unexported fieldSet should not be present
-	if got := header.Get("UnexportedField"); got != "" {
+	if got := header.Get("Unexportedfield"); got != "" {
 		t.Errorf("UnexportedField should not be present, got %q", got)
 	}
 }
 
-// TestEmptySlice tests handling of empty slices
+// TestEmptySlice tests handling of empty slices.
 func TestEmptySlice(t *testing.T) {
 	type StructWithSlice struct {
 		EmptySlice []string
@@ -454,15 +454,15 @@ func TestEmptySlice(t *testing.T) {
 }
 
 // TestRFC9110MultipleHeaderOccurrences verifies RFC 9110 Section 5.5 compliance
-// Multiple header fieldSet occurrences should be unmarshaled into a slice
+// Multiple header fieldSet occurrences should be unmarshaled into a slice.
 func TestRFC9110MultipleHeaderOccurrences(t *testing.T) {
 	// Simulate receiving headers with multiple occurrences
 	// RFC 9110 allows: X-Field: value1
 	//                  X-Field: value2
 	header := http.Header{}
-	header.Add("X-Example-FieldTwo", "value1")
-	header.Add("X-Example-FieldTwo", "value2")
-	header.Add("X-Example-FieldTwo", "value3")
+	header.Add("X-Example-Fieldtwo", "value1")
+	header.Add("X-Example-Fieldtwo", "value2")
+	header.Add("X-Example-Fieldtwo", "value3")
 
 	opts := HTTPMarshalOptions{
 		Prefix:            "X",
@@ -486,7 +486,7 @@ func TestRFC9110MultipleHeaderOccurrences(t *testing.T) {
 		t.Fatalf("MarshalHeader failed: %v", err)
 	}
 
-	values := header2.Values("X-Example-FieldTwo")
+	values := header2.Values("X-Example-Fieldtwo")
 	if diff := cmp.Diff(want, values); diff != "" {
 		t.Errorf("Multiple values not marshaled correctly (-want +got):\n%s", diff)
 	}
@@ -494,7 +494,7 @@ func TestRFC9110MultipleHeaderOccurrences(t *testing.T) {
 
 // TestValuesWithCommas tests that values containing commas are preserved
 // RFC 9110 allows comma-separated lists, but when using multiple header occurrences,
-// each value is kept separate and commas within values are preserved
+// each value is kept separate and commas within values are preserved.
 func TestValuesWithCommas(t *testing.T) {
 	type CommaStruct struct {
 		Values []string
@@ -524,7 +524,7 @@ func TestValuesWithCommas(t *testing.T) {
 	}
 
 	// Verify each value is a separate header occurrence
-	values := header.Values("values")
+	values := header.Values("Values")
 	if len(values) != 4 {
 		t.Errorf("Expected 4 separate header occurrences, got %d", len(values))
 	}
@@ -535,7 +535,7 @@ func TestValuesWithCommas(t *testing.T) {
 	}
 }
 
-// TestValuesWithSpecialCharacters tests handling of quotes and other special characters
+// TestValuesWithSpecialCharacters tests handling of quotes and other special characters.
 func TestValuesWithSpecialCharacters(t *testing.T) {
 	type SpecialStruct struct {
 		Values []string
@@ -569,7 +569,7 @@ func TestValuesWithSpecialCharacters(t *testing.T) {
 }
 
 // TestRFC9110OrderPreservation verifies that the order of values is preserved
-// per RFC 9110 requirements
+// per RFC 9110 requirements.
 func TestRFC9110OrderPreservation(t *testing.T) {
 	type OrderStruct struct {
 		Ordered []string

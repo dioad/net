@@ -175,6 +175,7 @@ func acceptConnections(listener *authz.Listener, listenerType string, logger zer
 				return
 			}
 			logger.Error().Err(err).Str("type", listenerType).Msg("accept error")
+
 			continue
 		}
 
@@ -204,9 +205,10 @@ func handleConnection(conn net.Conn, logger zerolog.Logger) {
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
-			if err != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				logger.Error().Err(err).Msg("read error")
 			}
+
 			break
 		}
 
@@ -214,6 +216,7 @@ func handleConnection(conn net.Conn, logger zerolog.Logger) {
 			msg := string(buf[:n])
 			if msg == "quit\n" || msg == "quit\r\n" {
 				_, _ = io.WriteString(conn, "Goodbye!\n")
+
 				break
 			}
 			// Echo back

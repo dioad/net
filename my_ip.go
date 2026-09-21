@@ -2,6 +2,7 @@ package net
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 
 var (
 	// IPv4ICanHazIP is the URL to fetch the public IPv4 address.
-	// TODO: change this to ipv4.myip.dioad.net(A) ipv6.myip.dioad.net (AAAA) and myip.dioad.net(A and AAAA)
+	// TODO: change this to ipv4.myip.dioad.net(A) ipv6.myip.dioad.net (AAAA) and myip.dioad.net(A and AAAA).
 	IPv4ICanHazIP = "https://ipv4.icanhazip.com"
 	// IPv6ICanHazIP is the URL to fetch the public IPv6 address.
 	IPv6ICanHazIP = "https://ipv6.icanhazip.com"
@@ -73,7 +74,8 @@ func GetMyIPsFromFuncs(ctx context.Context, funcs ...GetIPFunc) ([]netip.Addr, e
 		if err != nil {
 			return nil, err
 		}
-		return nil, fmt.Errorf("could not fetch IP address")
+
+		return nil, errors.New("could not fetch IP address")
 	}
 
 	return ipAddresses, nil

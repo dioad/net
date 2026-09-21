@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	// HeaderMarshalTagName is the struct tag name used for marshaling/unmarshaling HTTP headers
+	// HeaderMarshalTagName is the struct tag name used for marshaling/unmarshaling HTTP headers.
 	HeaderMarshalTagName = "header"
 )
 
@@ -62,7 +62,7 @@ func MarshalHeader(v any, opts HTTPMarshalOptions) (http.Header, error) {
 //	var ex Example
 //	err := UnmarshalHeader(headers, &ex, opts)
 //
-// Results in: ex.Values = []string{"val1", "val2,with,comma"}
+// Results in: ex.Values = []string{"val1", "val2,with,comma"}.
 func UnmarshalHeader(header http.Header, v any, opts HTTPMarshalOptions) error {
 	tagName := HeaderMarshalTagName
 

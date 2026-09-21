@@ -51,7 +51,7 @@ func formatDMARCEmails(label string, emails []string) string {
 
 	addrs := make([]string, 0, len(emails))
 	for _, a := range emails {
-		addrs = append(addrs, fmt.Sprintf("mailto:%s", a))
+		addrs = append(addrs, "mailto:"+a)
 	}
 
 	return fmt.Sprintf("%s=%s", label, strings.Join(addrs, ","))
@@ -66,6 +66,7 @@ func (r *Record) SetPercent(pct uint8) error {
 		return errors.New("pct must be between 0 and 100")
 	}
 	r.Percent = &pct
+
 	return nil
 }
 
@@ -126,7 +127,7 @@ func (r *Record) String() string {
 	if r.Version == "" {
 		parts = append(parts, "v=DMARC1")
 	} else {
-		parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+		parts = append(parts, "v="+r.Version)
 	}
 
 	parts = append(parts, fmt.Sprintf("p=%s", r.Policy))

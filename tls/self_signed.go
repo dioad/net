@@ -47,6 +47,7 @@ func convertConfigToX509CertificateTemplate(config SelfSignedConfig) (*x509.Cert
 		if parsedIP == nil {
 			return nil, fmt.Errorf("error parsing ip address: %s", ip)
 		}
+
 		return parsedIP, nil
 	}, config.SAN.IPAddresses)
 	if err != nil {
@@ -78,7 +79,7 @@ func convertConfigToX509CertificateTemplate(config SelfSignedConfig) (*x509.Cert
 }
 
 // CreateSelfSignedKeyPair creates a self-signed key pair in memory.
-// pulled from inet.af/tcpproxy
+// pulled from inet.af/tcpproxy.
 func CreateSelfSignedKeyPair(config SelfSignedConfig) (*tls.Certificate, *x509.CertPool, error) {
 	pkey, err := rsa.GenerateKey(rand.Reader, config.Bits)
 	if err != nil {

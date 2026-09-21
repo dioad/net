@@ -30,11 +30,11 @@ type ACMEConfig struct {
 	// ACMEChallengeDNS01. An absent/empty Type (the zero value) defaults to
 	// ACMEChallengeTLSALPN01, so callers who only need TLS-ALPN-01 can omit
 	// this field entirely.
-	Type string `mapstructure:"type" json:",omitempty"`
+	Type string `json:",omitempty" mapstructure:"type"`
 
-	Email          string `mapstructure:"email" json:",omitempty"`
-	DirectoryURL   string `mapstructure:"directory-url" json:",omitempty"`
-	CacheDirectory string `mapstructure:"cache-directory" json:",omitempty"`
+	Email          string `json:",omitempty" mapstructure:"email"`
+	DirectoryURL   string `json:",omitempty" mapstructure:"directory-url"`
+	CacheDirectory string `json:",omitempty" mapstructure:"cache-directory"`
 
 	// Domains is, for Type=dns-01, the SANs to include on the single
 	// certificate obtained upfront (may include wildcards, e.g.
@@ -45,25 +45,25 @@ type ACMEConfig struct {
 	// 8555 permits wildcards only via dns-01), and autocert's HostWhitelist
 	// silently ignores such entries rather than erroring, so
 	// NewACMETLSConfig validates this upfront instead.
-	Domains []string `mapstructure:"domains" json:",omitempty"`
+	Domains []string `json:",omitempty" mapstructure:"domains"`
 
 	// DNS01 holds fields that apply only when Type is ACMEChallengeDNS01.
-	DNS01 DNS01Options `mapstructure:"dns01,squash" json:",omitzero"`
+	DNS01 DNS01Options `json:",omitzero" mapstructure:"dns01,squash"`
 }
 
 // DNS01Options specifies dns-01-only ACME parameters.
 type DNS01Options struct {
 	// PropagationTimeout bounds how long lego waits for DNS propagation of
 	// the challenge TXT record. Zero uses lego's default (60s).
-	PropagationTimeout time.Duration `mapstructure:"dns01-propagation-timeout" json:",omitempty"`
+	PropagationTimeout time.Duration `json:",omitempty" mapstructure:"dns01-propagation-timeout"`
 
 	// PollingInterval controls how often lego polls while waiting for
 	// propagation. Zero uses lego's default (2s).
-	PollingInterval time.Duration `mapstructure:"dns01-polling-interval" json:",omitempty"`
+	PollingInterval time.Duration `json:",omitempty" mapstructure:"dns01-polling-interval"`
 
 	// Provider performs Present/CleanUp of the ACME dns-01 challenge TXT
 	// record. Must be set programmatically; it is not config-decodable.
-	Provider challenge.Provider `mapstructure:"-" json:"-"`
+	Provider challenge.Provider `json:"-" mapstructure:"-"`
 }
 
 // NewACMETLSConfigFunc creates a ConfigFunc for ACME certificate
@@ -79,14 +79,17 @@ func NewACMETLSConfigFunc(ctx context.Context, c ACMEConfig) ConfigFunc {
 // dns-01 (lego-backed) implementation.
 func NewACMETLSConfig(ctx context.Context, c ACMEConfig) (*tls.Config, error) {
 	if generics.IsZeroValue(c) {
+		//nolint:nilnil // package convention: a zero-value config means "nothing to build", not an error
 		return nil, nil
 	}
 
 	switch c.Type {
 	case "", ACMEChallengeTLSALPN01:
-		if err := validateNoWildcards(c.Domains); err != nil {
+		err := validateNoWildcards(c.Domains)
+		if err != nil {
 			return nil, fmt.Errorf("acme: %w", err)
 		}
+
 		return newAutocertTLSConfig(c)
 	case ACMEChallengeDNS01:
 		return newDNS01TLSConfig(ctx, c)
@@ -106,5 +109,6 @@ func validateNoWildcards(domains []string) error {
 			return fmt.Errorf("wildcard domain %q is not valid for %s", d, ACMEChallengeTLSALPN01)
 		}
 	}
+
 	return nil
 }

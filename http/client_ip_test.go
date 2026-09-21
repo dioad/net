@@ -119,7 +119,7 @@ func TestClientIPResolver_TrustedHeader(t *testing.T) {
 
 	t.Run("uses the trusted header when present", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
-		req.Header.Set("Fly-Client-IP", "203.0.113.5")
+		req.Header.Set("Fly-Client-Ip", "203.0.113.5")
 		req.Header.Set("X-Forwarded-For", "attacker-controlled")
 		req.RemoteAddr = "10.0.0.5:12345"
 
@@ -138,7 +138,7 @@ func TestNewFlyClientIPResolver(t *testing.T) {
 	resolver := NewFlyClientIPResolver()
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("Fly-Client-IP", "203.0.113.7")
+	req.Header.Set("Fly-Client-Ip", "203.0.113.7")
 
 	assert.Equal(t, "203.0.113.7", resolver.ClientIP(req))
 }
@@ -147,6 +147,7 @@ func mustPrefix(t *testing.T, s string) netip.Prefix {
 	t.Helper()
 	p, err := netip.ParsePrefix(s)
 	require.NoError(t, err)
+
 	return p
 }
 
@@ -210,7 +211,7 @@ func TestClientIPResolver_PrincipalFunc(t *testing.T) {
 	resolver := NewClientIPResolver(WithTrustedHeader("Fly-Client-IP"))
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("Fly-Client-IP", "203.0.113.5")
+	req.Header.Set("Fly-Client-Ip", "203.0.113.5")
 
 	principal, err := resolver.PrincipalFunc(req)
 	require.NoError(t, err)

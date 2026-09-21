@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	// QueryMarshalTagName is the struct tag name used for marshaling/unmarshaling URI query parameters
+	// QueryMarshalTagName is the struct tag name used for marshaling/unmarshaling URI query parameters.
 	QueryMarshalTagName = "query"
 )
 
@@ -40,7 +40,7 @@ func (f *urlValuesWrapper) Values(key string) []string {
 // Tags []string `query:"tags"`
 // }
 // params := QueryParams{Search: "example", Tags: []string{"go", "http"}}
-// queryString, err := MarshalQuery(params, opts)
+// queryString, err := MarshalQuery(params, opts).
 func MarshalQuery(v any, opts HTTPMarshalOptions) (string, error) {
 	values := url.Values{}
 	if isNilAny(v) {
@@ -67,7 +67,7 @@ func MarshalQuery(v any, opts HTTPMarshalOptions) (string, error) {
 // var params QueryParams
 // err := UnmarshalQuery("search=example&tags=go&tags=http", &params, opts)
 //
-// Results in: params.Search = "example", params.Tags = []string{"go", "http"}
+// Results in: params.Search = "example", params.Tags = []string{"go", "http"}.
 func UnmarshalQuery(rawQuery string, v any, opts HTTPMarshalOptions) error {
 	tagName := QueryMarshalTagName
 

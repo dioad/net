@@ -26,7 +26,7 @@ import (
 	"github.com/dioad/net/http/pprof"
 )
 
-// Config represents the configuration for an HTTP server
+// Config represents the configuration for an HTTP server.
 type Config struct {
 	// ListenAddress is the address to listen on, e.g. ":8080"
 	ListenAddress string
@@ -59,7 +59,7 @@ type Config struct {
 // StateNew→StateIdle promotion logic.
 const defaultReadHeaderTimeout = 10 * time.Second
 
-// Server represents an HTTP server with various features like metrics, authentication, and resources
+// Server represents an HTTP server with various features like metrics, authentication, and resources.
 type Server struct {
 	// Config is the server configuration
 	Config Config
@@ -106,7 +106,7 @@ func newDefaultServer(config Config) *Server {
 	return server
 }
 
-// ServerOption is a function that configures a Server
+// ServerOption is a function that configures a Server.
 type ServerOption func(*Server)
 
 // Instrument wraps an http.Handler with telemetry instrumentation.
@@ -115,7 +115,7 @@ type Instrument interface {
 }
 
 // WithLogWriter returns a ServerOption that configures the server to log requests to the given writer
-// using the combined log format
+// using the combined log format.
 func WithLogWriter(w io.Writer) ServerOption {
 	return func(s *Server) {
 		if w != nil {
@@ -125,7 +125,7 @@ func WithLogWriter(w io.Writer) ServerOption {
 }
 
 // WithLogger returns a ServerOption that configures the server to use the given logger
-// for both server logs and request logs
+// for both server logs and request logs.
 func WithLogger(l zerolog.Logger) ServerOption {
 	return func(s *Server) {
 		s.Logger = l
@@ -139,6 +139,7 @@ func WithLogger(l zerolog.Logger) ServerOption {
 // CORSHandler returns a middleware that handles Cross-Origin Resource Sharing (CORS).
 func CORSHandler(options cors.Options) Middleware {
 	corsMiddleware := cors.New(options)
+
 	return corsMiddleware.Handler
 }
 
@@ -165,7 +166,7 @@ func WithCORS(options cors.Options) ServerOption {
 }
 
 // NewServer creates a new HTTP server with the given configuration and options
-// Options can be used to customize the server, such as adding a logger, authentication, or metrics
+// Options can be used to customize the server, such as adding a logger, authentication, or metrics.
 func NewServer(config Config, opts ...ServerOption) *Server {
 	server := newDefaultServer(config)
 
@@ -177,14 +178,14 @@ func NewServer(config Config, opts ...ServerOption) *Server {
 }
 
 // WithTelemetryInstrument returns a ServerOption that configures the server to use the given
-// telemetry instrument for metrics collection
+// telemetry instrument for metrics collection.
 func WithTelemetryInstrument(i Instrument) ServerOption {
 	return func(s *Server) {
 		s.ConfigureTelemetryInstrument(i)
 	}
 }
 
-// ConfigureTelemetryInstrument configures the server with the given telemetry instrument
+// ConfigureTelemetryInstrument configures the server with the given telemetry instrument.
 func (s *Server) ConfigureTelemetryInstrument(i Instrument) {
 	s.instrument = i
 	s.Use(func(next http.Handler) http.Handler {
@@ -193,7 +194,7 @@ func (s *Server) ConfigureTelemetryInstrument(i Instrument) {
 }
 
 // WithPrometheusRegistry returns a ServerOption that configures the server to register
-// its metrics with the given Prometheus registry
+// its metrics with the given Prometheus registry.
 func WithPrometheusRegistry(r prometheus.Registerer) ServerOption {
 	return func(s *Server) {
 		s.metricSet.Register(r)
@@ -213,7 +214,7 @@ func (s *Server) MetricSet() *MetricSet {
 	return s.metricSet
 }
 
-// filterNilMiddlewares removes nil middlewares from the slice
+// filterNilMiddlewares removes nil middlewares from the slice.
 func filterNilMiddlewares(middlewares []Middleware) []Middleware {
 	return filter.FilterSlice(middlewares, func(m Middleware) bool {
 		return m != nil
@@ -332,6 +333,7 @@ func (s *Server) rootResourceHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.rootResource == nil {
 			http.NotFound(w, r)
+
 			return
 		}
 		s.rootResource.Index()(w, r)
@@ -339,7 +341,7 @@ func (s *Server) rootResourceHandler() http.HandlerFunc {
 }
 
 // handler returns the HTTP handler for the server
-// It adds default handlers and the root resource handler if configured
+// It adds default handlers and the root resource handler if configured.
 func (s *Server) handler() http.Handler {
 	var handler http.Handler = s.mux
 	handler = Chain(handler, s.middlewares...)
@@ -355,17 +357,17 @@ func (s *Server) handler() http.Handler {
 	return handler
 }
 
-// AddHandler adds a handler for the specified path
+// AddHandler adds a handler for the specified path.
 func (s *Server) AddHandler(path string, handler http.Handler) {
 	s.mux.Handle(path, handler)
 }
 
-// AddHandlerFunc adds a handler function for the specified path
+// AddHandlerFunc adds a handler function for the specified path.
 func (s *Server) AddHandlerFunc(path string, handler http.HandlerFunc) {
 	s.mux.HandleFunc(path, handler)
 }
 
-// addDefaultHandlers adds default handlers to the server based on configuration
+// addDefaultHandlers adds default handlers to the server based on configuration.
 func (s *Server) addDefaultHandlers() {
 	if s.Config.EnablePrometheusMetrics {
 		s.mux.Handle("/metrics", promhttp.HandlerFor(s.metricsGatherers, promhttp.HandlerOpts{}))
@@ -392,7 +394,7 @@ func (s *Server) Use(middlewares ...Middleware) {
 }
 
 // AddStatusStaticMetadataItem adds a static metadata item to the status endpoint
-// These items will be included in the "Metadata" section of the status response
+// These items will be included in the "Metadata" section of the status response.
 func (s *Server) AddStatusStaticMetadataItem(key string, value any) {
 	s.HealthRegistry.AddStaticMetadata(key, value)
 }
@@ -441,19 +443,20 @@ func (s *Server) initialiseServer() {
 }
 
 // ListenAndServe starts the server with the TLS configuration from the server's config
-// It creates a listener on the configured address and calls Serve
+// It creates a listener on the configured address and calls Serve.
 func (s *Server) ListenAndServe() error {
 	return s.ListenAndServeTLS(s.Config.TLSConfig)
 }
 
 // ListenAndServeTLS starts the server with the provided TLS configuration
 // The tlsConfig will override any prior configuration in s.Config
-// It creates a listener on the configured address and calls Serve
+// It creates a listener on the configured address and calls Serve.
 func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
 	s.Config.TLSConfig = tlsConfig
 	ln, err := net.Listen("tcp", s.Config.ListenAddress)
 	if err != nil {
 		s.Logger.Error().Err(err).Str("address", s.Config.ListenAddress).Msg("failed to listen on address")
+
 		return err
 	}
 
@@ -462,7 +465,7 @@ func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
 
 // Serve starts the server with the provided listener
 // It initializes the server if needed, configures TLS and proxy protocol if enabled,
-// and starts serving HTTP or HTTPS requests
+// and starts serving HTTP or HTTPS requests.
 func (s *Server) Serve(ln net.Listener) error {
 	s.ListenAddr = ln.Addr()
 	s.initialiseServer()
@@ -505,21 +508,22 @@ func (s *Server) Serve(ln net.Listener) error {
 }
 
 // ServeTLS is a convenience method that calls Serve
-// It's provided for compatibility with the http.Server interface
+// It's provided for compatibility with the http.Server interface.
 func (s *Server) ServeTLS(ln net.Listener) error {
 	return s.Serve(ln)
 }
 
 // RegisterOnShutdown registers a function to be called when the server is shutting down
-// This function will be called in a new goroutine when Shutdown is called
+// This function will be called in a new goroutine when Shutdown is called.
 func (s *Server) RegisterOnShutdown(f func()) {
 	s.initialiseServer()
 	s.server.RegisterOnShutdown(f)
 }
 
 // Shutdown gracefully shuts down the server without interrupting any active connections
-// It waits for all connections to finish or for the context to be canceled
+// It waits for all connections to finish or for the context to be canceled.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.initialiseServer()
+
 	return s.server.Shutdown(ctx)
 }

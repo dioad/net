@@ -2,7 +2,7 @@ package http
 
 import "net/http"
 
-// CreateHTTPHeaderFromMap creates a new http.Header from a map[string]string
+// CreateHTTPHeaderFromMap creates a new http.Header from a map[string]string.
 func CreateHTTPHeaderFromMap(headerMap map[string]string) http.Header {
 	outputHeaders := http.Header{}
 

@@ -16,7 +16,7 @@ import (
 
 func TestLoadX509CertFromFile_InvalidPEM(t *testing.T) {
 	// Create a temporary file with invalid PEM data
-	tmpFile, err := os.CreateTemp("", "invalid_pem")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "invalid_pem")
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestSaveTLSCertificateToFile(t *testing.T) {
 
 		// The certificate block is written before the private key is
 		// marshalled, so it should already be on disk despite the error.
-		content, readErr := os.ReadFile(path)
+		content, readErr := os.ReadFile(path) //nolint:gosec // path is a test-generated temp file, not external input
 		require.NoError(t, readErr)
 		assert.Contains(t, string(content), "-----BEGIN CERTIFICATE-----")
 	})
@@ -106,7 +106,7 @@ func TestSaveTLSCertificateToFiles(t *testing.T) {
 		err := SaveTLSCertificateToFiles(cert, certPath, keyPath)
 		assert.Error(t, err)
 
-		content, readErr := os.ReadFile(certPath)
+		content, readErr := os.ReadFile(certPath) //nolint:gosec // certPath is a test-generated temp file, not external input
 		require.NoError(t, readErr)
 		assert.Contains(t, string(content), "-----BEGIN CERTIFICATE-----")
 
@@ -131,7 +131,7 @@ func TestLoadKeyPairAndCertsFromFile(t *testing.T) {
 	})
 
 	t.Run("returns an error when no certificate block is present", func(t *testing.T) {
-		key, err := rsa.GenerateKey(rand.Reader, 1024)
+		key, err := rsa.GenerateKey(rand.Reader, 1024) //nolint:gosec // small key generated only for test speed; strength is irrelevant to this test
 		require.NoError(t, err)
 		path := filepath.Join(t.TempDir(), "key-only.pem")
 		data := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})

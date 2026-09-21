@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// CacheConfig configures the caching behavior of a CachingFetcher
+// CacheConfig configures the caching behavior of a CachingFetcher.
 type CacheConfig struct {
 	// StaticExpiry defines a fixed cache duration (e.g., 1 hour)
 	StaticExpiry time.Duration
@@ -23,29 +23,29 @@ type CacheConfig struct {
 	ReturnStale bool
 }
 
-// FetchFunc is a custom function type for fetching data from an HTTP endpoint
+// FetchFunc is a custom function type for fetching data from an HTTP endpoint.
 type FetchFunc[T any] func(ctx context.Context, url string) (T, error)
 
-// CacheResult indicates the status of cached data
+// CacheResult indicates the status of cached data.
 type CacheResult int
 
 const (
-	// CacheResultFresh indicates data was freshly fetched
+	// CacheResultFresh indicates data was freshly fetched.
 	CacheResultFresh CacheResult = iota
-	// CacheResultCached indicates data was returned from cache
+	// CacheResultCached indicates data was returned from cache.
 	CacheResultCached
-	// CacheResultStale indicates stale data was returned due to fetch error
+	// CacheResultStale indicates stale data was returned due to fetch error.
 	CacheResultStale
 )
 
-// FetchResult contains the fetched data and metadata about the fetch
+// FetchResult contains the fetched data and metadata about the fetch.
 type FetchResult[T any] struct {
 	Data   T
 	Result CacheResult
 	Error  error
 }
 
-// CachingFetcher is a generic caching HTTP fetcher that handles HTTP requests with caching
+// CachingFetcher is a generic caching HTTP fetcher that handles HTTP requests with caching.
 type CachingFetcher[T any] struct {
 	url        string
 	config     CacheConfig
@@ -73,6 +73,7 @@ func NewCachingFetcher[T any](url string, config CacheConfig) *CachingFetcher[T]
 		httpClient: defaultFetchClient,
 	}
 	f.refreshCond = sync.NewCond(&f.mu)
+
 	return f
 }
 
@@ -87,6 +88,7 @@ func NewCachingFetcherWithFunc[T any](url string, config CacheConfig, fetchFunc 
 		httpClient: defaultFetchClient,
 	}
 	f.refreshCond = sync.NewCond(&f.mu)
+
 	return f
 }
 
@@ -101,7 +103,7 @@ func NewCachingFetcherWithFunc[T any](url string, config CacheConfig, fetchFunc 
 // failed. A caller that follows the common `if err != nil { return }`
 // pattern must not have that discard perfectly usable stale data; check the
 // returned CacheResult, not just err, to distinguish "no data at all" from
-// "stale but usable."
+// "stale but usable.".
 func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	f.mu.Lock()
 
@@ -109,6 +111,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	if f.cachedData != nil && time.Now().Before(f.expiresAt) {
 		data := *f.cachedData
 		f.mu.Unlock()
+
 		return data, CacheResultCached, nil
 	}
 
@@ -127,6 +130,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 		}
 
 		f.mu.Unlock()
+
 		return data, CacheResultStale, nil
 	}
 
@@ -151,6 +155,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 				result = CacheResultStale
 			}
 			f.mu.Unlock()
+
 			return data, result, nil
 		}
 		// The fetch we waited on failed and left no stale data to fall
@@ -160,6 +165,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 		var zero T
 		err := f.lastError
 		f.mu.Unlock()
+
 		return zero, CacheResultFresh, err
 	}
 
@@ -183,12 +189,14 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 			result := *staleData
 			f.mu.Unlock()
 			f.refreshCond.Broadcast()
+
 			return result, CacheResultStale, nil
 		}
 		// No stale data, return zero value
 		var zero T
 		f.mu.Unlock()
 		f.refreshCond.Broadcast()
+
 		return zero, CacheResultFresh, err
 	}
 
@@ -199,10 +207,11 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 
 	f.mu.Unlock()
 	f.refreshCond.Broadcast()
+
 	return data, CacheResultFresh, nil
 }
 
-// backgroundRefresh performs a refresh in the background
+// backgroundRefresh performs a refresh in the background.
 func (f *CachingFetcher[T]) backgroundRefresh(ctx context.Context) {
 	data, headers, err := f.doFetch(ctx)
 
@@ -227,8 +236,10 @@ func (f *CachingFetcher[T]) backgroundRefresh(ctx context.Context) {
 func (f *CachingFetcher[T]) doFetch(ctx context.Context) (T, http.Header, error) {
 	if f.fetchFunc != nil {
 		data, err := f.fetchFunc(ctx, f.url)
+
 		return data, nil, err
 	}
+
 	return f.fetchJSON(ctx)
 }
 
@@ -238,7 +249,7 @@ func (f *CachingFetcher[T]) doFetch(ctx context.Context) (T, http.Header, error)
 func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, http.Header, error) {
 	var result T
 
-	req, err := http.NewRequestWithContext(ctx, "GET", f.url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, f.url, nil)
 	if err != nil {
 		return result, nil, fmt.Errorf("create request: %w", err)
 	}
@@ -267,7 +278,7 @@ func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, http.Header, erro
 	return result, headers, nil
 }
 
-// calculateExpiry determines when the cached data expires based on HTTP cache headers
+// calculateExpiry determines when the cached data expires based on HTTP cache headers.
 func (f *CachingFetcher[T]) calculateExpiry(headers http.Header) time.Time {
 	now := time.Now()
 
@@ -292,7 +303,7 @@ func (f *CachingFetcher[T]) calculateExpiry(headers http.Header) time.Time {
 	return now.Add(1 * time.Hour)
 }
 
-// parseCacheControl extracts max-age from Cache-Control header and handles caching directives
+// parseCacheControl extracts max-age from Cache-Control header and handles caching directives.
 func (f *CachingFetcher[T]) parseCacheControl(cacheControl string, now time.Time) time.Time {
 	// Parse comma-separated directives
 	directives := strings.Split(cacheControl, ",")
@@ -307,12 +318,14 @@ func (f *CachingFetcher[T]) parseCacheControl(cacheControl string, now time.Time
 		// Check for no-store directive - response should not be cached
 		if directive == "no-store" {
 			noStore = true
+
 			continue
 		}
 
 		// Check for no-cache directive - response can be cached but must be revalidated
 		if directive == "no-cache" {
 			noCache = true
+
 			continue
 		}
 
@@ -388,6 +401,7 @@ func (f *CachingFetcher[T]) parseExpires(expiresStr string, now time.Time) time.
 func (f *CachingFetcher[T]) GetCachedData() *T {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
+
 	return f.cachedData
 }
 
@@ -396,6 +410,7 @@ func (f *CachingFetcher[T]) GetCachedData() *T {
 func (f *CachingFetcher[T]) GetCacheInfo() (cachedAt, expiresAt time.Time, hasData bool) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
+
 	return f.cachedAt, f.expiresAt, f.cachedData != nil
 }
 
@@ -406,5 +421,6 @@ func (f *CachingFetcher[T]) GetCacheInfo() (cachedAt, expiresAt time.Time, hasDa
 func (f *CachingFetcher[T]) LastError() error {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
+
 	return f.lastError
 }

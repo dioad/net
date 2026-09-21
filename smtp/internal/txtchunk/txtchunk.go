@@ -27,5 +27,6 @@ func Quote(s string) string {
 		out += fmt.Sprintf(`\"%s\"`, s[:n])
 		s = s[n:]
 	}
+
 	return out
 }

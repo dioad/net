@@ -137,6 +137,7 @@ func TestListener_getPrincipal(t *testing.T) {
 
 type mockAddrConn struct {
 	net.Conn
+
 	network string
 	addr    string
 }

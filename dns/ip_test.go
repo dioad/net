@@ -18,6 +18,7 @@ func TestReverseIP(t *testing.T) {
 		out, err := ReverseIP(test.in)
 		if (err != nil) != test.wantErr {
 			t.Errorf("ReverseIP(%v) error = %v, wantErr %v", test.in, err, test.wantErr)
+
 			continue
 		}
 		if out != test.out {

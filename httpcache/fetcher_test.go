@@ -70,6 +70,7 @@ func TestCachingFetcher_ReturnStale(t *testing.T) {
 		callCount.Add(1)
 		if shouldFail.Load() {
 			w.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
 		data := testData{Message: "hello", Count: int(callCount.Load())}
@@ -172,7 +173,7 @@ func TestCachingFetcher_Error_NoStaleData(t *testing.T) {
 	data, result, err := fetcher.Get(ctx)
 	assert.Error(t, err)
 	assert.Equal(t, CacheResultFresh, result)
-	assert.Equal(t, "", data.Message)
+	assert.Empty(t, data.Message)
 	assert.Equal(t, 0, data.Count)
 }
 
@@ -190,6 +191,7 @@ func TestCachingFetcher_BlockingRefreshFailure_StaleDataHasNilError(t *testing.T
 		callCount.Add(1)
 		if shouldFail.Load() {
 			w.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
 		data := testData{Message: "hello", Count: int(callCount.Load())}
@@ -237,6 +239,7 @@ func TestCachingFetcher_ConcurrentAccess_WaiterSeesStaleWithNilError(t *testing.
 		if shouldFail.Load() {
 			time.Sleep(50 * time.Millisecond) // give other goroutines time to become waiters
 			w.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
 		data := testData{Message: "hello", Count: int(callCount.Load())}
@@ -420,7 +423,7 @@ func TestCachingFetcher_GetCacheInfo(t *testing.T) {
 	assert.InDelta(t, expectedExpiry.Unix(), expiresAt.Unix(), 2) // Within 2 seconds
 }
 
-// TestCachingFetcher_ParseCacheControl tests the parseCacheControl function with various header formats
+// TestCachingFetcher_ParseCacheControl tests the parseCacheControl function with various header formats.
 func TestCachingFetcher_ParseCacheControl(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -489,7 +492,7 @@ func TestCachingFetcher_ParseCacheControl(t *testing.T) {
 	}
 }
 
-// TestCachingFetcher_ParseExpires tests the parseExpires function with various header formats
+// TestCachingFetcher_ParseExpires tests the parseExpires function with various header formats.
 func TestCachingFetcher_ParseExpires(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -560,7 +563,7 @@ func TestCachingFetcher_ParseExpires(t *testing.T) {
 	}
 }
 
-// TestCachingFetcher_CalculateExpiry tests the calculateExpiry function with various header combinations
+// TestCachingFetcher_CalculateExpiry tests the calculateExpiry function with various header combinations.
 func TestCachingFetcher_CalculateExpiry(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -639,7 +642,7 @@ func TestCachingFetcher_CalculateExpiry(t *testing.T) {
 	}
 }
 
-// TestCachingFetcher_HTTPCacheHeaders tests end-to-end behavior with HTTP cache headers
+// TestCachingFetcher_HTTPCacheHeaders tests end-to-end behavior with HTTP cache headers.
 func TestCachingFetcher_HTTPCacheHeaders(t *testing.T) {
 	t.Run("respects Cache-Control max-age", func(t *testing.T) {
 		callCount := atomic.Int32{}

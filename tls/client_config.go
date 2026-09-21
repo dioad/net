@@ -2,6 +2,7 @@ package tls
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 
 	"github.com/dioad/generics"
@@ -9,15 +10,16 @@ import (
 
 // ClientConfig specifies TLS client configuration.
 type ClientConfig struct {
-	RootCAFile         string `mapstructure:"root-ca-file" json:",omitempty"`
-	Certificate        string `mapstructure:"cert" json:",omitempty"`
-	Key                string `mapstructure:"key" json:",omitempty"`
+	RootCAFile         string `json:",omitempty"                   mapstructure:"root-ca-file"`
+	Certificate        string `json:",omitempty"                   mapstructure:"cert"`
+	Key                string `json:",omitempty"                   mapstructure:"key"`
 	InsecureSkipVerify bool   `mapstructure:"insecure-skip-verify"`
 }
 
 // NewClientTLSConfig creates a TLS configuration for a client from the given config.
 func NewClientTLSConfig(c ClientConfig) (*tls.Config, error) {
 	if generics.IsZeroValue(c) {
+		//nolint:nilnil // package convention: a zero-value config means "nothing to build", not an error
 		return nil, nil
 	}
 
@@ -26,7 +28,7 @@ func NewClientTLSConfig(c ClientConfig) (*tls.Config, error) {
 	}
 
 	if (c.Certificate != "" && c.Key == "") || (c.Certificate == "" && c.Key != "") {
-		return nil, fmt.Errorf("both certificate and key need to be specified")
+		return nil, errors.New("both certificate and key need to be specified")
 	}
 
 	if c.Certificate != "" && c.Key != "" {

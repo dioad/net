@@ -29,10 +29,12 @@ func (c *DOHClient) Exchange(msg *dns.Msg) (*dns.Msg, error) {
 	msgAnswer, err := doh.ResponseToMsg(resp)
 	if err != nil {
 		_ = resp.Body.Close()
+
 		return nil, err
 	}
 
 	_ = resp.Body.Close()
+
 	return msgAnswer, nil
 }
 

@@ -53,14 +53,17 @@ func (d *doneConn) Close() error {
 		d.closed = true
 		err := d.c.Close()
 		close(d.closeChan)
+
 		return err
 	}
+
 	return net.ErrClosed
 }
 
 func (d *doneConn) Closed() bool {
 	d.closedMutex.RLock()
 	defer d.closedMutex.RUnlock()
+
 	return d.closed
 }
 
@@ -78,6 +81,7 @@ func (d *doneConn) CloseWrite() error {
 	if wc, ok := d.c.(interface{ CloseWrite() error }); ok {
 		return wc.CloseWrite()
 	}
+
 	return d.Close()
 }
 

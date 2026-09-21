@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockProvider is a test provider
+// mockProvider is a test provider.
 type mockProvider struct {
 	name     string
 	prefixes []string
@@ -27,6 +27,7 @@ func (m *mockProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	if m.fetchErr != nil {
 		return nil, m.fetchErr
 	}
+
 	return parseCIDRs(m.prefixes)
 }
 
@@ -40,6 +41,7 @@ func (m *mockProvider) Contains(addr netip.Addr) bool {
 			return true
 		}
 	}
+
 	return false
 }
 

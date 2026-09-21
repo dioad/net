@@ -17,6 +17,7 @@ type Listener struct {
 func NewListener(l net.Listener, acl Authoriser, logger zerolog.Logger) *Listener {
 	ln := &Listener{acl: acl, Logger: logger}
 	ln.inner = NewGatingListener(l, ln.gate)
+
 	return ln
 }
 
@@ -24,11 +25,13 @@ func (l *Listener) gate(c net.Conn) bool {
 	allowed, err := l.acl.AuthoriseConn(c)
 	if err != nil {
 		l.Logger.Error().Err(err).Stringer("remoteAddr", c.RemoteAddr()).Msg("authz error; denying connection")
+
 		return false
 	}
 	if !allowed {
 		l.Logger.Warn().Stringer("remoteAddr", c.RemoteAddr()).Msg("access denied")
 	}
+
 	return allowed
 }
 

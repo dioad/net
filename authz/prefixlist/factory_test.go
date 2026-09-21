@@ -160,6 +160,7 @@ func TestNewProviderFromConfig(t *testing.T) {
 			provider, err := NewProviderFromConfig(tt.config)
 			if tt.wantErr {
 				require.Error(t, err)
+
 				return
 			}
 			require.NoError(t, err)

@@ -35,6 +35,7 @@ func TestNewAutocertTLSConfig(t *testing.T) {
 			got, err := newAutocertTLSConfig(tt.c)
 			if err != nil {
 				t.Errorf("newAutocertTLSConfig() error = %v", err)
+
 				return
 			}
 			if tt.want == nil && got != nil {

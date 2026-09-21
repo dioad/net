@@ -11,12 +11,12 @@ func init() {
 	})
 }
 
-// HetznerProvider provides static IP ranges for Hetzner Cloud
+// HetznerProvider provides static IP ranges for Hetzner Cloud.
 type HetznerProvider struct {
 	prefixes []netip.Prefix
 }
 
-// NewHetznerProvider creates a new Hetzner prefix list provider
+// NewHetznerProvider creates a new Hetzner prefix list provider.
 func NewHetznerProvider() *HetznerProvider {
 	// Hetzner Cloud main IP ranges
 	// These are well-known stable ranges for Hetzner services
@@ -61,6 +61,7 @@ func NewHetznerProvider() *HetznerProvider {
 	}
 
 	prefixes, _ := parseCIDRs(cidrs) // Safe to ignore error as these are hard-coded valid CIDRs
+
 	return &HetznerProvider{
 		prefixes: prefixes,
 	}
@@ -80,5 +81,6 @@ func (p *HetznerProvider) Contains(addr netip.Addr) bool {
 			return true
 		}
 	}
+
 	return false
 }

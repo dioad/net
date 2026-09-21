@@ -1,7 +1,6 @@
 package prefixlist
 
 import (
-	"fmt"
 	"net/netip"
 	"time"
 
@@ -12,13 +11,15 @@ func init() {
 	RegisterProvider("github", func(cfg ProviderConfig) (Provider, error) {
 		// GitHub: support "service" key (e.g., "hooks", "actions")
 		service := cfg.Filter["service"]
+
 		return NewGitHubProvider(service), nil
 	})
 }
 
-// GitHubProvider fetches IP ranges from GitHub's meta API
+// GitHubProvider fetches IP ranges from GitHub's meta API.
 type GitHubProvider struct {
 	*HTTPJSONProvider[githubMeta]
+
 	filter string
 }
 
@@ -31,11 +32,11 @@ type githubMeta struct {
 	Dependabot []string `json:"dependabot"`
 }
 
-// NewGitHubProvider creates a new GitHub prefix list provider
+// NewGitHubProvider creates a new GitHub prefix list provider.
 func NewGitHubProvider(filter string) *GitHubProvider {
 	name := "github"
 	if filter != "" {
-		name = fmt.Sprintf("github-%s", filter)
+		name = "github-" + filter
 	}
 
 	p := &GitHubProvider{

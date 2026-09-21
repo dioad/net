@@ -21,6 +21,7 @@ func (s *mySource) GetLimit(principal string) (float64, int, bool) {
 	if principal == "premium" {
 		return 100.0, 100, true
 	}
+
 	return 1.0, 5, true
 }
 
@@ -28,6 +29,7 @@ func myPrincipalFunc(r *http.Request) (string, error) {
 	if r.URL.Path == "/premium" {
 		return "premium", nil
 	}
+
 	return "standard", nil
 }
 
@@ -73,7 +75,8 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		if err := server.Serve(ln); err != nil {
+		err := server.Serve(ln)
+		if err != nil {
 			log.Printf("Server error: %v\n", err)
 		}
 	}()
