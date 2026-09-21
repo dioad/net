@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"io"
 	"strings"
 
@@ -12,6 +13,22 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 )
+
+// requestFieldsInjectedKey is the context key for a per-request *bool shared
+// between Server.AddResource, which injects method, url, host, remote_addr,
+// and user_agent into the context logger mid-request so service-layer code
+// can log them without recomputing them, and StandardLogger, which emits the
+// final "accessLog" event from that same context logger. AddResource sets
+// the flag to true after injecting those fields; StandardLogger checks it to
+// avoid re-adding them, since zerolog fields are appended rather than
+// replaced and a second .Str() call for the same key would duplicate it in
+// the emitted JSON.
+//
+// The flag is only present when the handler chain was built by
+// ZerologStructuredLogHandlerWithFormatter, so callers of StandardLogger
+// outside that chain (e.g. a custom formatter wired directly onto another
+// server type) see no flag and get the fields as before.
+type requestFieldsInjectedKey struct{}
 
 // HandlerWrapper is a function type that wraps an HTTP handler.
 type HandlerWrapper func(next http.Handler) http.Handler
@@ -45,17 +62,20 @@ func headerToSnakeCase(s string) string {
 // of a request's true origin.
 func StandardLogger(r *http.Request, status, size int, duration time.Duration) *zerolog.Logger {
 	ctx := hlog.FromRequest(r).With().
-		Str("method", r.Method).
-		Stringer("url", r.URL).
 		Int("status", status).
 		Int("size", size).
 		Dur("duration", duration).
-		Str("user_agent", r.UserAgent()).
 		Str("referer", r.Referer()).
 		Str("resolved_client_ip", GetClientIP(r)).
-		Str("remote_addr", r.RemoteAddr).
-		Str("proto", r.Proto).
-		Str("host", r.Host)
+		Str("proto", r.Proto)
+
+	if injected, ok := r.Context().Value(requestFieldsInjectedKey{}).(*bool); !ok || !*injected {
+		ctx = ctx.Str("method", r.Method).
+			Stringer("url", r.URL).
+			Str("user_agent", r.UserAgent()).
+			Str("remote_addr", r.RemoteAddr).
+			Str("host", r.Host)
+	}
 
 	for _, h := range []string{"X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "Forwarded", "Via", "X-Real-IP"} {
 		if v := r.Header.Get(h); v != "" {
@@ -85,7 +105,12 @@ func ZerologStructuredLogHandlerWithFormatter(logger zerolog.Logger, formatter S
 			formatter(r, status, size, duration).Info().Msg("accessLog")
 		}
 
-		return logReq(hlog.AccessHandler(structuredLogger)(next))
+		handler := logReq(hlog.AccessHandler(structuredLogger)(next))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			injected := false
+			ctx := context.WithValue(r.Context(), requestFieldsInjectedKey{}, &injected)
+			handler.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
 }
 
