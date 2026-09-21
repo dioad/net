@@ -1,0 +1,23 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - wsl
+    - wsl_v5
+    - whitespace
+    - wrapcheck
+    - exhaustruct
+    - exhaustruct_v5
+    - err113
+    - testpackage
+    - depguard
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
