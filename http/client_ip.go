@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"slices"
 	"strings"
 )
 
@@ -259,8 +260,8 @@ func reverseSplitSeq(s, sep string) func(yield func(string) bool) {
 			return
 		}
 		parts := strings.Split(s, sep)
-		for i := len(parts) - 1; i >= 0; i-- {
-			if !yield(parts[i]) {
+		for _, part := range slices.Backward(parts) {
+			if !yield(part) {
 				return
 			}
 		}

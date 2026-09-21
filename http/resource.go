@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"net/http"
+	"slices"
 )
 
 // Resource is a marker interface for HTTP resources.
@@ -19,9 +20,9 @@ type Middleware func(http.Handler) http.Handler
 // The middlewares are applied in reverse order so the first middleware in the list
 // is the first to execute.
 func Chain(handler http.Handler, middlewares ...Middleware) http.Handler {
-	for i := len(middlewares) - 1; i >= 0; i-- {
-		if middlewares[i] != nil {
-			handler = middlewares[i](handler)
+	for _, middleware := range slices.Backward(middlewares) {
+		if middleware != nil {
+			handler = middleware(handler)
 		}
 	}
 	return handler

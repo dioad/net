@@ -38,8 +38,8 @@ type ConnMetrics interface {
 }
 
 type connMetrics struct {
-	bytesRead    uint64
-	bytesWritten uint64
+	bytesRead    atomic.Uint64
+	bytesWritten atomic.Uint64
 
 	startTime time.Time
 	endTime   time.Time
@@ -49,17 +49,17 @@ type connMetrics struct {
 
 // BytesRead returns the number of bytes read.
 func (m *connMetrics) BytesRead() uint64 {
-	return atomic.LoadUint64(&m.bytesRead)
+	return m.bytesRead.Load()
 }
 
 // BytesWritten returns the number of bytes written.
 func (m *connMetrics) BytesWritten() uint64 {
-	return atomic.LoadUint64(&m.bytesWritten)
+	return m.bytesWritten.Load()
 }
 
 // IncBytesRead increments the number of bytes read.
 func (m *connMetrics) IncBytesRead(n int) {
-	atomic.AddUint64(&m.bytesRead, uint64(n)) // #nosec G115 -- n is a Read() byte count, always >= 0 per io.Reader contract
+	m.bytesRead.Add(uint64(n)) // #nosec G115 -- n is a Read() byte count, always >= 0 per io.Reader contract
 	m.updateTime()
 }
 
@@ -76,7 +76,7 @@ func (m *connMetrics) updateTime() {
 
 // IncBytesWritten increments the number of bytes written.
 func (m *connMetrics) IncBytesWritten(n int) {
-	atomic.AddUint64(&m.bytesWritten, uint64(n)) // #nosec G115 -- n is a Write() byte count, always >= 0 per io.Writer contract
+	m.bytesWritten.Add(uint64(n)) // #nosec G115 -- n is a Write() byte count, always >= 0 per io.Writer contract
 	m.updateTime()
 }
 
