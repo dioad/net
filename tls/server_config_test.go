@@ -511,14 +511,11 @@ func TestNewSelfSignedTLSConfig(t *testing.T) {
 			got, err := NewSelfSignedTLSConfig(tt.c)
 			if err != nil {
 				t.Errorf("NewSelfSignedTLSConfig() error = %v", err)
-			} else {
-				if tt.want == nil && got == nil {
-					return
-				}
-
-				// ignored for now until we have a way to test the generated certificate
-
+			} else if tt.want == nil && got == nil {
+				return
 			}
+
+			// ignored for now until we have a way to test the generated certificate
 		})
 	}
 }

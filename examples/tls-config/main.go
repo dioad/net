@@ -42,7 +42,10 @@ func main() {
 
 	_, _, err = diotls.CreateAndSaveSelfSignedKeyPair(selfSignedConfig, certFile, keyFile)
 	if err != nil {
-		log.Fatalf("Error generating certificate: %v\n", err)
+		// log.Fatalf exits immediately, so the defer registered above for
+		// tmpDir would never run - remove it explicitly first.
+		_ = os.RemoveAll(tmpDir)
+		log.Fatalf("Error generating certificate: %v\n", err) //nolint:gocritic // tmpDir is already removed above; gocritic can't see that
 	}
 
 	fmt.Printf("Certificate saved to: %s\n", certFile)

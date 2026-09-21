@@ -203,11 +203,9 @@ func getFieldName(tagName string, field reflect.StructField, structName string, 
 	fieldName := field.Name
 	if details.name != "" {
 		fieldName = details.name
-	} else {
+	} else if opts.DefaultKebabCase {
 		// Convert fieldSet name to kebab-case if default is enabled
-		if opts.DefaultKebabCase {
-			fieldName = toKebabCase(fieldName)
-		}
+		fieldName = toKebabCase(fieldName)
 	}
 
 	return buildFieldName(fieldName, structName, opts)

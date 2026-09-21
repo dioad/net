@@ -105,11 +105,12 @@ func configFuncFromConfig(ctx context.Context, c ServerConfig) ConfigFunc {
 			Msg("multiple TLS config arms are configured; only the first in precedence order (ACME, then SelfSigned, then LocalConfig) is used")
 	}
 
-	if acmeSet {
+	switch {
+	case acmeSet:
 		return NewACMETLSConfigFunc(ctx, c.ACME)
-	} else if selfSignedSet {
+	case selfSignedSet:
 		return NewSelfSignedTLSConfigFunc(c.SelfSigned)
-	} else if localSet {
+	case localSet:
 		return NewLocalTLSConfigFunc(ctx, c.LocalConfig)
 	}
 

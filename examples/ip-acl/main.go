@@ -61,7 +61,10 @@ func main() {
 	// Create listener that DENIES localhost connections
 	denyListener, err := net.Listen("tcp", "127.0.0.1:9002")
 	if err != nil {
-		log.Fatalf("Error creating deny listener: %v\n", err)
+		// log.Fatalf exits immediately, so the defer registered above for
+		// allowListener would never run - close it explicitly first.
+		_ = allowListener.Close()
+		log.Fatalf("Error creating deny listener: %v\n", err) //nolint:gocritic // allowListener is already closed above; gocritic can't see that
 	}
 	defer func() { _ = denyListener.Close() }()
 
