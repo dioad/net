@@ -25,7 +25,7 @@ func TestClient_Request_DefaultsContentTypeToJSONWhenUnset(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(t)
-	req, err := http.NewRequest(http.MethodPost, server.URL, strings.NewReader(`{}`))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL, strings.NewReader(`{}`))
 	require.NoError(t, err)
 	req.ContentLength = 2
 
@@ -43,7 +43,7 @@ func TestClient_Request_DoesNotOverrideCallerSetContentType(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(t)
-	req, err := http.NewRequest(http.MethodPost, server.URL, strings.NewReader("field=value"))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL, strings.NewReader("field=value"))
 	require.NoError(t, err)
 	req.ContentLength = 11
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")

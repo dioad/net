@@ -24,7 +24,7 @@ func main() {
 	server.AddHandler("/hello", myHandler)
 
 	// Create listener
-	ln, err := net.Listen("tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
+	ln, err := net.Listen("tcp", ":8080") //nolint:noctx // binding a local listen socket is instant, no context needed for a demo; #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
 	if err != nil {
 		log.Fatalf("Error creating listener: %v\n", err)
 	}

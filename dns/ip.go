@@ -2,6 +2,7 @@
 package dns
 
 import (
+	"context"
 	"errors"
 	"net"
 	"strconv"
@@ -27,13 +28,13 @@ func ReverseIP(addr string) (string, error) {
 }
 
 // BlocklistLookupAddr checks if the given IP address is listed in the Spamhaus blocklist.
-func BlocklistLookupAddr(addr string) (bool, error) {
+func BlocklistLookupAddr(ctx context.Context, addr string) (bool, error) {
 	revAddr, err := ReverseIP(addr)
 	if err != nil {
 		return false, err
 	}
 	spamName := revAddr + ".zen.spamhaus.org"
-	responseCodes, err := net.LookupHost(spamName)
+	responseCodes, err := (&net.Resolver{}).LookupHost(ctx, spamName)
 	if err != nil {
 		if _, ok := errors.AsType[*net.DNSError](err); ok {
 			return false, nil

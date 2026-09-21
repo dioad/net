@@ -13,7 +13,7 @@ import (
 
 func TestListener_Accept(t *testing.T) {
 	// Create a real TCP listener on localhost
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer func() { _ = ln.Close() }()
 

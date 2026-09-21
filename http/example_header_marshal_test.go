@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -271,7 +272,7 @@ func ExampleUnmarshalHeader_middleware() {
 	wrappedHandler := middleware(handler)
 
 	// Simulate a request with headers
-	req, _ := http.NewRequest(http.MethodGet, "/api/data", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/data", nil)
 	req.Header.Set("X-Context-Tenantid", "tenant-123")
 	req.Header.Set("X-Context-Userrole", "admin")
 

@@ -49,7 +49,7 @@ func TestListener(t *testing.T) {
 	logger := zerolog.Nop()
 
 	// Create a test server
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()
 
@@ -69,7 +69,7 @@ func TestListener(t *testing.T) {
 
 	// Test accepting a connection from allowed IP
 	go func() {
-		conn, err := net.Dial("tcp", listener.Addr().String())
+		conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", listener.Addr().String())
 		if err == nil {
 			defer func() { _ = conn.Close() }()
 			time.Sleep(100 * time.Millisecond)
@@ -85,7 +85,7 @@ func TestListener(t *testing.T) {
 func TestListenerAddr(t *testing.T) {
 	logger := zerolog.Nop()
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()
 

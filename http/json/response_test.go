@@ -35,7 +35,7 @@ func TestNewResponseWithLogger(t *testing.T) {
 	var logOutput bytes.Buffer
 	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 
 	resp := NewResponseWithLogger(w, req, logger)
 
@@ -85,7 +85,7 @@ func TestNewResponseFromRequest(t *testing.T) {
 		Logger()
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	req = req.WithContext(ctxLogger.WithContext(req.Context()))
 
 	resp := NewResponseFromRequest(w, req)
@@ -364,7 +364,7 @@ func TestNoContent_IgnoresDataAndPublicMessage(t *testing.T) {
 	var logOutput bytes.Buffer
 	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 
 	resp := NewResponseWithLogger(w, req, logger)
 	resp.NoContent(Data(map[string]string{"id": "1"}), PublicMessage("done"))
@@ -473,7 +473,7 @@ func TestOK_StructDataWithMessage_LogsWarningWhenMessageIsDropped(t *testing.T) 
 	var logOutput bytes.Buffer
 	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 
 	resp := NewResponseWithLogger(w, req, logger)
 	resp.OK(Data(user{ID: "1"}), PublicMessage("done"))
@@ -496,7 +496,7 @@ func TestReadBody_ValidJSON(t *testing.T) {
 	}
 
 	jsonData := `{"name":"test","value":123}`
-	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(jsonData))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", bytes.NewBufferString(jsonData))
 
 	result, err := ReadBody[TestStruct](req)
 
@@ -518,7 +518,7 @@ func TestReadBody_InvalidJSON(t *testing.T) {
 	}
 
 	invalidJSON := `{"name": "test"`
-	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(invalidJSON))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", bytes.NewBufferString(invalidJSON))
 
 	_, err := ReadBody[TestStruct](req)
 
@@ -532,7 +532,7 @@ func TestReadBody_EmptyBody(t *testing.T) {
 		Name string `json:"name"`
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(""))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", bytes.NewBufferString(""))
 
 	_, err := ReadBody[TestStruct](req)
 
@@ -545,7 +545,7 @@ func TestResponseWithLogger_ErrorLogging(t *testing.T) {
 	var logOutput bytes.Buffer
 	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 
 	resp := NewResponseWithLogger(w, req, logger)
 	err := errors.New("test error")
@@ -566,7 +566,7 @@ func TestBadRequestWithMessages(t *testing.T) {
 	var logOutput bytes.Buffer
 	logger := zerolog.New(&logOutput)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 
 	resp := NewResponseWithLogger(w, req, logger)
 	resp.BadRequestWithMessages("client error", "server log message")

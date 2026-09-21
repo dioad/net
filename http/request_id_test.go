@@ -21,7 +21,7 @@ func TestRequestIDMiddleware_setsResponseHeader(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -38,7 +38,7 @@ func TestRequestIDMiddleware_ignoresClientSuppliedHeader(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set("X-Request-ID", clientID)
 	rec := httptest.NewRecorder()
 
@@ -60,7 +60,7 @@ func TestRequestIDMiddleware_injectsRequestIDIntoContextLogger(t *testing.T) {
 	}))
 
 	logger := zerolog.New(&buf)
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = req.WithContext(logger.WithContext(req.Context()))
 	rec := httptest.NewRecorder()
 
@@ -84,7 +84,7 @@ func TestRequestIDMiddleware_worksWithoutPreseededLogger(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -103,7 +103,7 @@ func TestRequestIDMiddleware_requestIDVisibleFromOuterContext(t *testing.T) {
 	var buf bytes.Buffer
 	logger := zerolog.New(&buf)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = req.WithContext(logger.WithContext(req.Context()))
 
 	// Capture the logger pointer before the middleware runs, exactly as
@@ -139,7 +139,7 @@ func TestRequestIDMiddleware_generatesDistinctIDsPerRequest(t *testing.T) {
 
 	ids := make(map[string]struct{}, 10)
 	for range 10 {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
 		id := rec.Header().Get("X-Request-ID")

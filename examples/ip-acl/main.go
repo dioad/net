@@ -50,7 +50,7 @@ func main() {
 	}
 
 	// Create listener that ALLOWS localhost connections
-	allowListener, err := net.Listen("tcp", "127.0.0.1:9001")
+	allowListener, err := net.Listen("tcp", "127.0.0.1:9001") //nolint:noctx // binding a local listen socket is instant, no context needed for a demo
 	if err != nil {
 		log.Fatalf("Error creating allow listener: %v\n", err)
 	}
@@ -59,7 +59,7 @@ func main() {
 	aclAllowListener := authz.NewListener(allowListener, allowLocalACL, logger)
 
 	// Create listener that DENIES localhost connections
-	denyListener, err := net.Listen("tcp", "127.0.0.1:9002")
+	denyListener, err := net.Listen("tcp", "127.0.0.1:9002") //nolint:noctx // binding a local listen socket is instant, no context needed for a demo
 	if err != nil {
 		// log.Fatalf exits immediately, so the defer registered above for
 		// allowListener would never run - close it explicitly first.

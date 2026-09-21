@@ -453,7 +453,7 @@ func (s *Server) ListenAndServe() error {
 // It creates a listener on the configured address and calls Serve.
 func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
 	s.Config.TLSConfig = tlsConfig
-	ln, err := net.Listen("tcp", s.Config.ListenAddress)
+	ln, err := net.Listen("tcp", s.Config.ListenAddress) //nolint:noctx // binding a local listen socket is effectively instant; matches net/http.Server's own no-context ListenAndServe convention
 	if err != nil {
 		s.Logger.Error().Err(err).Str("address", s.Config.ListenAddress).Msg("failed to listen on address")
 

@@ -31,7 +31,7 @@ func TestIsWebsocketHandshake(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 			if tt.upgrade != "" {
 				r.Header.Set("Upgrade", tt.upgrade)
 			}
@@ -69,7 +69,7 @@ func TestMetricSet_Middleware_WSLabel(t *testing.T) {
 
 			handler := m.Middleware(mux, mux)
 
-			r := httptest.NewRequest(http.MethodGet, "/widgets/42", nil)
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/widgets/42", nil)
 			if tt.upgrade != "" {
 				r.Header.Set("Upgrade", tt.upgrade)
 			}
@@ -108,7 +108,7 @@ func TestMetricSet_Middleware_UnmatchedRouteDoesNotLeakRawPath(t *testing.T) {
 	// prevent, but that a scanner probing thousands of nonexistent paths
 	// would otherwise trigger via this fallback.
 	for _, path := range []string{"/does-not-exist", "/another-scan-attempt"} {
-		r := httptest.NewRequest(http.MethodGet, path, nil)
+		r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
 		handler.ServeHTTP(httptest.NewRecorder(), r)
 	}
 

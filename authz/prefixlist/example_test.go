@@ -76,8 +76,10 @@ func ExampleNewMultiProviderFromConfig() {
 func ExampleListener() {
 	logger := zerolog.Nop()
 
+	ctx := context.Background()
+
 	// Create a base listener
-	baseListener, err := net.Listen("tcp", "127.0.0.1:0")
+	baseListener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", "127.0.0.1:0")
 	if err != nil {
 		panic(err)
 	}
@@ -87,7 +89,6 @@ func ExampleListener() {
 	gitlabProvider := prefixlist.NewGitLabProvider()
 	multiProvider := prefixlist.NewMultiProvider([]prefixlist.Provider{gitlabProvider}, logger)
 
-	ctx := context.Background()
 	_, err = multiProvider.Prefixes(ctx)
 	if err != nil {
 		panic(err)

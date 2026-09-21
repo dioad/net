@@ -32,7 +32,7 @@ func TCPPortFromURL(url *url.URL) (string, error) {
 		if url.Scheme == "" {
 			return "0", nil
 		}
-		protoPort, err := net.LookupPort("tcp", url.Scheme)
+		protoPort, err := net.LookupPort("tcp", url.Scheme) //nolint:noctx // service-name lookup is a local table/file read, not a network round-trip; no meaningful cancellation surface
 		if err != nil {
 			return "", err
 		}

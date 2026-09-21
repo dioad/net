@@ -63,7 +63,7 @@ func TestNewSessionCookieStore_NoKeyPairsErrors(t *testing.T) {
 func saveAndCaptureCookie(t *testing.T, store *sessions.CookieStore, values map[string]any) string {
 	t.Helper()
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 
 	session, err := store.New(req, "session")
@@ -90,7 +90,7 @@ func TestNewSessionCookieStore_EncryptionIsOptional(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 		req.AddCookie(&http.Cookie{Name: name, Value: rawCookie}) //nolint:gosec // simulates an incoming request cookie; Secure/HttpOnly/SameSite only apply to Set-Cookie responses
 		_, err = authOnlyStore.Get(req, name)
 
@@ -141,7 +141,7 @@ func TestNewSessionCookieStore_SupportsKeyRotation(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.AddCookie(&http.Cookie{Name: "session", Value: rawCookie}) //nolint:gosec // simulates an incoming request cookie; Secure/HttpOnly/SameSite only apply to Set-Cookie responses
 
 	session, err := rotatedStore.Get(req, "session")

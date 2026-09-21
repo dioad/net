@@ -227,7 +227,7 @@ func TestAddResource(t *testing.T) {
 	}
 
 	// Create a test request
-	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/test", nil)
 	w := httptest.NewRecorder()
 
 	// Serve the request
@@ -255,7 +255,7 @@ func TestAddResourcePreservesOriginalURLForLogHandler(t *testing.T) {
 	})
 	server.AddResource("/api", resource)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/test?foo=bar", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/test?foo=bar", nil)
 	w := httptest.NewRecorder()
 
 	server.handler().ServeHTTP(w, req)
@@ -287,7 +287,7 @@ func TestAddResourceEnrichesContextLogger(t *testing.T) {
 	})
 	server.AddResource("/app", resource)
 
-	req := httptest.NewRequest(http.MethodPost, "/app/pricing", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/app/pricing", nil)
 	req.Header.Set("User-Agent", "test-agent/1.0")
 	req = req.WithContext(logger.WithContext(req.Context()))
 	w := httptest.NewRecorder()
@@ -347,7 +347,7 @@ func TestAddResource_AccessLogDoesNotDuplicateRequestFields(t *testing.T) {
 	})
 	server.AddResource("/api", resource)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/test", nil)
 	w := httptest.NewRecorder()
 
 	server.handler().ServeHTTP(w, req)
@@ -368,7 +368,7 @@ func TestAddResourceStripsEncodedRawPathPrefix(t *testing.T) {
 	resource := &requestCapturingResource{}
 	server.AddResource("/api[1]", resource)
 
-	req := httptest.NewRequest(http.MethodGet, "/api%5B1%5D/test%2Fvalue", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api%5B1%5D/test%2Fvalue", nil)
 	w := httptest.NewRecorder()
 
 	server.handler().ServeHTTP(w, req)
@@ -416,7 +416,7 @@ func TestStatusEndpoint(t *testing.T) {
 	getStatus := func(t *testing.T) (int, map[string]any) {
 		t.Helper()
 		server.initialiseServer()
-		req := httptest.NewRequest(http.MethodGet, "/status", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 		w := httptest.NewRecorder()
 		server.handler().ServeHTTP(w, req)
 
@@ -523,7 +523,7 @@ func TestLiveEndpoint(t *testing.T) {
 	expectLive := func(t *testing.T, wantLive bool, wantStatus int) map[string]any {
 		t.Helper()
 		server.initialiseServer()
-		req := httptest.NewRequest(http.MethodGet, "/health/live", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/live", nil)
 		w := httptest.NewRecorder()
 		server.handler().ServeHTTP(w, req)
 		assert.Equal(t, wantStatus, w.Code)
@@ -557,7 +557,7 @@ func TestLiveEndpoint_ReportsEveryFailingResource(t *testing.T) {
 	server.AddResource("/api/second", second)
 
 	server.initialiseServer()
-	req := httptest.NewRequest(http.MethodGet, "/health/live", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/live", nil)
 	w := httptest.NewRecorder()
 	server.handler().ServeHTTP(w, req)
 
@@ -587,7 +587,7 @@ func TestReadyEndpoint(t *testing.T) {
 	expectReady := func(t *testing.T, wantReady bool, wantStatus int) {
 		t.Helper()
 		server.initialiseServer()
-		req := httptest.NewRequest(http.MethodGet, "/health/ready", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/ready", nil)
 		w := httptest.NewRecorder()
 		server.handler().ServeHTTP(w, req)
 		assert.Equal(t, wantStatus, w.Code)
@@ -623,7 +623,7 @@ func TestMiddleware(t *testing.T) {
 	})
 
 	// Create a test request
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
 	// Serve the request
@@ -687,7 +687,7 @@ func TestAddRootResource_DispatchesToIndex(t *testing.T) {
 	// registration - that only happens inside initialiseServer.
 	s.initialiseServer()
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	s.handler().ServeHTTP(w, req)
 
@@ -699,7 +699,7 @@ func TestAddRootResource_NeverCalled_RootIs404(t *testing.T) {
 	s := NewServer(Config{})
 	s.initialiseServer()
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	s.handler().ServeHTTP(w, req)
 
@@ -725,7 +725,7 @@ func TestAddRootResource_SafeAfterEarlyInitialisation(t *testing.T) {
 
 	s.AddRootResource(stubRootResource{})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	s.handler().ServeHTTP(w, req)
 
@@ -750,7 +750,7 @@ func TestServer_NeverCallingAddRootResource_DoesNotConflictWithOwnCatchAllRoute(
 		s.initialiseServer()
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/anything", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/anything", nil)
 	w := httptest.NewRecorder()
 	s.handler().ServeHTTP(w, req)
 
