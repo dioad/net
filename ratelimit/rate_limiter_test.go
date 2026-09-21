@@ -812,7 +812,7 @@ func TestRateLimiter_ConcurrentAccess(t *testing.T) {
 
 	// Verify no panics occurred and limiters were created
 	rl.mu.RLock()
-	assert.Positive(t, len(rl.limiters))
+	assert.NotEmpty(t, rl.limiters)
 	assert.LessOrEqual(t, len(rl.limiters), 10) // Max 10 unique principals
 	rl.mu.RUnlock()
 }
