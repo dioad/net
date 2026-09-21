@@ -192,7 +192,7 @@ func TestNewLocalTLSConfigErrors(t *testing.T) {
 			Key:         filepath.Join(dir, "missing-key.pem"),
 		})
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "error loading key pair and certs from files")
+		require.ErrorContains(t, err, "error loading key pair and certs from files")
 		assert.Error(t, errors.Unwrap(err), "the underlying error should be wrapped (%w), not just formatted as text")
 	})
 }

@@ -54,7 +54,7 @@ func TestSaveTLSCertificateToFile(t *testing.T) {
 		}
 
 		err := SaveTLSCertificateToFile(cert, path, 0644)
-		assert.Error(t, err)
+		require.Error(t, err)
 
 		// The certificate block is written before the private key is
 		// marshalled, so it should already be on disk despite the error.
@@ -89,7 +89,7 @@ func TestSaveTLSCertificateToFiles(t *testing.T) {
 		cert := &tls.Certificate{Certificate: [][]byte{{0x01}}, PrivateKey: "irrelevant"}
 
 		err := SaveTLSCertificateToFiles(cert, certDir, keyPath)
-		assert.ErrorContains(t, err, "is a directory")
+		require.ErrorContains(t, err, "is a directory")
 
 		_, statErr := os.Stat(keyPath)
 		assert.True(t, os.IsNotExist(statErr), "the key file should not be written when the certificate file fails to open")
@@ -104,7 +104,7 @@ func TestSaveTLSCertificateToFiles(t *testing.T) {
 		}
 
 		err := SaveTLSCertificateToFiles(cert, certPath, keyPath)
-		assert.Error(t, err)
+		require.Error(t, err)
 
 		content, readErr := os.ReadFile(certPath) //nolint:gosec // certPath is a test-generated temp file, not external input
 		require.NoError(t, readErr)

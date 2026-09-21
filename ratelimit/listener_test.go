@@ -44,7 +44,7 @@ func TestListener_Accept(t *testing.T) {
 	// First two should be allowed (burst = 2)
 	for range 2 {
 		conn, err := dialer.Dial("tcp", ln.Addr().String())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if err == nil {
 			// Read to see if it's closed by server or still open
 			// Actually, the listener closes it AFTER accepting if it's rate limited.
@@ -65,14 +65,14 @@ func TestListener_Accept(t *testing.T) {
 	// Third one should be rate limited and closed immediately by rlListener.Accept()
 	// It won't reach our acceptedCount++
 	conn, err := dialer.Dial("tcp", ln.Addr().String())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if err == nil {
 		// We expect the server to close this connection because of rate limiting
 		buf := make([]byte, 1)
 		require.NoError(t, conn.SetReadDeadline(time.Now().Add(100*time.Millisecond)))
 		_, err := conn.Read(buf)
 		// Should get EOF or similar because server closed it
-		assert.Error(t, err)
+		require.Error(t, err)
 		_ = conn.Close()
 	}
 
@@ -85,7 +85,7 @@ func TestListener_Accept(t *testing.T) {
 
 	// Fourth one should be allowed now
 	conn, err = dialer.Dial("tcp", ln.Addr().String())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if err == nil {
 		_ = conn.Close()
 	}

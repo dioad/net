@@ -122,11 +122,11 @@ func TestNewRateLimiterWithConfig_ClampsInvalidInputs(t *testing.T) {
 	t.Run("negative rps clamps to zero, small positive rps is preserved", func(t *testing.T) {
 		clamped := NewRateLimiterWithConfig(-0.5, 5, time.Minute, time.Minute, logger)
 		defer clamped.Stop()
-		assert.Equal(t, 0.0, clamped.requestsPerSecond)
+		assert.Equal(t, 0.0, clamped.requestsPerSecond) //nolint:testifylint // exact clamp target, not a computed float
 
 		preserved := NewRateLimiterWithConfig(0.5, 5, time.Minute, time.Minute, logger)
 		defer preserved.Stop()
-		assert.Equal(t, 0.5, preserved.requestsPerSecond)
+		assert.Equal(t, 0.5, preserved.requestsPerSecond) //nolint:testifylint // exact passthrough of the input literal, not a computed float
 	})
 
 	t.Run("negative burst clamps to zero", func(t *testing.T) {
@@ -189,11 +189,11 @@ func TestNewRateLimiterWithContextAndConfig_ClampsInvalidInputs(t *testing.T) {
 	t.Run("negative rps clamps to zero, small positive rps is preserved", func(t *testing.T) {
 		clamped := NewRateLimiterWithContextAndConfig(context.Background(), -0.5, 5, time.Minute, time.Minute, logger)
 		defer clamped.Stop()
-		assert.Equal(t, 0.0, clamped.requestsPerSecond)
+		assert.Equal(t, 0.0, clamped.requestsPerSecond) //nolint:testifylint // exact clamp target, not a computed float
 
 		preserved := NewRateLimiterWithContextAndConfig(context.Background(), 0.5, 5, time.Minute, time.Minute, logger)
 		defer preserved.Stop()
-		assert.Equal(t, 0.5, preserved.requestsPerSecond)
+		assert.Equal(t, 0.5, preserved.requestsPerSecond) //nolint:testifylint // exact passthrough of the input literal, not a computed float
 	})
 
 	t.Run("negative burst clamps to zero", func(t *testing.T) {
@@ -528,7 +528,7 @@ func TestStaticRateLimitSource(t *testing.T) {
 	source := &StaticRateLimitSource{RequestsPerSecond: 10, Burst: 20}
 	rps, burst, ok := source.GetLimit("any")
 	assert.True(t, ok)
-	assert.Equal(t, 10.0, rps)
+	assert.Equal(t, 10.0, rps) //nolint:testifylint // exact passthrough of the struct literal field, not a computed float
 	assert.Equal(t, 20, burst)
 }
 

@@ -102,7 +102,7 @@ func TestCachingFetcher_ReturnStale(t *testing.T) {
 	assert.Equal(t, CacheResultStale, result2)
 	require.NotNil(t, data2)
 	assert.Equal(t, 1, data2.Count) // Stale data
-	assert.NoError(t, err2)         // No error returned with stale data
+	require.NoError(t, err2)        // No error returned with stale data
 
 	// Wait for background refresh to complete
 	time.Sleep(200 * time.Millisecond)
@@ -171,7 +171,7 @@ func TestCachingFetcher_Error_NoStaleData(t *testing.T) {
 
 	// Should return error and zero value
 	data, result, err := fetcher.Get(ctx)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, CacheResultFresh, result)
 	assert.Empty(t, data.Message)
 	assert.Equal(t, 0, data.Count)
@@ -216,7 +216,7 @@ func TestCachingFetcher_BlockingRefreshFailure_StaleDataHasNilError(t *testing.T
 	shouldFail.Store(true)
 
 	data2, result2, err2 := fetcher.Get(ctx)
-	assert.NoError(t, err2, "CacheResultStale must not carry an error; the returned data is valid and usable")
+	require.NoError(t, err2, "CacheResultStale must not carry an error; the returned data is valid and usable")
 	assert.Equal(t, CacheResultStale, result2)
 	assert.Equal(t, 1, data2.Count, "the stale (pre-failure) data must still be returned")
 
@@ -280,7 +280,7 @@ func TestCachingFetcher_ConcurrentAccess_WaiterSeesStaleWithNilError(t *testing.
 
 	for range goroutines {
 		r := <-results
-		assert.NoError(t, r.err, "a waiter sharing a failed refresh must still get a nil error when stale data is available")
+		require.NoError(t, r.err, "a waiter sharing a failed refresh must still get a nil error when stale data is available")
 		assert.Equal(t, CacheResultStale, r.result)
 		assert.Equal(t, 1, r.data.Count)
 	}
@@ -307,19 +307,22 @@ func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
 
 	// Launch multiple concurrent requests
 	const goroutines = 10
-	results := make(chan testData, goroutines)
+	errs := make(chan error, goroutines)
 
 	for range goroutines {
 		go func() {
-			data, _, err := fetcher.Get(ctx)
-			require.NoError(t, err)
-			results <- data
+			_, _, err := fetcher.Get(ctx)
+			errs <- err
 		}()
 	}
 
-	// Collect results
+	// Collect results. require must only be called from the goroutine
+	// running the test function, so errors are checked here rather than in
+	// the goroutines above - a require failure there would only stop that
+	// one goroutine via runtime.Goexit, leaving this collection loop
+	// blocked forever waiting on a value that never arrives.
 	for range goroutines {
-		<-results
+		require.NoError(t, <-errs)
 	}
 
 	// Should have only called the server once (concurrent requests wait for the same fetch)
@@ -362,7 +365,7 @@ func TestCachingFetcher_ConcurrentAccess_CoalescesOnFailure(t *testing.T) {
 
 	for range goroutines {
 		err := <-errs
-		assert.Error(t, err, "every waiter must see the shared fetch's error")
+		require.Error(t, err, "every waiter must see the shared fetch's error")
 	}
 
 	assert.Equal(t, int32(1), callCount.Load(), "a failed fetch with no stale data must still coalesce -- only one actual request should reach the origin")

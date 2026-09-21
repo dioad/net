@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestMarshalQueryWithPrefixAndStructName tests the example from the issue.
@@ -21,10 +22,10 @@ func TestMarshalQueryWithPrefixAndStructName(t *testing.T) {
 	}
 
 	query, err := MarshalQuery(example, opts)
-	assert.NoErrorf(t, err, "MarshalQuery should not fail")
+	require.NoErrorf(t, err, "MarshalQuery should not fail")
 
 	values, err := url.ParseQuery(query)
-	assert.NoErrorf(t, err, "URL parse should not fail")
+	require.NoErrorf(t, err, "URL parse should not fail")
 
 	// Check fieldSet one
 	assert.Equal(t, "value1", values.Get("X-example-field-one"))
@@ -46,10 +47,10 @@ func TestMarshalQueryWithoutStructName(t *testing.T) {
 	}
 
 	query, err := MarshalQuery(example, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	values, err := url.ParseQuery(query)
-	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
+	require.NoErrorf(t, err, "ParseQuery failed: %v", err)
 
 	// Check fieldSet one (without struct name)
 	assert.Equal(t, "value1", values.Get("X-FieldOne"))
@@ -68,10 +69,10 @@ func TestMarshalQueryNoPrefix(t *testing.T) {
 	opts := DefaultHTTPMarshalOptions()
 
 	query, err := MarshalQuery(example, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	values, err := url.ParseQuery(query)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	// Check fieldSet one (no prefix, no struct name)
 	assert.Equal(t, "value1", values.Get("FieldOne"))
@@ -87,7 +88,7 @@ func TestUnmarshalQuery(t *testing.T) {
 
 	opts := DefaultHTTPMarshalOptions()
 	err := UnmarshalQuery(rawQuery, &example, opts)
-	assert.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
 
 	assert.Equal(t, "value1", example.FieldOne)
 	assert.Equal(t, []string{"value2", "value3"}, example.FieldTwo)
@@ -108,7 +109,7 @@ func TestUnmarshalQueryWithPrefixAndStructName(t *testing.T) {
 
 	var example Example
 	err := UnmarshalQuery(values.Encode(), &example, opts)
-	assert.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
 
 	assert.Equal(t, "value1", example.FieldOne)
 
@@ -129,7 +130,7 @@ func TestUnmarshalQueryWithoutStructName(t *testing.T) {
 
 	var example Example
 	err := UnmarshalQuery(values.Encode(), &example, opts)
-	assert.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
 
 	assert.Equal(t, "value1", example.FieldOne)
 
@@ -150,12 +151,12 @@ func TestMarshalUnmarshalQueryRoundTrip(t *testing.T) {
 
 	// Marshal
 	query, err := MarshalQuery(original, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	// Unmarshal
 	var result Example
 	err = UnmarshalQuery(query, &result, opts)
-	assert.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
 
 	// Compare
 	assert.Equalf(t, original, result, "Round trip mismatch")
@@ -181,10 +182,10 @@ func TestStructWithQueryTags(t *testing.T) {
 	}
 
 	query, err := MarshalQuery(cs, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	values, err := url.ParseQuery(query)
-	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
+	require.NoErrorf(t, err, "ParseQuery failed: %v", err)
 
 	// Check custom names
 	assert.Equal(t, "value1", values.Get("X-custom-name"))
@@ -202,7 +203,7 @@ func TestMarshalQueryEmptyStruct(t *testing.T) {
 	opts := DefaultHTTPMarshalOptions()
 
 	query, err := MarshalQuery(example, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	// Empty strings should not create parameters
 	assert.Emptyf(t, query, "Expected empty query,")
@@ -215,7 +216,7 @@ func TestMarshalQueryNilPointer(t *testing.T) {
 	opts := DefaultHTTPMarshalOptions()
 
 	query, err := MarshalQuery(example, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	assert.Emptyf(t, query, "Expected an empty string")
 }
@@ -230,10 +231,10 @@ func TestMarshalQueryPointerToStruct(t *testing.T) {
 	opts := DefaultHTTPMarshalOptions()
 
 	query, err := MarshalQuery(example, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	values, err := url.ParseQuery(query)
-	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
+	require.NoErrorf(t, err, "ParseQuery failed: %v", err)
 
 	assert.Equalf(t, "value1", values.Get("FieldOne"), "FieldOne mismatch")
 }
@@ -248,11 +249,11 @@ func TestUnmarshalQueryInvalidDestination(t *testing.T) {
 	// Test with non-pointer
 	var example Example
 	err := UnmarshalQuery(values.Encode(), example, opts)
-	assert.Error(t, err, "Expected error when unmarshaling to non-pointer")
+	require.Error(t, err, "Expected error when unmarshaling to non-pointer")
 
 	// Test with nil
 	err = UnmarshalQuery(values.Encode(), nil, opts)
-	assert.Error(t, err, "Expected error when unmarshaling to nil")
+	require.Error(t, err, "Expected error when unmarshaling to nil")
 
 	// Test with nil pointer
 	var nilPtr *Example
@@ -291,10 +292,10 @@ func TestMultipleQueryTypes(t *testing.T) {
 	opts := DefaultHTTPMarshalOptions()
 
 	query, err := MarshalQuery(mt, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	values, err := url.ParseQuery(query)
-	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
+	require.NoErrorf(t, err, "ParseQuery failed: %v", err)
 	if err != nil {
 		t.Fatalf("ParseQuery failed: %v", err)
 	}
@@ -309,7 +310,7 @@ func TestMultipleQueryTypes(t *testing.T) {
 	// Test unmarshal
 	var result MultiTypeStruct
 	err = UnmarshalQuery(query, &result, opts)
-	assert.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
 
 	assert.Equalf(t, result, mt, "Round trip mismatch")
 }
@@ -329,10 +330,10 @@ func TestUnexportedQueryFields(t *testing.T) {
 	opts := DefaultHTTPMarshalOptions()
 
 	query, err := MarshalQuery(s, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	values, err := url.ParseQuery(query)
-	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
+	require.NoErrorf(t, err, "ParseQuery failed: %v", err)
 
 	// Only exported fieldSet should be present
 	assert.Equalf(t, "visible", values.Get("ExportedField"), "exported fieldSet mismatch")
@@ -356,7 +357,7 @@ func TestEmptyQuerySlice(t *testing.T) {
 	opts := DefaultHTTPMarshalOptions()
 
 	query, err := MarshalQuery(s, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	assert.Emptyf(t, query, "Expected empty query, got %q", query)
 }
@@ -376,16 +377,16 @@ func TestRFC3986MultipleQueryOccurrences(t *testing.T) {
 
 	var example Example
 	err := UnmarshalQuery(values.Encode(), &example, opts)
-	assert.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
 
 	assert.Equalf(t, []string{"value1", "value2", "value3"}, example.FieldTwo, "Multiple query occurrences not unmarshaled correctly")
 
 	// Verify marshaling creates multiple occurrences
 	query, err := MarshalQuery(example, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	parsed, err := url.ParseQuery(query)
-	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
+	require.NoErrorf(t, err, "ParseQuery failed: %v", err)
 
 	assert.Equalf(t, []string{"value1", "value2", "value3"}, parsed["X-example-field-two"], "Multiple values not marshaled correctly")
 }
@@ -404,18 +405,18 @@ func TestQueryValuesWithCommas(t *testing.T) {
 	opts := DefaultHTTPMarshalOptions()
 
 	query, err := MarshalQuery(cs, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	// Unmarshal and verify round-trip
 	var result CommaStruct
 	err = UnmarshalQuery(query, &result, opts)
-	assert.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
 
 	assert.Equalf(t, cs, result, "Values with commas not preserved")
 
 	// Verify each value is a separate query occurrence
 	values, err := url.ParseQuery(query)
-	assert.NoErrorf(t, err, "ParseQuery failed: %v", err)
+	require.NoErrorf(t, err, "ParseQuery failed: %v", err)
 
 	params := values["Values"]
 	assert.NotNil(t, params, "Expected 'Values' parameter to be present")
@@ -442,11 +443,11 @@ func TestQueryValuesWithSpecialCharacters(t *testing.T) {
 	opts := DefaultHTTPMarshalOptions()
 
 	query, err := MarshalQuery(ss, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	var result SpecialStruct
 	err = UnmarshalQuery(query, &result, opts)
-	assert.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
 
 	assert.Equalf(t, ss, result, "Special characters not preserved")
 }
@@ -465,12 +466,12 @@ func TestQueryOrderPreservation(t *testing.T) {
 
 	// Marshal
 	query, err := MarshalQuery(os, opts)
-	assert.NoErrorf(t, err, "MarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "MarshalQuery failed: %v", err)
 
 	// Unmarshal
 	var result OrderStruct
 	err = UnmarshalQuery(query, &result, opts)
-	assert.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
+	require.NoErrorf(t, err, "UnmarshalQuery failed: %v", err)
 
 	assert.Equal(t, os.Ordered, result.Ordered, "Order of values not preserved")
 }

@@ -337,7 +337,7 @@ func TestDNS01ManagerReissueReturnsPromptlyOnContextCancellation(t *testing.T) {
 
 	select {
 	case err := <-errCh:
-		assert.ErrorIs(t, err, context.Canceled, "reissue should return the context error, not wait for obtain")
+		require.ErrorIs(t, err, context.Canceled, "reissue should return the context error, not wait for obtain")
 	case <-time.After(time.Second):
 		t.Fatal("reissue did not return promptly after context cancellation")
 	}
@@ -358,7 +358,7 @@ func TestDNS01ManagerReissueErrors(t *testing.T) {
 
 		err := m.reissue(ctx)
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "error persisting certificate")
+		require.ErrorContains(t, err, "error persisting certificate")
 		assert.Error(t, errors.Unwrap(err), "the underlying error should be wrapped (%w), not just formatted as text")
 	})
 
@@ -448,7 +448,7 @@ func TestDNS01ManagerReissueColdCacheConcurrentCallsCoalesce(t *testing.T) {
 	wg.Wait()
 	close(errCh)
 	for err := range errCh {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	assert.Equal(t, int32(1), calls.Load(), "concurrent reissue calls sharing the same domain set and cache directory should coalesce into a single obtain call")
