@@ -6,6 +6,9 @@ on:
     tags:
       - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
+permissions:
+  contents: read
+
 jobs:
   metadata:
     name: Build Metadata
@@ -99,6 +102,8 @@ jobs:
     name: Create Release
     needs: build
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
