@@ -162,7 +162,7 @@ func LoadKeyPairAndCertsFromFile(path string) (*tls.Certificate, error) {
 		} else {
 			cert.PrivateKey, err = parsePrivateKey(block.Bytes)
 			if err != nil {
-				return nil, fmt.Errorf("failure reading private key from \"%s\":w%s", path, err)
+				return nil, fmt.Errorf("failure reading private key from %q: %w", path, err)
 			}
 		}
 		raw = rest
