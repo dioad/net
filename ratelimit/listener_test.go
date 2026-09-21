@@ -24,7 +24,7 @@ func TestListener_Accept(t *testing.T) {
 	rlListener := NewListener(ln, rl, zerolog.Nop())
 
 	// Start a goroutine to accept connections
-	var acceptedCount int32 // use int32 so we can safely update it with atomic.AddInt32 / atomic.LoadInt32 across goroutines
+	var acceptedCount atomic.Int32 // use int32 so we can safely update it with atomic.AddInt32 / atomic.LoadInt32 across goroutines
 
 	go func() {
 		for {
@@ -32,7 +32,7 @@ func TestListener_Accept(t *testing.T) {
 			if err != nil {
 				return
 			}
-			atomic.AddInt32(&acceptedCount, 1)
+			acceptedCount.Add(1)
 
 			_ = conn.Close()
 		}
@@ -59,7 +59,7 @@ func TestListener_Accept(t *testing.T) {
 
 	// Give it a moment for the goroutine to process
 	time.Sleep(50 * time.Millisecond)
-	acceptedCountTmp = atomic.LoadInt32(&acceptedCount)
+	acceptedCountTmp = acceptedCount.Load()
 	assert.Equal(t, 2, int(acceptedCountTmp))
 
 	// Third one should be rate limited and closed immediately by rlListener.Accept()
@@ -77,7 +77,7 @@ func TestListener_Accept(t *testing.T) {
 	}
 
 	time.Sleep(50 * time.Millisecond)
-	acceptedCountTmp = atomic.LoadInt32(&acceptedCount)
+	acceptedCountTmp = acceptedCount.Load()
 	assert.Equal(t, 2, int(acceptedCountTmp)) // Still 2
 
 	// Wait for refill (1 sec)
@@ -91,7 +91,7 @@ func TestListener_Accept(t *testing.T) {
 	}
 
 	time.Sleep(50 * time.Millisecond)
-	acceptedCountTmp = atomic.LoadInt32(&acceptedCount)
+	acceptedCountTmp = acceptedCount.Load()
 	assert.Equal(t, 3, int(acceptedCountTmp))
 }
 
