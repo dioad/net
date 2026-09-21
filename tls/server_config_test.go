@@ -260,6 +260,8 @@ func TestNewServerTLSConfig(t *testing.T) {
 				NextProtos:  []string{"custom-alpn"},
 			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
 				if !slices.Equal(got.NextProtos, []string{"custom-alpn"}) {
 					t.Errorf("NextProtos = %v, want [custom-alpn]", got.NextProtos)
 				}
@@ -278,6 +280,8 @@ func TestNewServerTLSConfig(t *testing.T) {
 				},
 			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
 				// newAutocertTLSConfig already populates NextProtos with
 				// "acme-tls/1", "h2" and "http/1.1" (in that order), so the
 				// [h2, http/1.1] default is already fully covered and must
@@ -321,6 +325,8 @@ func TestNewServerTLSConfig(t *testing.T) {
 			name: "with client CA file",
 			c:    ServerConfig{LocalConfig: LocalConfig{Certificate: certPath, Key: keyPath}, ClientCAFile: caPath},
 			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
 				if got.ClientCAs == nil {
 					t.Errorf("ClientCAs is nil, expected non-nil")
 				}
@@ -340,6 +346,8 @@ func TestNewServerTLSConfig(t *testing.T) {
 				ClientAuthType: "RequireAndVerifyClientCert",
 			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
 				if got.ClientAuth != tls.RequireAndVerifyClientCert {
 					t.Errorf("ClientAuth = %v, want %v", got.ClientAuth, tls.RequireAndVerifyClientCert)
 				}
@@ -352,6 +360,8 @@ func TestNewServerTLSConfig(t *testing.T) {
 				TLSMinVersion: "TLS13",
 			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
 				if got.MinVersion != tls.VersionTLS13 {
 					t.Errorf("MinVersion = %v, want %v", got.MinVersion, tls.VersionTLS13)
 				}
@@ -364,6 +374,8 @@ func TestNewServerTLSConfig(t *testing.T) {
 				ServerName:  "example.com",
 			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
 				if got.ServerName != "example.com" {
 					t.Errorf("ServerName = %v, want %v", got.ServerName, "example.com")
 				}
@@ -376,6 +388,8 @@ func TestNewServerTLSConfig(t *testing.T) {
 				NextProtos:  []string{"http/1.1", "h2c"},
 			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
 				if !slices.Contains(got.NextProtos, "http/1.1") {
 					t.Errorf("NextProtos = %v, should contain [http/1.1]", got.NextProtos)
 				}
@@ -398,6 +412,8 @@ func TestNewServerTLSConfig(t *testing.T) {
 				},
 			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
 				if len(got.Certificates) == 0 {
 					t.Errorf("Certificates is empty, expected non-empty")
 				}
@@ -417,6 +433,8 @@ func TestNewServerTLSConfig(t *testing.T) {
 				},
 			},
 			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
 				if len(got.Certificates) == 0 {
 					t.Errorf("Certificates is empty, expected non-empty")
 				}
