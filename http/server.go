@@ -272,6 +272,13 @@ func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middl
 				Str("remote_addr", req.RemoteAddr).
 				Str("user_agent", req.UserAgent())
 		})
+		// Tell StandardLogger these fields are already on the context logger
+		// so the final "accessLog" event doesn't duplicate them. The flag is
+		// only present when the handler chain was built by
+		// ZerologStructuredLogHandlerWithFormatter; absent it, this is a no-op.
+		if injected, ok := req.Context().Value(requestFieldsInjectedKey{}).(*bool); ok {
+			*injected = true
+		}
 
 		r2 := new(http.Request)
 		*r2 = *req

@@ -296,6 +296,66 @@ func TestAddResourceEnrichesContextLogger(t *testing.T) {
 	assert.Equal(t, "test-agent/1.0", capturedEntry["user_agent"])
 }
 
+// topLevelJSONKeys returns the top-level object keys of a single JSON log
+// event, in the order encountered, including duplicates. Unmarshalling into
+// a map would silently collapse a repeated key to its last value, hiding
+// exactly the defect this is used to detect.
+func topLevelJSONKeys(t *testing.T, data []byte) []string {
+	t.Helper()
+
+	dec := json.NewDecoder(bytes.NewReader(data))
+	tok, err := dec.Token()
+	require.NoError(t, err)
+	delim, ok := tok.(json.Delim)
+	require.True(t, ok && delim == '{', "expected a JSON object")
+
+	var keys []string
+	for dec.More() {
+		keyTok, err := dec.Token()
+		require.NoError(t, err)
+		key, ok := keyTok.(string)
+		require.True(t, ok, "expected a string object key")
+		keys = append(keys, key)
+
+		var value json.RawMessage
+		require.NoError(t, dec.Decode(&value))
+	}
+	return keys
+}
+
+// TestAddResource_AccessLogDoesNotDuplicateRequestFields guards against a
+// regression where Server.AddResource's mid-request context-logger
+// enrichment (method, url, host, remote_addr, user_agent) and
+// StandardLogger's own derivation of those same fields both landed in the
+// final "accessLog" event, duplicating each key.
+func TestAddResource_AccessLogDoesNotDuplicateRequestFields(t *testing.T) {
+	t.Parallel()
+
+	var logBuf bytes.Buffer
+	logger := zerolog.New(&logBuf)
+
+	server := NewServer(Config{}, WithLogger(logger))
+	resource := resourceFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	server.AddResource("/api", resource)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	w := httptest.NewRecorder()
+
+	server.handler().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	counts := make(map[string]int)
+	for _, key := range topLevelJSONKeys(t, logBuf.Bytes()) {
+		counts[key]++
+	}
+	for _, field := range []string{"method", "url", "host", "remote_addr", "user_agent"} {
+		assert.Equalf(t, 1, counts[field], "field %q must appear exactly once in the accessLog event", field)
+	}
+}
+
 func TestAddResourceStripsEncodedRawPathPrefix(t *testing.T) {
 	server := NewServer(Config{})
 	resource := &requestCapturingResource{}
