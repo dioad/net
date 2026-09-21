@@ -146,6 +146,12 @@ func TestConfigFuncFromConfigSelectsACME(t *testing.T) {
 // TestDNS01ManagersForDifferentDomainsDoNotCollide for that).
 func newTestDNS01Manager(dir string) *dns01Manager {
 	return &dns01Manager{
+		// CacheDirectory must be set: reissue's obtainGroup singleflight key is
+		// config.CacheDirectory+"|"+certName, and every manager built by this
+		// helper shares the same fixed certName above - without a per-manager
+		// CacheDirectory, reissue calls from unrelated tests/managers would
+		// collide on the same singleflight key.
+		config:         ACMEConfig{CacheDirectory: dir},
 		cache:          autocert.DirCache(dir),
 		accountKeyName: "test+account",
 		certName:       "test+crt",
@@ -396,6 +402,8 @@ func TestDNS01ManagerReissueErrors(t *testing.T) {
 // concurrently against a cold (empty) cache. Without coalescing, each
 // would call obtain (obtainViaLego in production) independently.
 func TestDNS01ManagerReissueColdCacheConcurrentCallsCoalesce(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 
 	const n = 5

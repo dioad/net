@@ -70,6 +70,8 @@ func TestRefreshableContent_Value_EmptyBeforeRender(t *testing.T) {
 // concurrent write/read pattern TLSARecord/TemplatedFileTXTRecord depend on,
 // at the shared-type level.
 func TestRefreshableContent_Render_AutoRefresh_NoRace(t *testing.T) {
+	t.Parallel()
+
 	var c refreshableContent
 
 	fetch := func() (string, error) {

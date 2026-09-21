@@ -84,6 +84,8 @@ func TestTemplatedFileTXTRecord_Render_FetchesOnce(t *testing.T) {
 // from the ticker goroutine while RecordValue/String read it concurrently
 // from the test goroutine.
 func TestTemplatedFileTXTRecord_Render_AutoRefresh_NoRace(t *testing.T) {
+	t.Parallel()
+
 	stateDir := t.TempDir()
 	writeDKIMFixture(t, stateDir, "example.com", "v=DKIM1; k=rsa; p=initial")
 

@@ -97,6 +97,8 @@ func TestTLSARecord_Render_FetchesOnce(t *testing.T) {
 // goroutine while RecordValue/String read it concurrently from the test
 // goroutine.
 func TestTLSARecord_Render_AutoRefresh_NoRace(t *testing.T) {
+	t.Parallel()
+
 	stateDir := t.TempDir()
 	writeDANECertFixture(t, stateDir, "mx.example.com")
 

@@ -10,6 +10,8 @@ import (
 )
 
 func TestIsWebsocketHandshake(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		upgrade    string

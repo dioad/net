@@ -225,6 +225,8 @@ func TestNewRateLimiterWithContextAndConfig_ClampsInvalidInputs(t *testing.T) {
 }
 
 func TestNewRateLimiterWithContextAndConfig_StartsBackgroundCleanup(t *testing.T) {
+	t.Parallel()
+
 	logger := zerolog.Nop()
 	rl := NewRateLimiterWithContextAndConfig(context.Background(), 10, 10, 20*time.Millisecond, 10*time.Millisecond, logger)
 	defer rl.Stop()
@@ -265,6 +267,8 @@ func TestNewRateLimiterWithSourceAndConfig_ClampsInvalidInputs(t *testing.T) {
 }
 
 func TestNewRateLimiterWithSourceAndConfig_StartsBackgroundCleanup(t *testing.T) {
+	t.Parallel()
+
 	logger := zerolog.Nop()
 	source := &StaticRateLimitSource{RequestsPerSecond: 1000, Burst: 1000}
 	rl := NewRateLimiterWithSourceAndConfig(source, 20*time.Millisecond, 10*time.Millisecond, logger)
@@ -746,6 +750,8 @@ func TestRateLimiter_WithContextCancellation(t *testing.T) {
 }
 
 func TestRateLimiter_BackgroundCleanup(t *testing.T) {
+	t.Parallel()
+
 	logger := zerolog.Nop()
 	rl := NewRateLimiterWithConfig(10, 10, 50*time.Millisecond, 30*time.Millisecond, logger)
 	defer rl.Stop()
@@ -787,6 +793,8 @@ func TestRateLimiter_BackgroundCleanup(t *testing.T) {
 }
 
 func TestRateLimiter_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
+
 	logger := zerolog.Nop()
 	rl := NewRateLimiter(1000000, 1000000, logger)
 	defer rl.Stop()

@@ -231,6 +231,8 @@ func TestCachingFetcher_BlockingRefreshFailure_StaleDataHasNilError(t *testing.T
 // data exists. This must follow the same nil-error convention as every
 // other CacheResultStale return.
 func TestCachingFetcher_ConcurrentAccess_WaiterSeesStaleWithNilError(t *testing.T) {
+	t.Parallel()
+
 	callCount := atomic.Int32{}
 	shouldFail := atomic.Bool{}
 
@@ -285,6 +287,8 @@ func TestCachingFetcher_ConcurrentAccess_WaiterSeesStaleWithNilError(t *testing.
 }
 
 func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
+
 	callCount := atomic.Int32{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount.Add(1)
@@ -323,6 +327,8 @@ func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
 }
 
 func TestCachingFetcher_ConcurrentAccess_CoalescesOnFailure(t *testing.T) {
+	t.Parallel()
+
 	callCount := atomic.Int32{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount.Add(1)
