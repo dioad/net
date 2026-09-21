@@ -12,6 +12,8 @@ linters:
     - err113
     - testpackage
     - depguard
+    - paralleltest
+    - varnamelen
 
 issues:
   max-issues-per-linter: 0
