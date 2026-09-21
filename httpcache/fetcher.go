@@ -407,7 +407,7 @@ func (f *CachingFetcher[T]) GetCachedData() *T {
 
 // GetCacheInfo returns information about the current cache status.
 // It returns the time the data was cached, the time it expires, and whether data is present.
-func (f *CachingFetcher[T]) GetCacheInfo() (cachedAt, expiresAt time.Time, hasData bool) {
+func (f *CachingFetcher[T]) GetCacheInfo() (time.Time, time.Time, bool) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 

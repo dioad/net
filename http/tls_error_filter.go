@@ -32,7 +32,7 @@ type tlsHandshakeErrorFilter struct {
 	logger zerolog.Logger
 }
 
-func (f *tlsHandshakeErrorFilter) Write(p []byte) (n int, err error) {
+func (f *tlsHandshakeErrorFilter) Write(p []byte) (int, error) {
 	if !bytes.Contains(p, []byte("TLS handshake error from")) {
 		f.logger.Error().Msg(strings.TrimRight(string(p), "\r\n"))
 

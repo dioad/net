@@ -38,11 +38,11 @@ type doneConn struct {
 	closedMutex sync.RWMutex
 }
 
-func (d *doneConn) Read(b []byte) (n int, err error) {
+func (d *doneConn) Read(b []byte) (int, error) {
 	return d.c.Read(b)
 }
 
-func (d *doneConn) Write(b []byte) (n int, err error) {
+func (d *doneConn) Write(b []byte) (int, error) {
 	return d.c.Write(b)
 }
 

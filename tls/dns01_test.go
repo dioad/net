@@ -24,7 +24,7 @@ type fakeDNS01Provider struct{}
 func (fakeDNS01Provider) Present(_ context.Context, _, _, _ string) error { return nil }
 func (fakeDNS01Provider) CleanUp(_ context.Context, _, _, _ string) error { return nil }
 
-func genTestCertPEM(t *testing.T, notAfter time.Time) (certPEM, keyPEM []byte) {
+func genTestCertPEM(t *testing.T, notAfter time.Time) ([]byte, []byte) {
 	t.Helper()
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -46,8 +46,8 @@ func genTestCertPEM(t *testing.T, notAfter time.Time) (certPEM, keyPEM []byte) {
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
 	require.NoError(t, err)
 
-	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
 
 	return certPEM, keyPEM
 }
