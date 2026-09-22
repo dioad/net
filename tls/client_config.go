@@ -29,12 +29,12 @@ func NewClientTLSConfig(c ClientConfig) (*tls.Config, error) {
 	}
 
 	tlsConfig := &tls.Config{
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: c.InsecureSkipVerify,
+		MinVersion: tls.VersionTLS12,
 	}
 	if cert != nil {
 		tlsConfig.Certificates = []tls.Certificate{*cert}
 	}
+	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
 
 	if c.RootCAFile != "" {
 		rootCAs, err := LoadCertPoolFromFile(c.RootCAFile)
@@ -56,6 +56,7 @@ func loadClientCertificate(c ClientConfig) (*tls.Certificate, error) {
 	}
 
 	if c.Certificate == "" {
+		//nolint:nilnil // no certificate configured is "nothing to load", not an error
 		return nil, nil
 	}
 

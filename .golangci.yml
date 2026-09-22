@@ -73,6 +73,7 @@ linters:
           - cyclop
           - gocognit
           - gocyclo
+          - maintidx
           - nestif
       # Repeated literals in tests are almost always fixture/expectation
       # data (a hostname, a header name, an error string) restated across
