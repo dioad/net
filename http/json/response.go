@@ -297,61 +297,98 @@ func (r *Response) NoContent(opts ...responseOption) {
 	r.respondWithStatus(http.StatusNoContent, "", opts...)
 }
 
+// BadRequestWithMessage sends a 400 Bad Request response with message as
+// the public message.
+//
 // Deprecated: Use BadRequest() with options instead.
 func (r *Response) BadRequestWithMessage(message string) {
 	r.BadRequest(PublicMessage(message))
 }
 
+// BadRequestWithMessages sends a 400 Bad Request response with
+// responseMessage as the public message and logMessage logged separately.
+//
 // Deprecated: Use BadRequest() with options instead.
 func (r *Response) BadRequestWithMessages(responseMessage, logMessage string) {
 	r.BadRequest(LogMessage(logMessage), PublicMessage(responseMessage))
 }
 
+// InvalidInputWithMessage sends a 400 Bad Request response with message as
+// the public message and err logged.
+//
 // Deprecated: Use InvalidInput() with options instead.
 func (r *Response) InvalidInputWithMessage(err error, message string) {
 	r.InvalidInput(PublicMessage(message), LogErr(err))
 }
 
+// InvalidInputWithMessages sends a 400 Bad Request response with
+// responseMessage as the public message, and err and logMessage logged.
+//
 // Deprecated: Use InvalidInput() with options instead.
 func (r *Response) InvalidInputWithMessages(err error, responseMessage, logMessage string) {
 	r.InvalidInput(PublicMessage(responseMessage), LogErr(err), LogMessage(logMessage))
 }
 
+// InternalServerErrorWithMessage sends a 500 Internal Server Error response
+// with message as the public message and err logged.
+//
 // Deprecated: Use InternalServerError() with options instead.
 func (r *Response) InternalServerErrorWithMessage(err error, message string) {
 	r.InternalServerError(LogErr(err), PublicMessage(message))
 }
 
+// InternalServerErrorWithMessages sends a 500 Internal Server Error
+// response with responseMessage as the public message, and err and
+// logMessage logged.
+//
 // Deprecated: Use InternalServerError() with options instead.
 func (r *Response) InternalServerErrorWithMessages(err error, responseMessage string, logMessage string) {
 	r.InternalServerError(PublicMessage(responseMessage), LogErr(err), LogMessage(logMessage))
 }
 
+// ForbiddenWithMessages sends a 403 Forbidden response with
+// responseMessage as the public message and logMessage logged separately.
+//
 // Deprecated: Use Forbidden() with options instead.
 func (r *Response) ForbiddenWithMessages(responseMessage, logMessage string) {
 	r.Forbidden(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
+// ForbiddenWithMessage sends a 403 Forbidden response with message as both
+// the public message and the logged message.
+//
 // Deprecated: Use Forbidden() with options instead.
 func (r *Response) ForbiddenWithMessage(message string) {
 	r.Forbidden(PublicMessage(message), LogMessage(message))
 }
 
+// UnauthorizedWithMessages sends a 401 Unauthorized response with
+// responseMessage as the public message and logMessage logged separately.
+//
 // Deprecated: Use Unauthorized() with options instead.
 func (r *Response) UnauthorizedWithMessages(responseMessage, logMessage string) {
 	r.Unauthorized(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
+// UnauthorizedWithMessage sends a 401 Unauthorized response with message
+// as both the public message and the logged message.
+//
 // Deprecated: Use Unauthorized() with options instead.
 func (r *Response) UnauthorizedWithMessage(message string) {
 	r.Unauthorized(PublicMessage(message), LogMessage(message))
 }
 
+// ConflictWithMessage sends a 409 Conflict response with message as the
+// public message.
+//
 // Deprecated: Use Conflict() with options instead.
 func (r *Response) ConflictWithMessage(message string) {
 	r.Conflict(PublicMessage(message))
 }
 
+// ConflictWithMessages sends a 409 Conflict response with responseMessage
+// as the public message and logMessage logged separately.
+//
 // Deprecated: Use Conflict() with options instead.
 func (r *Response) ConflictWithMessages(responseMessage, logMessage string) {
 	r.Conflict(PublicMessage(responseMessage), LogMessage(logMessage))
@@ -369,31 +406,49 @@ func (r *Response) logWarn(message string) {
 	}
 }
 
+// NotFoundWithMessage sends a 404 Not Found response with message as the
+// public message.
+//
 // Deprecated: Use NotFound() with options instead.
 func (r *Response) NotFoundWithMessage(message string) {
 	r.NotFound(PublicMessage(message))
 }
 
+// NotFoundWithMessages sends a 404 Not Found response with responseMessage
+// as the public message and logMessage logged separately.
+//
 // Deprecated: Use NotFound() with options instead.
 func (r *Response) NotFoundWithMessages(responseMessage, logMessage string) {
 	r.NotFound(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
+// NotAcceptableWithMessage sends a 406 Not Acceptable response with
+// message as the public message.
+//
 // Deprecated: Use NotAcceptable() with options instead.
 func (r *Response) NotAcceptableWithMessage(message string) {
 	r.NotAcceptable(PublicMessage(message))
 }
 
+// NotAcceptableWithMessages sends a 406 Not Acceptable response with
+// responseMessage as the public message and logMessage logged separately.
+//
 // Deprecated: Use NotAcceptable() with options instead.
 func (r *Response) NotAcceptableWithMessages(responseMessage, logMessage string) {
 	r.NotAcceptable(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
+// CreatedWithMessage sends a 201 Created response with message as the
+// public message.
+//
 // Deprecated: Use Created() with options instead.
 func (r *Response) CreatedWithMessage(message string) {
 	r.Created(PublicMessage(message))
 }
 
+// CreatedWithURI sends a 201 Created response with a Location header and
+// public message set to uri, and a body containing uri.
+//
 // Deprecated: Use Created() with Location() option instead.
 func (r *Response) CreatedWithURI(uri string) {
 	r.Created(Location(uri), PublicMessage(uri), Data(map[string]any{
@@ -401,11 +456,18 @@ func (r *Response) CreatedWithURI(uri string) {
 	}))
 }
 
+// CreatedWithURIAndMessage sends a 201 Created response with a Location
+// header set to uri, a body containing uri, and message as the public
+// message.
+//
 // Deprecated: Use Created() with Location() and PublicMessage() options instead.
 func (r *Response) CreatedWithURIAndMessage(uri string, message string) {
 	r.Created(Location(uri), Data(map[string]any{"uri": uri}), PublicMessage(message))
 }
 
+// AcceptedWithMessage sends a 202 Accepted response with message as the
+// public message.
+//
 // Deprecated: Use Accepted() with options instead.
 func (r *Response) AcceptedWithMessage(message string) {
 	r.Accepted(PublicMessage(message))
