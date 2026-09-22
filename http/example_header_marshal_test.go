@@ -72,7 +72,7 @@ func ExampleMarshalHeader() {
 	type UserInfo struct {
 		Name  string   `header:"X-User-Name"`
 		Roles []string `header:"X-User-Roles"`
-		ID    int      `header:"X-User-ID"`
+		ID    int      `header:"X-User-Id"`
 	}
 
 	user := UserInfo{
@@ -105,7 +105,7 @@ func ExampleUnmarshalHeader() {
 	type UserInfo struct {
 		Name  string   `header:"X-User-Name"`
 		Roles []string `header:"X-User-Roles"`
-		ID    int      `header:"X-User-ID"`
+		ID    int      `header:"X-User-Id"`
 	}
 
 	header := http.Header{}
@@ -204,8 +204,8 @@ func ExampleMarshalHeader_withoutStructName() {
 // ExampleMarshalHeader_customTags demonstrates using custom header tags.
 func ExampleMarshalHeader_customTags() {
 	type Metadata struct {
-		RequestID string `header:"request-id"`
-		TraceID   string `header:"trace-id"`
+		RequestID string `header:"Request-Id"`
+		TraceID   string `header:"Trace-Id"`
 		Internal  string `header:"-"` // This fieldSet will be ignored
 	}
 

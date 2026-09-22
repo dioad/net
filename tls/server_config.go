@@ -48,16 +48,16 @@ type SelfSignedConfig struct {
 
 // LocalConfig specifies local certificate and key file locations.
 type LocalConfig struct {
-	SinglePEMFile string         `json:",omitzero" mapstructure:"single-pem-file"`
-	Certificate   string         `json:",omitzero" mapstructure:"cert"`
-	Key           string         `json:",omitzero" mapstructure:"key"`
-	FileWait      FileWaitConfig `json:",omitzero" mapstructure:"file-wait,squash"`
+	SinglePEMFile string         `json:"single_pem_file,omitzero" mapstructure:"single-pem-file"`
+	Certificate   string         `json:"certificate,omitzero"     mapstructure:"cert"`
+	Key           string         `json:"key,omitzero"             mapstructure:"key"`
+	FileWait      FileWaitConfig `json:"file_wait,omitzero"       mapstructure:"file-wait,squash"`
 }
 
 // FileWaitConfig specifies wait parameters for loading certificate files.
 type FileWaitConfig struct {
-	WaitInterval uint `json:",omitzero" mapstructure:"file-wait-interval"`
-	WaitMax      uint `json:",omitzero" mapstructure:"file-wait-max"`
+	WaitInterval uint `json:"wait_interval,omitzero" mapstructure:"file-wait-interval"`
+	WaitMax      uint `json:"wait_max,omitzero"      mapstructure:"file-wait-max"`
 }
 
 // ServerConfig specifies TLS configuration for a server.

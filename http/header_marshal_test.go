@@ -185,8 +185,8 @@ func TestMarshalUnmarshalRoundTrip(t *testing.T) {
 // TestStructWithTags tests struct with custom header tags.
 func TestStructWithTags(t *testing.T) {
 	type CustomStruct struct {
-		Field1 string   `header:"custom-name"`
-		Field2 []string `header:"another-name"`
+		Field1 string   `header:"Custom-Name"`
+		Field2 []string `header:"Another-Name"`
 		Field3 string   `header:"-"` // Should be ignored
 	}
 

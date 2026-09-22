@@ -30,11 +30,11 @@ type ACMEConfig struct {
 	// ACMEChallengeDNS01. An absent/empty Type (the zero value) defaults to
 	// ACMEChallengeTLSALPN01, so callers who only need TLS-ALPN-01 can omit
 	// this field entirely.
-	Type string `json:",omitempty" mapstructure:"type"`
+	Type string `json:"type,omitempty" mapstructure:"type"`
 
-	Email          string `json:",omitempty" mapstructure:"email"`
-	DirectoryURL   string `json:",omitempty" mapstructure:"directory-url"`
-	CacheDirectory string `json:",omitempty" mapstructure:"cache-directory"`
+	Email          string `json:"email,omitempty"           mapstructure:"email"`
+	DirectoryURL   string `json:"directory_url,omitempty"   mapstructure:"directory-url"`
+	CacheDirectory string `json:"cache_directory,omitempty" mapstructure:"cache-directory"`
 
 	// Domains is, for Type=dns-01, the SANs to include on the single
 	// certificate obtained upfront (may include wildcards, e.g.
@@ -45,21 +45,21 @@ type ACMEConfig struct {
 	// 8555 permits wildcards only via dns-01), and autocert's HostWhitelist
 	// silently ignores such entries rather than erroring, so
 	// NewACMETLSConfig validates this upfront instead.
-	Domains []string `json:",omitempty" mapstructure:"domains"`
+	Domains []string `json:"domains,omitempty" mapstructure:"domains"`
 
 	// DNS01 holds fields that apply only when Type is ACMEChallengeDNS01.
-	DNS01 DNS01Options `json:",omitzero" mapstructure:"dns01,squash"`
+	DNS01 DNS01Options `json:"dns01,omitzero" mapstructure:"dns01,squash"`
 }
 
 // DNS01Options specifies dns-01-only ACME parameters.
 type DNS01Options struct {
 	// PropagationTimeout bounds how long lego waits for DNS propagation of
 	// the challenge TXT record. Zero uses lego's default (60s).
-	PropagationTimeout time.Duration `json:",omitempty" mapstructure:"dns01-propagation-timeout"`
+	PropagationTimeout time.Duration `json:"propagation_timeout,omitempty" mapstructure:"dns01-propagation-timeout"`
 
 	// PollingInterval controls how often lego polls while waiting for
 	// propagation. Zero uses lego's default (2s).
-	PollingInterval time.Duration `json:",omitempty" mapstructure:"dns01-polling-interval"`
+	PollingInterval time.Duration `json:"polling_interval,omitempty" mapstructure:"dns01-polling-interval"`
 
 	// Provider performs Present/CleanUp of the ACME dns-01 challenge TXT
 	// record. Must be set programmatically; it is not config-decodable.
