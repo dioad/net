@@ -1,3 +1,5 @@
+// Package smtp aggregates the DNS records used for SMTP domain
+// authentication and reporting (SPF, DKIM, DMARC, MTA-STS, TLSRPT).
 package smtp
 
 import (
@@ -17,6 +19,8 @@ type DomainRecords struct {
 	SPF    spf.Record    `mapstructure:"spf"`
 }
 
+// Render expands the Go template fields of the records that support it
+// (DMARC, SPF).
 func (r *DomainRecords) Render(data any) error {
 	err := r.DMARC.Render(data)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 // Mode represents an MTA-STS mode (none, testing, enforce).
 type Mode string
 
+// MTA-STS modes, per RFC 8461 section 3.
 const (
 	ModeNone    Mode = "none"
 	ModeTesting Mode = "testing"

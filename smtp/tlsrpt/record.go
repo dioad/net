@@ -1,3 +1,5 @@
+// Package tlsrpt provides types for building a TLSRPT (SMTP TLS Reporting)
+// DNS TXT record.
 package tlsrpt
 
 import (
@@ -41,14 +43,18 @@ func formatRUA(label string, locations []string) string {
 	return fmt.Sprintf("%s=%s", label, strings.Join(addrs, ","))
 }
 
+// RecordPrefix returns the DNS owner label prefix for a TLSRPT record,
+// always "_smtp._tls.".
 func (r *Record) RecordPrefix() string {
 	return "_smtp._tls."
 }
 
+// RecordType returns the DNS record type string, "TXT".
 func (r *Record) RecordType() string {
 	return "TXT"
 }
 
+// RecordValue returns the wire-ready, quoted TLSRPT record value.
 func (r *Record) RecordValue() string {
 	return txtchunk.Quote(r.String())
 }

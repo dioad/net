@@ -10,6 +10,7 @@ import (
 // KeyType represents the DKIM key type (e.g., "rsa").
 type KeyType string
 
+// DKIM key types, per RFC 6376 section 3.6.1.
 const (
 	KeyTypeRSA KeyType = "rsa"
 )
@@ -76,6 +77,9 @@ func FromRecordFile(r io.Reader) (*Record, error) {
 	}, nil
 }
 
+// ParseParams parses a DKIM-style "tag=value; tag=value" string s into a
+// map, extracting only the v, k, and p tags and ignoring any other
+// (per RFC 6376 section 3.2, unrecognized tags must be ignored, not rejected).
 func ParseParams(s string) (map[string]string, error) {
 	validParams := map[string]bool{
 		"v": true,

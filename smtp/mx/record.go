@@ -22,6 +22,8 @@ type Record struct {
 	TTL uint32 `json:"ttl,omitempty" mapstructure:"ttl"`
 }
 
+// RecordPrefix returns the DNS owner label prefix relative to the base
+// domain, e.g. "sub." or "" for the apex.
 func (r *Record) RecordPrefix() string {
 	if r.Prefix == "" {
 		return ""
@@ -30,10 +32,13 @@ func (r *Record) RecordPrefix() string {
 	return r.Prefix + "."
 }
 
+// RecordType returns the DNS record type string, "MX".
 func (r *Record) RecordType() string { return "MX" }
 
+// RecordValue returns the wire-ready MX record value, "<priority> <host>".
 func (r *Record) RecordValue() string { return fmt.Sprintf("%d %s", r.Priority, r.Host) }
 
+// Empty reports whether Priority and Host are both unset.
 func (r *Record) Empty() bool { return r.Priority == 0 && r.Host == "" }
 
 // RecordTTL returns the TTL to use for this record, falling back to dns.DefaultTTL.
