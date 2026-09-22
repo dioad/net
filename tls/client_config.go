@@ -10,10 +10,10 @@ import (
 
 // ClientConfig specifies TLS client configuration.
 type ClientConfig struct {
-	RootCAFile         string `json:"root_ca_file,omitempty"       mapstructure:"root-ca-file"`
-	Certificate        string `json:"certificate,omitempty"        mapstructure:"cert"`
-	Key                string `json:"key,omitempty"                mapstructure:"key"`
-	InsecureSkipVerify bool   `mapstructure:"insecure-skip-verify"`
+	RootCAFile         string `json:"root_ca_file,omitempty"         mapstructure:"root-ca-file"`
+	Certificate        string `json:"certificate,omitempty"          mapstructure:"cert"`
+	Key                string `json:"key,omitempty"                  mapstructure:"key"`
+	InsecureSkipVerify bool   `json:"insecure_skip_verify,omitempty" mapstructure:"insecure-skip-verify"`
 }
 
 // NewClientTLSConfig creates a TLS configuration for a client from the given config.
