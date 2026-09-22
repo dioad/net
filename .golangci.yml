@@ -24,6 +24,24 @@ linters:
     - mnd
     - noinlineerr
   settings:
+    ireturn:
+      allow:
+        - anon
+        - error
+        - empty
+        - stdlib
+        # Generic functions must return their type parameter; that isn't
+        # the "unnecessary interface" smell ireturn looks for.
+        - generic
+        # Interfaces this project returns from constructors deliberately,
+        # to keep the concrete implementation an internal detail:
+        # DoneConn (net.Conn + done-signalling), the prefixlist/ACME
+        # Provider abstractions, LogLevelSetter, and the functional-option
+        # responseOption type.
+        - \.DoneConn$
+        - \.Provider$
+        - \.LogLevelSetter$
+        - \.responseOption$
     exhaustive:
       # A switch that deliberately dispatches over a small, bounded subset
       # of an enum's members and handles everything else in "default" is
