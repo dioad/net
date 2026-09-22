@@ -1,3 +1,4 @@
+// Package main demonstrates a minimal HTTP server built with dioad/net/http.
 package main
 
 import (

@@ -1,3 +1,5 @@
+// Package main demonstrates rate limiting an HTTP server with static,
+// per-principal limits.
 package main
 
 import (

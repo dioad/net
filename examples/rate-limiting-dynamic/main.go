@@ -1,3 +1,5 @@
+// Package main demonstrates rate limiting an HTTP server with limits
+// supplied dynamically by a custom RateLimitSource.
 package main
 
 import (

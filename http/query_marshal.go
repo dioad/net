@@ -86,6 +86,7 @@ func UnmarshalQuery(rawQuery string, v any, opts HTTPMarshalOptions) error {
 	return nil
 }
 
+// UnmarshalQueryFromRequest unmarshals req's raw query string into v; see UnmarshalQuery.
 func UnmarshalQueryFromRequest(req *http.Request, v any, opts HTTPMarshalOptions) error {
 	return UnmarshalQuery(req.URL.RawQuery, v, opts)
 }

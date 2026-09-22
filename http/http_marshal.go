@@ -10,6 +10,10 @@ import (
 	"unicode"
 )
 
+// HTTPMarshalOptions configures how struct fields are marshaled to/from
+// HTTP headers or query parameters.
+//
+//nolint:revive // stutters (http.HTTPMarshalOptions), but it's this package's primary public options type, used throughout its API and by callers; renaming it is a breaking change of its own, out of scope here
 type HTTPMarshalOptions struct {
 	// Prefix is prepended to all parameter names (e.g., "X" results in "X-Field-Name")
 	Prefix string

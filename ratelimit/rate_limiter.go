@@ -21,6 +21,8 @@ type limiterEntry struct {
 }
 
 // RateLimitSource defines the interface for determining rate limits.
+//
+//nolint:revive // stutters (ratelimit.RateLimitSource), but it's a public interface external implementers already use by this name; renaming it is a breaking change of its own, out of scope here
 type RateLimitSource interface {
 	// GetLimit returns the rate limits to apply for a principal.
 	// If it returns ok=false, the RateLimiter's static requestsPerSecond/burst

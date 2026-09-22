@@ -1,3 +1,6 @@
+// Package main demonstrates IP-based access control: authorizing individual
+// requests against a network ACL and wrapping a net.Listener so that only
+// connections from allowed IPs are accepted.
 package main
 
 import (

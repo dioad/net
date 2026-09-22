@@ -1,3 +1,6 @@
+// Package ratelimit provides per-principal, token-bucket rate limiting for
+// network listeners and HTTP handlers, with optional dynamic limits from an
+// external RateLimitSource.
 package ratelimit
 
 import (

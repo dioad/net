@@ -1,3 +1,5 @@
+// Package main demonstrates rate limiting a raw TCP listener by source IP
+// using ratelimit.Listener.
 package main
 
 import (

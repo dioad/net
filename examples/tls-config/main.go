@@ -1,3 +1,5 @@
+// Package main demonstrates configuring an HTTPS server with a self-signed
+// TLS certificate.
 package main
 
 import (

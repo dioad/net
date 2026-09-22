@@ -13,8 +13,11 @@ import (
 )
 
 var (
-	DefaultRequestsPerSecond = float64(10) // default to 10 rps
-	DefaultBurst             = 20          // DefaultBurst specifies the default maximum burst size for rate limiting.
+	// DefaultRequestsPerSecond is the default per-principal request rate
+	// used when NewRateLimiter is not given WithStaticRateLimit.
+	DefaultRequestsPerSecond = float64(10)
+	// DefaultBurst specifies the default maximum burst size for rate limiting.
+	DefaultBurst = 20
 )
 
 // PrincipalFunc defines a function type that extracts a principal identifier from an HTTP request for rate limiting purposes.

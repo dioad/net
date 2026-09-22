@@ -1,3 +1,5 @@
+// Package resource provides HTTP resources for wiring into a dioad/net/http
+// server (e.g. runtime log-level control).
 package resource
 
 import (
