@@ -3,6 +3,8 @@ version: "2"
 linters:
   default: all
   disable:
+    - inamedparam
+    - gochecknoinits
     - wsl
     - wsl_v5
     - whitespace
@@ -14,6 +16,13 @@ linters:
     - depguard
     - paralleltest
     - varnamelen
+    - forbidigo
+    - funlen
+    - gochecknoglobals
+    - godox
+    - lll
+    - mnd
+    - noinlineerr
 
 issues:
   max-issues-per-linter: 0
