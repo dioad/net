@@ -24,6 +24,12 @@ linters:
     - mnd
     - noinlineerr
   settings:
+    exhaustive:
+      # A switch that deliberately dispatches over a small, bounded subset
+      # of an enum's members and handles everything else in "default" is
+      # exhaustive by design; the default case is the intended catch-all,
+      # not a sign the switch forgot members.
+      default-signifies-exhaustive: true
     tagliatelle:
       case:
         rules:
