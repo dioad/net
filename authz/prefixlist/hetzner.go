@@ -6,7 +6,7 @@ import (
 )
 
 func init() {
-	RegisterProvider("hetzner", func(cfg ProviderConfig) (Provider, error) {
+	RegisterProvider("hetzner", func(_ ProviderConfig) (Provider, error) {
 		return NewHetznerProvider(), nil
 	})
 }
@@ -67,14 +67,18 @@ func NewHetznerProvider() *HetznerProvider {
 	}
 }
 
+// Name returns the provider's name.
 func (p *HetznerProvider) Name() string {
 	return "hetzner"
 }
 
-func (p *HetznerProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
+// Prefixes returns the provider's static list of prefixes.
+func (p *HetznerProvider) Prefixes(_ context.Context) ([]netip.Prefix, error) {
 	return p.prefixes, nil
 }
 
+// Contains reports whether addr is contained in any of the provider's
+// prefixes.
 func (p *HetznerProvider) Contains(addr netip.Addr) bool {
 	for _, prefix := range p.prefixes {
 		if prefix.Contains(addr) {

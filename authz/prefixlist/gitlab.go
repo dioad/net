@@ -6,7 +6,7 @@ import (
 )
 
 func init() {
-	RegisterProvider("gitlab", func(cfg ProviderConfig) (Provider, error) {
+	RegisterProvider("gitlab", func(_ ProviderConfig) (Provider, error) {
 		return NewGitLabProvider(), nil
 	})
 }
@@ -32,14 +32,18 @@ func NewGitLabProvider() *GitLabProvider {
 	}
 }
 
+// Name returns the provider's name.
 func (p *GitLabProvider) Name() string {
 	return "gitlab"
 }
 
-func (p *GitLabProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
+// Prefixes returns the provider's static list of prefixes.
+func (p *GitLabProvider) Prefixes(_ context.Context) ([]netip.Prefix, error) {
 	return p.prefixes, nil
 }
 
+// Contains reports whether addr is contained in any of the provider's
+// prefixes.
 func (p *GitLabProvider) Contains(addr netip.Addr) bool {
 	for _, prefix := range p.prefixes {
 		if prefix.Contains(addr) {

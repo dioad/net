@@ -31,10 +31,13 @@ func NewHTTPJSONProvider[T any](name, url string, config httpcache.CacheConfig, 
 	}
 }
 
+// Name returns the provider's name.
 func (p *HTTPJSONProvider[T]) Name() string {
 	return p.name
 }
 
+// Prefixes fetches (or returns cached) JSON data from the provider's
+// endpoint and transforms it into a list of prefixes.
 func (p *HTTPJSONProvider[T]) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	data, _, err := p.fetcher.Get(ctx)
 	if err != nil {
@@ -44,6 +47,8 @@ func (p *HTTPJSONProvider[T]) Prefixes(ctx context.Context) ([]netip.Prefix, err
 	return p.transform(data)
 }
 
+// Contains reports whether addr is contained in any of the provider's
+// prefixes.
 func (p *HTTPJSONProvider[T]) Contains(addr netip.Addr) bool {
 	prefixes, err := p.Prefixes(context.Background())
 	if err != nil {
@@ -77,10 +82,13 @@ func NewHTTPTextProvider(name, url string, config httpcache.CacheConfig) *HTTPTe
 	}
 }
 
+// Name returns the provider's name.
 func (p *HTTPTextProvider) Name() string {
 	return p.name
 }
 
+// Prefixes fetches (or returns cached) text data from the provider's
+// endpoint and parses it into a list of prefixes.
 func (p *HTTPTextProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	cidrs, _, err := p.fetcher.Get(ctx)
 	if err != nil {
@@ -90,6 +98,8 @@ func (p *HTTPTextProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error)
 	return parseCIDRs(cidrs)
 }
 
+// Contains reports whether addr is contained in any of the provider's
+// prefixes.
 func (p *HTTPTextProvider) Contains(addr netip.Addr) bool {
 	prefixes, err := p.Prefixes(context.Background())
 	if err != nil {
