@@ -44,6 +44,16 @@ linters:
       - path: 'authz/prefixlist/'
         linters:
           - tagliatelle
+      # Table-driven tests naturally accumulate cognitive/nesting
+      # "complexity" from many small, independent per-case closures
+      # (checkFunc, subtests); that's the idiomatic Go testing pattern
+      # this project follows (see .claude/rules/go-testing.md), not a
+      # sign the test itself is hard to follow. funlen is disabled
+      # repo-wide for the same reason.
+      - path: '_test\.go'
+        linters:
+          - gocognit
+          - nestif
 
 issues:
   max-issues-per-linter: 0

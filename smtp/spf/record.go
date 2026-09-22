@@ -146,19 +146,9 @@ func (r *Record) String() string {
 	ipMechanisms := filter.FilterSlice(r.Mechanisms, func(m Mechanism) bool { return m.Name == "ip" })
 	nonIpMechanisms := filter.FilterSlice(r.Mechanisms, func(m Mechanism) bool { return m.Name != "ip" })
 
-	if len(ipMechanisms) > 0 {
-		for _, ipMechanism := range ipMechanisms {
-			ip4Mechanism, ip6Mechanism := IPMechanisms(ipMechanism.Values...)
-			if ip4Mechanism != nil && ip6Mechanism != nil {
-				parts = append(parts, FormatMechanisms(*ip4Mechanism, *ip6Mechanism))
-			} else {
-				if ip4Mechanism != nil {
-					parts = append(parts, FormatMechanisms(*ip4Mechanism))
-				}
-				if ip6Mechanism != nil {
-					parts = append(parts, FormatMechanisms(*ip6Mechanism))
-				}
-			}
+	for _, ipMechanism := range ipMechanisms {
+		if formatted := formatIPMechanism(ipMechanism); formatted != "" {
+			parts = append(parts, formatted)
 		}
 	}
 
@@ -172,6 +162,24 @@ func (r *Record) String() string {
 	}
 
 	return strings.Join(parts, " ")
+}
+
+// formatIPMechanism formats the ip4/ip6 mechanisms parsed from a single
+// combined "ip" mechanism's values, joining both onto one entry when both
+// are present. Returns "" if neither is present.
+func formatIPMechanism(ipMechanism Mechanism) string {
+	ip4Mechanism, ip6Mechanism := IPMechanisms(ipMechanism.Values...)
+
+	switch {
+	case ip4Mechanism != nil && ip6Mechanism != nil:
+		return FormatMechanisms(*ip4Mechanism, *ip6Mechanism)
+	case ip4Mechanism != nil:
+		return FormatMechanisms(*ip4Mechanism)
+	case ip6Mechanism != nil:
+		return FormatMechanisms(*ip6Mechanism)
+	default:
+		return ""
+	}
 }
 
 func FormatMechanism(mechanism Mechanism) string {
