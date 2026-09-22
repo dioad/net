@@ -176,7 +176,7 @@ type MockResource struct {
 func (m *MockResource) Handler() http.Handler {
 	m.HandlerCalled = true
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /test", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("test"))
 	})
@@ -248,7 +248,7 @@ func TestAddResourcePreservesOriginalURLForLogHandler(t *testing.T) {
 	var loggedURL string
 
 	logger := zerolog.New(io.Discard)
-	server.LogHandler = ZerologStructuredLogHandlerWithFormatter(logger, func(r *http.Request, status, size int, duration time.Duration) *zerolog.Logger {
+	server.LogHandler = ZerologStructuredLogHandlerWithFormatter(logger, func(r *http.Request, _, _ int, _ time.Duration) *zerolog.Logger {
 		loggedURL = r.URL.String()
 
 		return &logger
@@ -342,7 +342,7 @@ func TestAddResource_AccessLogDoesNotDuplicateRequestFields(t *testing.T) {
 	logger := zerolog.New(&logBuf)
 
 	server := NewServer(Config{}, WithLogger(logger))
-	resource := resourceFunc(func(w http.ResponseWriter, r *http.Request) {
+	resource := resourceFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	server.AddResource("/api", resource)
@@ -605,7 +605,7 @@ func TestMiddleware(t *testing.T) {
 	})
 
 	// Add a handler
-	server.AddHandlerFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+	server.AddHandlerFunc("/test", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("test"))
 	})

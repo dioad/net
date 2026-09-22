@@ -31,7 +31,7 @@ func TestLimitBodySize_UnderLimit(t *testing.T) {
 func TestLimitBodySize_OverLimit_ContentLength(t *testing.T) {
 	l := NewBodySizeLimiter(WithMaxBodyBytes(10))
 
-	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -70,7 +70,7 @@ func TestLimitBodySize_OverLimit_MaxBytesReader(t *testing.T) {
 
 func TestLimitBodySize_DefaultLimit(t *testing.T) {
 	l := NewBodySizeLimiter() // Use default limits
-	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -86,7 +86,7 @@ func TestLimitBodySize_MaxLimit(t *testing.T) {
 	// Request a limit higher than MaxBodyBytes, should be capped
 	l := NewBodySizeLimiter(WithMaxBodyBytes(100 * 1024 * 1024))
 
-	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 

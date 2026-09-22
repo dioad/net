@@ -63,7 +63,7 @@ func TestMetricSet_Middleware_WSLabel(t *testing.T) {
 			m := NewMetricSet(registry)
 
 			mux := http.NewServeMux()
-			mux.HandleFunc("GET /widgets/{id}", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("GET /widgets/{id}", func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
 
@@ -96,7 +96,7 @@ func TestMetricSet_Middleware_UnmatchedRouteDoesNotLeakRawPath(t *testing.T) {
 	m := NewMetricSet(registry)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /widgets/{id}", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /widgets/{id}", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 

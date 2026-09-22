@@ -40,7 +40,7 @@ type StaticRateLimitSource struct {
 }
 
 // GetLimit returns the fixed limits.
-func (s *StaticRateLimitSource) GetLimit(principal string) (float64, int, bool) {
+func (s *StaticRateLimitSource) GetLimit(_ string) (float64, int, bool) {
 	return s.RequestsPerSecond, s.Burst, true
 }
 

@@ -23,7 +23,7 @@ func (m *mockProvider) Name() string {
 	return m.name
 }
 
-func (m *mockProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
+func (m *mockProvider) Prefixes(_ context.Context) ([]netip.Prefix, error) {
 	if m.fetchErr != nil {
 		return nil, m.fetchErr
 	}

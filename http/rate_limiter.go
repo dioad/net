@@ -90,7 +90,7 @@ func ClientIPPrincipalFunc(r *http.Request) (string, error) {
 
 // StaticPrincipalFunc returns a PrincipalFunc that always returns the given principal.
 func StaticPrincipalFunc(principal string) PrincipalFunc {
-	return func(r *http.Request) (string, error) {
+	return func(_ *http.Request) (string, error) {
 		return principal, nil
 	}
 }

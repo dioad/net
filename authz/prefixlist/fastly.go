@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	RegisterProvider("fastly", func(cfg ProviderConfig) (Provider, error) {
+	RegisterProvider("fastly", func(_ ProviderConfig) (Provider, error) {
 		return NewFastlyProvider(), nil
 	})
 }

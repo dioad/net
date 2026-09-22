@@ -412,7 +412,7 @@ func TestRateLimiter_WarnsWhenSourceFallbackIsZeroValue(t *testing.T) {
 	})
 }
 
-func TestRateLimiter_ConcurrentLimitSourceMutation(t *testing.T) {
+func TestRateLimiter_ConcurrentLimitSourceMutation(_ *testing.T) {
 	// Regression test for a data race: SetLimitSource must be safe to call
 	// concurrently with Allow() from other goroutines -- the natural way to
 	// hot-reload limits for something documented as "dynamic". Run with

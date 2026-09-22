@@ -22,7 +22,7 @@ func TestRateLimiter_Middleware(t *testing.T) {
 		WithPrincipalFunc(StaticPrincipalFunc("user1")),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -49,7 +49,7 @@ func TestRateLimiter_Middleware_LogsRejectionViaRequestScopedLogger(t *testing.T
 		WithPrincipalFunc(StaticPrincipalFunc("user1")),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -117,7 +117,7 @@ func TestRateLimiter_RetryAfterHeaderAccuracy(t *testing.T) {
 				WithRateLimitLogger(logger),
 				WithPrincipalFunc(StaticPrincipalFunc("user1")))
 
-			handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -154,7 +154,7 @@ func TestRateLimiter_ClientIPPrincipalFuncExplicitlyConfigured(t *testing.T) {
 		WithPrincipalFunc(ClientIPPrincipalFunc),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -181,12 +181,12 @@ func TestRateLimiter_PrincipalFuncError(t *testing.T) {
 	rl := NewRateLimiter(
 		WithStaticRateLimit(1, 1),
 		WithRateLimitLogger(logger),
-		WithPrincipalFunc(func(r *http.Request) (string, error) {
+		WithPrincipalFunc(func(_ *http.Request) (string, error) {
 			return "", errors.New("missing principal")
 		}),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -214,7 +214,7 @@ func TestRateLimiter_CustomPrincipalFuncFromContext(t *testing.T) {
 		}),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -235,12 +235,12 @@ func TestRateLimiter_EmptyPrincipal(t *testing.T) {
 	rl := NewRateLimiter(
 		WithStaticRateLimit(1, 1),
 		WithRateLimitLogger(logger),
-		WithPrincipalFunc(func(r *http.Request) (string, error) {
+		WithPrincipalFunc(func(_ *http.Request) (string, error) {
 			return "", nil
 		}),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 

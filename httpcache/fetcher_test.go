@@ -20,7 +20,7 @@ type testData struct {
 
 func TestCachingFetcher_Basic(t *testing.T) {
 	callCount := atomic.Int32{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		data := testData{Message: "hello", Count: int(callCount.Load())}
 		_ = json.NewEncoder(w).Encode(data)
@@ -66,7 +66,7 @@ func TestCachingFetcher_ReturnStale(t *testing.T) {
 	callCount := atomic.Int32{}
 	shouldFail := atomic.Bool{}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		if shouldFail.Load() {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -117,7 +117,7 @@ func TestCachingFetcher_NoReturnStale_BlocksOnExpiry(t *testing.T) {
 	callCount := atomic.Int32{}
 	shouldDelay := atomic.Bool{}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		if shouldDelay.Load() {
 			time.Sleep(100 * time.Millisecond)
@@ -157,7 +157,7 @@ func TestCachingFetcher_NoReturnStale_BlocksOnExpiry(t *testing.T) {
 }
 
 func TestCachingFetcher_Error_NoStaleData(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
@@ -187,7 +187,7 @@ func TestCachingFetcher_BlockingRefreshFailure_StaleDataHasNilError(t *testing.T
 	callCount := atomic.Int32{}
 	shouldFail := atomic.Bool{}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		if shouldFail.Load() {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -236,7 +236,7 @@ func TestCachingFetcher_ConcurrentAccess_WaiterSeesStaleWithNilError(t *testing.
 	callCount := atomic.Int32{}
 	shouldFail := atomic.Bool{}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		if shouldFail.Load() {
 			time.Sleep(50 * time.Millisecond) // give other goroutines time to become waiters
@@ -290,7 +290,7 @@ func TestCachingFetcher_ConcurrentAccess(t *testing.T) {
 	t.Parallel()
 
 	callCount := atomic.Int32{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		time.Sleep(50 * time.Millisecond) // Simulate slow response
 		data := testData{Message: "hello", Count: int(callCount.Load())}
@@ -333,7 +333,7 @@ func TestCachingFetcher_ConcurrentAccess_CoalescesOnFailure(t *testing.T) {
 	t.Parallel()
 
 	callCount := atomic.Int32{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		time.Sleep(50 * time.Millisecond) // Simulate slow response
 		w.WriteHeader(http.StatusInternalServerError)
@@ -372,7 +372,7 @@ func TestCachingFetcher_ConcurrentAccess_CoalescesOnFailure(t *testing.T) {
 }
 
 func TestCachingFetcher_GetCachedData(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		data := testData{Message: "hello", Count: 42}
 		_ = json.NewEncoder(w).Encode(data)
 	}))
@@ -398,7 +398,7 @@ func TestCachingFetcher_GetCachedData(t *testing.T) {
 }
 
 func TestCachingFetcher_GetCacheInfo(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		data := testData{Message: "hello", Count: 42}
 		_ = json.NewEncoder(w).Encode(data)
 	}))
@@ -655,7 +655,7 @@ func TestCachingFetcher_CalculateExpiry(t *testing.T) {
 func TestCachingFetcher_HTTPCacheHeaders(t *testing.T) {
 	t.Run("respects Cache-Control max-age", func(t *testing.T) {
 		callCount := atomic.Int32{}
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			callCount.Add(1)
 			w.Header().Set("Cache-Control", "max-age=1")
 			data := testData{Message: "hello", Count: int(callCount.Load())}
@@ -695,7 +695,7 @@ func TestCachingFetcher_HTTPCacheHeaders(t *testing.T) {
 
 	t.Run("respects Expires header", func(t *testing.T) {
 		callCount := atomic.Int32{}
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			callCount.Add(1)
 			expiresTime := time.Now().Add(1 * time.Second)
 			w.Header().Set("Expires", expiresTime.Format(time.RFC1123))
@@ -736,7 +736,7 @@ func TestCachingFetcher_HTTPCacheHeaders(t *testing.T) {
 
 func TestCachingFetcher_CacheControl_NoStore(t *testing.T) {
 	callCount := atomic.Int32{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		w.Header().Set("Cache-Control", "no-store")
 		data := testData{Message: "hello", Count: int(callCount.Load())}
@@ -768,7 +768,7 @@ func TestCachingFetcher_CacheControl_NoStore(t *testing.T) {
 
 func TestCachingFetcher_CacheControl_NoCache(t *testing.T) {
 	callCount := atomic.Int32{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		w.Header().Set("Cache-Control", "no-cache")
 		data := testData{Message: "hello", Count: int(callCount.Load())}
@@ -810,7 +810,7 @@ func TestCachingFetcher_CacheControl_NoCache(t *testing.T) {
 
 func TestCachingFetcher_CacheControl_MustRevalidate(t *testing.T) {
 	callCount := atomic.Int32{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		w.Header().Set("Cache-Control", "max-age=1, must-revalidate")
 		data := testData{Message: "hello", Count: int(callCount.Load())}
@@ -849,7 +849,7 @@ func TestCachingFetcher_CacheControl_MustRevalidate(t *testing.T) {
 
 func TestCachingFetcher_CacheControl_MaxAgeWithNoCache(t *testing.T) {
 	callCount := atomic.Int32{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		// no-cache should take precedence over max-age
 		w.Header().Set("Cache-Control", "max-age=3600, no-cache")
@@ -884,7 +884,7 @@ func TestCachingFetcher_CacheControl_MaxAgeWithNoCache(t *testing.T) {
 
 func TestCachingFetcher_CacheControl_MaxAgeWithNoStore(t *testing.T) {
 	callCount := atomic.Int32{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		// no-store should take precedence over max-age
 		w.Header().Set("Cache-Control", "max-age=3600, no-store")

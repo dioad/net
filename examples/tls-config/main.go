@@ -65,7 +65,7 @@ func main() {
 	}
 
 	// Create a simple handler
-	myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	myHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintf(w, "Hello from secure HTTPS server!\n")
 	})
 

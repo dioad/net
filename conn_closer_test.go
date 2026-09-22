@@ -14,7 +14,7 @@ func TestConnCloser(t *testing.T) {
 	result := false
 
 	_, client := net.Pipe()
-	c := NewConnWithCloser(client, func(c net.Conn) { result = true })
+	c := NewConnWithCloser(client, func(_ net.Conn) { result = true })
 
 	_ = c.Close()
 
@@ -36,7 +36,7 @@ func TestConnCloserWithNil(t *testing.T) {
 
 func TestConnCloserPassThroughWrite(t *testing.T) {
 	server, client := net.Pipe()
-	c := NewConnWithCloser(client, func(c net.Conn) {})
+	c := NewConnWithCloser(client, func(_ net.Conn) {})
 
 	bytesToWrite := []byte("hello")
 
@@ -53,7 +53,7 @@ func TestConnCloserPassThroughWrite(t *testing.T) {
 
 func TestConnCloserPassThroughRead(t *testing.T) {
 	server, client := net.Pipe()
-	c := NewConnWithCloser(client, func(c net.Conn) {})
+	c := NewConnWithCloser(client, func(_ net.Conn) {})
 
 	bytesToWrite := []byte("hello")
 
@@ -90,7 +90,7 @@ func TestConnWithCloser_CloseWrite_FallsBackToCloseWhenUnsupported(t *testing.T)
 
 	onCloseCalled := false
 	_, client := net.Pipe()
-	c := NewConnWithCloser(client, func(c net.Conn) { onCloseCalled = true })
+	c := NewConnWithCloser(client, func(_ net.Conn) { onCloseCalled = true })
 
 	closeWriter, ok := c.(interface{ CloseWrite() error })
 	require.True(t, ok, "connWithCloser must implement CloseWrite() error")

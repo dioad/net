@@ -17,7 +17,7 @@ import (
 func TestRequestIDMiddleware_setsResponseHeader(t *testing.T) {
 	t.Parallel()
 
-	handler := diohttp.RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := diohttp.RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -34,7 +34,7 @@ func TestRequestIDMiddleware_ignoresClientSuppliedHeader(t *testing.T) {
 
 	const clientID = "client-supplied-id"
 
-	handler := diohttp.RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := diohttp.RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -110,7 +110,7 @@ func TestRequestIDMiddleware_requestIDVisibleFromOuterContext(t *testing.T) {
 	// hlog.AccessHandler captures it when it wraps the next handler.
 	outerLogger := zerolog.Ctx(req.Context())
 
-	handler := diohttp.RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := diohttp.RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -133,7 +133,7 @@ func TestRequestIDMiddleware_requestIDVisibleFromOuterContext(t *testing.T) {
 func TestRequestIDMiddleware_generatesDistinctIDsPerRequest(t *testing.T) {
 	t.Parallel()
 
-	handler := diohttp.RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := diohttp.RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 

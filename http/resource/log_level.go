@@ -78,7 +78,7 @@ func (dr *LogLevelResource) PostIndex() http.HandlerFunc {
 
 // GetIndex returns an HTTP handler for getting the current log level.
 func (dr *LogLevelResource) GetIndex() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		resp := LogLevelGet{
 			Level: dr.LogSetter.CurrentLogLevel(),
 		}
