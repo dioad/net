@@ -520,7 +520,7 @@ func TestLiveEndpoint(t *testing.T) {
 	// Add the resource
 	server.AddResource("/api", mockResource)
 
-	expectLive := func(t *testing.T, wantLive bool, wantStatus int) map[string]any {
+	expectLive := func(t *testing.T, wantLive bool, wantStatus int) {
 		t.Helper()
 		server.initialiseServer()
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/live", nil)
@@ -532,8 +532,6 @@ func TestLiveEndpoint(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &liveResponse)
 		require.NoError(t, err)
 		assert.Equal(t, wantLive, liveResponse["live"])
-
-		return liveResponse
 	}
 
 	expectLive(t, true, http.StatusOK)

@@ -97,8 +97,10 @@ func ExampleListener() {
 	// Wrap with prefix list listener
 	plListener := prefixlist.NewListener(baseListener, multiProvider, logger)
 
-	fmt.Printf("Listening on %s with prefix list filtering\n", plListener.Addr())
+	fmt.Printf("Listening on %s with prefix list filtering\n", plListener.Addr().Network())
 
 	// Now only connections from allowed IPs will be accepted
 	// conn, err := plListener.Accept()
+
+	// Output: Listening on tcp with prefix list filtering
 }
