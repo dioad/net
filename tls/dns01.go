@@ -374,6 +374,26 @@ func (p dns01ProviderWithTimeout) Timeout() (time.Duration, time.Duration) {
 	return p.timeout, p.interval
 }
 
+// dns01ProviderWithTimeouts wraps c.DNS01.Provider in dns01ProviderWithTimeout
+// when either PropagationTimeout or PollingInterval is configured, falling
+// back to lego's own defaults (60s propagation, 2s polling) for whichever
+// one wasn't set. Returns c.DNS01.Provider unchanged when neither is set.
+func dns01ProviderWithTimeouts(c ACMEConfig) challenge.Provider {
+	if c.DNS01.PropagationTimeout <= 0 && c.DNS01.PollingInterval <= 0 {
+		return c.DNS01.Provider
+	}
+
+	timeout, interval := c.DNS01.PropagationTimeout, c.DNS01.PollingInterval
+	if timeout == 0 {
+		timeout = 60 * time.Second
+	}
+	if interval == 0 {
+		interval = 2 * time.Second
+	}
+
+	return dns01ProviderWithTimeout{Provider: c.DNS01.Provider, timeout: timeout, interval: interval}
+}
+
 // dns01User implements registration.User for the ACME account key.
 type dns01User struct {
 	email string
@@ -407,19 +427,7 @@ func obtainViaLego(ctx context.Context, c ACMEConfig, cache autocert.Cache, acco
 		return nil, fmt.Errorf("error creating acme client: %w", err)
 	}
 
-	provider := c.DNS01.Provider
-	if c.DNS01.PropagationTimeout > 0 || c.DNS01.PollingInterval > 0 {
-		timeout, interval := c.DNS01.PropagationTimeout, c.DNS01.PollingInterval
-		if timeout == 0 {
-			timeout = 60 * time.Second
-		}
-		if interval == 0 {
-			interval = 2 * time.Second
-		}
-		provider = dns01ProviderWithTimeout{Provider: c.DNS01.Provider, timeout: timeout, interval: interval}
-	}
-
-	if err := client.Challenge.SetDNS01Provider(provider); err != nil {
+	if err := client.Challenge.SetDNS01Provider(dns01ProviderWithTimeouts(c)); err != nil {
 		return nil, fmt.Errorf("error setting dns-01 provider: %w", err)
 	}
 

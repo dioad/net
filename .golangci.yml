@@ -52,6 +52,7 @@ linters:
       # repo-wide for the same reason.
       - path: '_test\.go'
         linters:
+          - cyclop
           - gocognit
           - gocyclo
           - nestif
