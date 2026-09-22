@@ -12,6 +12,8 @@ const DefaultTTL uint32 = 60
 // DNSRecord is the canonical interface for DNS record types across this module.
 // Existing smtp sub-package records implement it by structural compatibility;
 // the coredns package imports this definition rather than defining its own.
+//
+//nolint:revive // stutters (dns.DNSRecord), but it's a public interface external packages already import by this name; renaming it is a breaking change of its own, out of scope here
 type DNSRecord interface {
 	// RecordPrefix returns the DNS owner label prefix relative to the base domain,
 	// e.g. "_dmarc." or "" for the apex.
@@ -41,6 +43,8 @@ type TXTRecord struct {
 	TTL uint32 `json:"ttl,omitempty" mapstructure:"ttl"`
 }
 
+// RecordPrefix returns the DNS owner label prefix relative to the base
+// domain, e.g. "sub." or "" for the apex.
 func (r *TXTRecord) RecordPrefix() string {
 	if r.Name == "" {
 		return ""
@@ -49,10 +53,13 @@ func (r *TXTRecord) RecordPrefix() string {
 	return r.Name + "."
 }
 
+// RecordType returns the DNS record type string, "TXT".
 func (r *TXTRecord) RecordType() string { return "TXT" }
 
+// RecordValue returns the wire-ready, quoted TXT record value.
 func (r *TXTRecord) RecordValue() string { return fmt.Sprintf(`\"%s\"`, r.Value) }
 
+// Empty reports whether Value is unset.
 func (r *TXTRecord) Empty() bool { return r.Value == "" }
 
 // RecordTTL returns the TTL to use for this record, falling back to DefaultTTL.

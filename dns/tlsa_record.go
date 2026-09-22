@@ -62,6 +62,9 @@ func (r *TLSARecord) fetchDNSContents(data any) (string, error) {
 	return fmt.Sprintf("%d %d %d %v", r.Selector, r.MatchingType, r.Usage, tlsaValue), nil
 }
 
+// Render computes this record's TLSA value from the certificate at
+// CertPathTemplate (expanded against data), refreshing it in the
+// background afterward when AutoRefresh is set.
 func (r *TLSARecord) Render(data any) error {
 	period := time.Duration(r.AutoRefreshPeriodSeconds) * time.Second
 
@@ -74,12 +77,16 @@ func (r *TLSARecord) Empty() bool {
 	return r.CertPathTemplate == "" && r.content.Value() == ""
 }
 
+// RecordPrefix returns the DNS owner label prefix for this TLSA record,
+// e.g. "_443._tcp.mail.".
 func (r *TLSARecord) RecordPrefix() string {
 	return fmt.Sprintf("_%d._%s.%s.", r.Port, r.Proto, r.Name)
 }
 
+// RecordType returns the DNS record type string, "TLSA".
 func (r *TLSARecord) RecordType() string { return "TLSA" }
 
+// RecordValue returns the wire-ready TLSA record value.
 func (r *TLSARecord) RecordValue() string { return r.content.Value() }
 
 func (r *TLSARecord) String() string { return r.content.Value() }

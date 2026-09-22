@@ -53,6 +53,8 @@ func (r *TemplatedFileTXTRecord) fetchDNSContents(data any) (string, error) {
 	return string(contents), nil
 }
 
+// Render expands PathTemplate against data and (re)reads its content,
+// refreshing it in the background afterward when AutoRefresh is set.
 func (r *TemplatedFileTXTRecord) Render(data any) error {
 	period := time.Duration(r.AutoRefreshPeriodSeconds) * time.Second
 
@@ -65,6 +67,8 @@ func (r *TemplatedFileTXTRecord) Empty() bool {
 	return r.PathTemplate == "" && r.content.Value() == ""
 }
 
+// RecordPrefix returns the DNS owner label prefix relative to the base
+// domain, e.g. "default._domainkey." or "" for the apex.
 func (r *TemplatedFileTXTRecord) RecordPrefix() string {
 	if r.Name == "" {
 		return ""
@@ -73,8 +77,10 @@ func (r *TemplatedFileTXTRecord) RecordPrefix() string {
 	return r.Name + "."
 }
 
+// RecordType returns the DNS record type string, "TXT".
 func (r *TemplatedFileTXTRecord) RecordType() string { return "TXT" }
 
+// RecordValue returns the wire-ready, quoted TXT record value.
 func (r *TemplatedFileTXTRecord) RecordValue() string {
 	return fmt.Sprintf("\\\"%v\\\"", r.content.Value())
 }
