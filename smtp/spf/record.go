@@ -142,9 +142,8 @@ func (r *Record) String() string {
 		parts = append(parts, "v="+r.Version)
 	}
 
-	//
 	ipMechanisms := filter.FilterSlice(r.Mechanisms, func(m Mechanism) bool { return m.Name == "ip" })
-	nonIpMechanisms := filter.FilterSlice(r.Mechanisms, func(m Mechanism) bool { return m.Name != "ip" })
+	nonIPMechanisms := filter.FilterSlice(r.Mechanisms, func(m Mechanism) bool { return m.Name != "ip" })
 
 	for _, ipMechanism := range ipMechanisms {
 		if formatted := formatIPMechanism(ipMechanism); formatted != "" {
@@ -152,7 +151,7 @@ func (r *Record) String() string {
 		}
 	}
 
-	mechanisms := FormatMechanisms(nonIpMechanisms...)
+	mechanisms := FormatMechanisms(nonIPMechanisms...)
 	if mechanisms != "" {
 		parts = append(parts, mechanisms)
 	}

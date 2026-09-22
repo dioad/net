@@ -171,12 +171,12 @@ func ExampleMarshalHeader_options() {
 // ExampleMarshalHeader_withoutStructName demonstrates encoding without the struct name in headers.
 func ExampleMarshalHeader_withoutStructName() {
 	type Config struct {
-		ApiKey string
+		APIKey string
 		Region string
 	}
 
 	config := Config{
-		ApiKey: "secret-key",
+		APIKey: "secret-key",
 		Region: "us-west-2",
 	}
 
@@ -237,7 +237,7 @@ func ExampleMarshalHeader_customTags() {
 // ExampleUnmarshalHeader_middleware demonstrates using header marshaling in HTTP middleware.
 func ExampleUnmarshalHeader_middleware() {
 	type RequestContext struct {
-		TenantId string
+		TenantID string
 		UserRole string
 	}
 
@@ -258,7 +258,7 @@ func ExampleUnmarshalHeader_middleware() {
 			}
 
 			// Use the decoded context
-			fmt.Printf("Processing request for tenant: %s, role: %s\n", ctx.TenantId, ctx.UserRole)
+			fmt.Printf("Processing request for tenant: %s, role: %s\n", ctx.TenantID, ctx.UserRole)
 			next.ServeHTTP(w, r)
 		})
 	}

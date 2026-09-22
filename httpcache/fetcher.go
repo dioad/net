@@ -136,7 +136,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 
 	// Need to fetch now (blocking). If already refreshing, wait for it and
 	// share its result instead of starting our own fetch.
-	if data, result, err, waited := f.waitForConcurrentRefresh(); waited {
+	if data, result, waited, err := f.waitForConcurrentRefresh(); waited {
 		f.mu.Unlock()
 
 		return data, result, err
@@ -191,7 +191,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 // waited=true. waited=false means no refresh was in progress, so the
 // caller remains responsible for performing its own fetch. f.mu must be
 // held on entry and remains held on return either way.
-func (f *CachingFetcher[T]) waitForConcurrentRefresh() (T, CacheResult, error, bool) {
+func (f *CachingFetcher[T]) waitForConcurrentRefresh() (T, CacheResult, bool, error) {
 	waited := false
 	for f.refreshing {
 		waited = true
@@ -200,7 +200,7 @@ func (f *CachingFetcher[T]) waitForConcurrentRefresh() (T, CacheResult, error, b
 	if !waited {
 		var zero T
 
-		return zero, CacheResultFresh, nil, false
+		return zero, CacheResultFresh, false, nil
 	}
 
 	if f.cachedData == nil {
@@ -210,7 +210,7 @@ func (f *CachingFetcher[T]) waitForConcurrentRefresh() (T, CacheResult, error, b
 		// origin.
 		var zero T
 
-		return zero, CacheResultFresh, f.lastError, true
+		return zero, CacheResultFresh, true, f.lastError
 	}
 
 	result := CacheResultFresh
@@ -221,7 +221,7 @@ func (f *CachingFetcher[T]) waitForConcurrentRefresh() (T, CacheResult, error, b
 		result = CacheResultStale
 	}
 
-	return *f.cachedData, result, nil, true
+	return *f.cachedData, result, true, nil
 }
 
 // backgroundRefresh performs a refresh in the background.
