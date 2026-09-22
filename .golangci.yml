@@ -74,6 +74,17 @@ linters:
           - gocognit
           - gocyclo
           - nestif
+      # Repeated literals in tests are almost always fixture/expectation
+      # data (a hostname, a header name, an error string) restated across
+      # otherwise-independent table-driven cases, not a shared business
+      # constant that drifted. Forcing every one into a package-level
+      # const would couple unrelated test cases together for no benefit;
+      # a magic number/string inside one test's own table is still
+      # self-documenting in context. 96 of this repo's 97 goconst
+      # findings are in _test.go files.
+      - path: '_test\.go'
+        linters:
+          - goconst
 
 issues:
   max-issues-per-linter: 0
