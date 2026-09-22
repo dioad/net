@@ -57,6 +57,6 @@ func (h *Handler) Wrap(handler http.Handler) http.Handler {
 
 			return
 		}
-		handler.ServeHTTP(w, r.WithContext(ctx))
+		handler.ServeHTTP(w, r.WithContext(ctx)) //nolint:contextcheck // ctx is always r.Context() (see AuthRequest); contextcheck can't see through the indirection
 	})
 }

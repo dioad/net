@@ -68,8 +68,10 @@ type RateLimiter struct {
 	// logged at most once per RateLimiter, rather than once per Allow() call.
 	warnedZeroFallback atomic.Bool
 
-	// Background cleanup
-	ctx      context.Context
+	// Background cleanup. ctx is stored (rather than threaded through
+	// method calls) because it bounds a goroutine RateLimiter itself
+	// owns and starts in its constructor; Stop() cancels it directly.
+	ctx      context.Context //nolint:containedctx // owns its background cleanup goroutine's lifetime; see Stop()
 	cancel   context.CancelFunc
 	wg       sync.WaitGroup
 	stopOnce sync.Once
@@ -242,7 +244,7 @@ func NewRateLimiterWithSourceContextAndConfig(ctx context.Context, source RateLi
 type Option func(*rateLimiterOptions)
 
 type rateLimiterOptions struct {
-	ctx             context.Context
+	ctx             context.Context //nolint:containedctx // transient functional-options builder, consumed immediately by NewRateLimiterWithOptions
 	requestsPerSec  float64
 	burst           int
 	cleanupInterval time.Duration
