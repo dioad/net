@@ -23,21 +23,17 @@ func NewClientTLSConfig(c ClientConfig) (*tls.Config, error) {
 		return nil, nil
 	}
 
-	var tlsConfig = &tls.Config{
-		MinVersion: tls.VersionTLS12,
+	cert, err := loadClientCertificate(c)
+	if err != nil {
+		return nil, err
 	}
 
-	if (c.Certificate != "" && c.Key == "") || (c.Certificate == "" && c.Key != "") {
-		return nil, errors.New("both certificate and key need to be specified")
+	tlsConfig := &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: c.InsecureSkipVerify,
 	}
-
-	if c.Certificate != "" && c.Key != "" {
-		clientCertificate, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to load x509 key pair: %w", err)
-		}
-		tlsConfig.Certificates = []tls.Certificate{clientCertificate}
+	if cert != nil {
+		tlsConfig.Certificates = []tls.Certificate{*cert}
 	}
 
 	if c.RootCAFile != "" {
@@ -48,7 +44,25 @@ func NewClientTLSConfig(c ClientConfig) (*tls.Config, error) {
 		tlsConfig.RootCAs = rootCAs
 	}
 
-	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
-
 	return tlsConfig, nil
+}
+
+// loadClientCertificate validates that Certificate and Key are both set or
+// both empty, then loads the key pair if present. Returns (nil, nil) when
+// neither is set.
+func loadClientCertificate(c ClientConfig) (*tls.Certificate, error) {
+	if (c.Certificate != "" && c.Key == "") || (c.Certificate == "" && c.Key != "") {
+		return nil, errors.New("both certificate and key need to be specified")
+	}
+
+	if c.Certificate == "" {
+		return nil, nil
+	}
+
+	cert, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load x509 key pair: %w", err)
+	}
+
+	return &cert, nil
 }

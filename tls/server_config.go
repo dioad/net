@@ -144,28 +144,49 @@ func NewServerTLSConfig(ctx context.Context, c ServerConfig) (*tls.Config, error
 	if len(c.NextProtos) > 0 {
 		defaultNextProtos = c.NextProtos
 	}
+	tlsConfig.NextProtos = mergeNextProtos(tlsConfig.NextProtos, defaultNextProtos)
 
-	if len(tlsConfig.NextProtos) == 0 {
-		tlsConfig.NextProtos = defaultNextProtos
-	} else {
-		for _, proto := range defaultNextProtos {
-			if !slices.Contains(tlsConfig.NextProtos, proto) {
-				tlsConfig.NextProtos = append(tlsConfig.NextProtos, proto)
-			}
-		}
-	}
-
-	if c.ClientCAFile != "" {
-		tlsConfig.ClientAuth = convertClientAuthType(c.ClientAuthType)
-
-		clientCAs, err := LoadCertPoolFromFile(c.ClientCAFile)
-		if err != nil {
-			return nil, fmt.Errorf("error reading client CAs: %w", err)
-		}
-		tlsConfig.ClientCAs = clientCAs
+	if err := applyClientCA(tlsConfig, c); err != nil {
+		return nil, err
 	}
 
 	return tlsConfig, nil
+}
+
+// mergeNextProtos returns existing's ALPN protocol list merged with
+// defaultProtos: replacing it outright when existing is empty, or appending
+// whichever of defaultProtos aren't already present when it isn't.
+func mergeNextProtos(existing, defaultProtos []string) []string {
+	if len(existing) == 0 {
+		return defaultProtos
+	}
+
+	merged := existing
+	for _, proto := range defaultProtos {
+		if !slices.Contains(merged, proto) {
+			merged = append(merged, proto)
+		}
+	}
+
+	return merged
+}
+
+// applyClientCA configures tlsConfig's client-certificate verification from
+// c.ClientCAFile/ClientAuthType, when a CA file is set. A no-op otherwise.
+func applyClientCA(tlsConfig *tls.Config, c ServerConfig) error {
+	if c.ClientCAFile == "" {
+		return nil
+	}
+
+	clientCAs, err := LoadCertPoolFromFile(c.ClientCAFile)
+	if err != nil {
+		return fmt.Errorf("error reading client CAs: %w", err)
+	}
+
+	tlsConfig.ClientAuth = convertClientAuthType(c.ClientAuthType)
+	tlsConfig.ClientCAs = clientCAs
+
+	return nil
 }
 
 // NewLocalTLSConfigFunc creates a ConfigFunc for loading certificates from local files.
