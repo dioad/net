@@ -136,27 +136,16 @@ func normalizeStructValue(v any, requirePointer bool, allowNil bool) (reflect.Va
 
 	val := reflect.ValueOf(v)
 
-	if requirePointer {
-		if val.Kind() != reflect.Pointer {
-			return reflect.Value{}, nil, fmt.Errorf("expected pointer to struct, got %s", val.Kind())
-		}
-		if val.IsNil() {
-			if allowNil {
-				return reflect.Value{}, nil, nil
-			}
+	if requirePointer && val.Kind() != reflect.Pointer {
+		return reflect.Value{}, nil, fmt.Errorf("expected pointer to struct, got %s", val.Kind())
+	}
 
-			return reflect.Value{}, nil, errors.New("nil pointer")
+	if val.Kind() == reflect.Pointer {
+		deref, nilResult, err := dereferencePointer(val, allowNil)
+		if err != nil || nilResult {
+			return reflect.Value{}, nil, err
 		}
-		val = val.Elem()
-	} else if val.Kind() == reflect.Pointer {
-		if val.IsNil() {
-			if allowNil {
-				return reflect.Value{}, nil, nil
-			}
-
-			return reflect.Value{}, nil, errors.New("nil pointer")
-		}
-		val = val.Elem()
+		val = deref
 	}
 
 	if val.Kind() != reflect.Struct {
@@ -168,6 +157,22 @@ func normalizeStructValue(v any, requirePointer bool, allowNil bool) (reflect.Va
 	}
 
 	return val, val.Type(), nil
+}
+
+// dereferencePointer dereferences a non-nil pointer Value. For a nil
+// pointer, it reports nilResult=true (with a nil error) when allowNil is
+// set, signalling the caller should return its own nil-valued zero result;
+// otherwise it returns an error.
+func dereferencePointer(val reflect.Value, allowNil bool) (reflect.Value, bool, error) {
+	if val.IsNil() {
+		if allowNil {
+			return reflect.Value{}, true, nil
+		}
+
+		return reflect.Value{}, false, errors.New("nil pointer")
+	}
+
+	return val.Elem(), false, nil
 }
 
 func walkStructFields(val reflect.Value, typ reflect.Type, tagName string, opts HTTPMarshalOptions, fn func(field reflect.Value, fieldType reflect.StructField, fieldName string) error) error {
@@ -239,22 +244,25 @@ func toKebabCase(s string) string {
 	var result strings.Builder
 
 	for i, r := range runes {
-		if i > 0 && unicode.IsUpper(r) {
-			prev := runes[i-1]
-			nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
-			if unicode.IsLower(prev) || unicode.IsDigit(prev) || (unicode.IsUpper(prev) && nextIsLower) {
-				result.WriteRune('-')
-			}
+		if i > 0 && unicode.IsUpper(r) && needsKebabHyphen(runes, i) {
+			result.WriteRune('-')
 		}
 
-		if unicode.IsUpper(r) {
-			result.WriteRune(unicode.ToLower(r))
-		} else {
-			result.WriteRune(r)
-		}
+		result.WriteRune(unicode.ToLower(r))
 	}
 
 	return result.String()
+}
+
+// needsKebabHyphen reports whether a hyphen should precede the uppercase
+// rune at runes[i]: true when the previous rune is lowercase or a digit, or
+// when the previous rune is uppercase but the one after i is lowercase (the
+// start of a new word within an acronym run, e.g. "HTTPServer" -> "http-server").
+func needsKebabHyphen(runes []rune, i int) bool {
+	prev := runes[i-1]
+	nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+
+	return unicode.IsLower(prev) || unicode.IsDigit(prev) || (unicode.IsUpper(prev) && nextIsLower)
 }
 
 // marshalField marshals a single field value to the fieldSet based on its type.

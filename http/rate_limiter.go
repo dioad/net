@@ -142,20 +142,34 @@ func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 		},
 		[]string{"result"},
 	)
-	err := reg.Register(r.counter)
-	if err != nil {
-		if are, ok := errors.AsType[prometheus.AlreadyRegisteredError](err); ok {
-			if existing, ok := are.ExistingCollector.(*prometheus.CounterVec); ok {
-				r.counter = existing
-			} else {
-				r.logger.Error().Err(err).Msg("rate-limit counter registration conflict: existing collector has unexpected type")
-			}
-		} else {
-			r.logger.Error().Err(err).Msg("rate-limit counter registration failed; metrics will not be exported")
-		}
+	if err := reg.Register(r.counter); err != nil {
+		r.resolveCounterRegistrationConflict(err)
 	}
 
 	return r
+}
+
+// resolveCounterRegistrationConflict handles a failed Register call for
+// r.counter: if it failed because an equivalent counter is already
+// registered, reuse that instance; otherwise log and leave r.counter
+// unregistered, so requests still get rate-limited even though this
+// process's metrics for it won't be exported.
+func (r *RateLimiter) resolveCounterRegistrationConflict(err error) {
+	are, ok := errors.AsType[prometheus.AlreadyRegisteredError](err)
+	if !ok {
+		r.logger.Error().Err(err).Msg("rate-limit counter registration failed; metrics will not be exported")
+
+		return
+	}
+
+	existing, ok := are.ExistingCollector.(*prometheus.CounterVec)
+	if !ok {
+		r.logger.Error().Err(err).Msg("rate-limit counter registration conflict: existing collector has unexpected type")
+
+		return
+	}
+
+	r.counter = existing
 }
 
 // Stop shuts down the background cleanup goroutine started by the rate limiter.

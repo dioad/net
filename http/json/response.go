@@ -155,25 +155,8 @@ func (r *Response) respondWithStatus(code int, defaultMessage string, opts ...re
 		r.logError(cfg.logErr, msg)
 	}
 
-	// HTTP requires a 204 No Content response to have no body; drop
-	// whatever the caller supplied rather than silently writing one.
-	if code == http.StatusNoContent && (cfg.data != nil || cfg.publicMessage != "") {
-		r.logWarn("Data()/PublicMessage() is ignored on a 204 No Content response, which must not have a body")
-		cfg.data = nil
-		cfg.publicMessage = ""
-	}
-
-	// Build response body
-	var body any
-	if cfg.data != nil {
-		body = r.mergeResponseData(cfg.data, cfg.publicMessage, code)
-	} else if cfg.publicMessage != "" {
-		if isErrorStatus(code) {
-			body = map[string]string{"error": cfg.publicMessage}
-		} else {
-			body = map[string]string{"message": cfg.publicMessage}
-		}
-	}
+	r.dropBodyForNoContent(cfg, code)
+	body := r.buildResponseBody(cfg, code)
 
 	// Apply headers
 	for k, v := range cfg.headers {
@@ -182,6 +165,37 @@ func (r *Response) respondWithStatus(code int, defaultMessage string, opts ...re
 
 	// Send response
 	r.Data(code, body)
+}
+
+// dropBodyForNoContent clears cfg's body fields when code is 204 No
+// Content, which HTTP requires to have no body. Whatever the caller
+// supplied is dropped rather than silently written.
+func (r *Response) dropBodyForNoContent(cfg *responseConfig, code int) {
+	if code != http.StatusNoContent || (cfg.data == nil && cfg.publicMessage == "") {
+		return
+	}
+
+	r.logWarn("Data()/PublicMessage() is ignored on a 204 No Content response, which must not have a body")
+	cfg.data = nil
+	cfg.publicMessage = ""
+}
+
+// buildResponseBody builds the response body from cfg, preferring
+// structured data over a bare public message.
+func (r *Response) buildResponseBody(cfg *responseConfig, code int) any {
+	if cfg.data != nil {
+		return r.mergeResponseData(cfg.data, cfg.publicMessage, code)
+	}
+
+	if cfg.publicMessage == "" {
+		return nil
+	}
+
+	if isErrorStatus(code) {
+		return map[string]string{"error": cfg.publicMessage}
+	}
+
+	return map[string]string{"message": cfg.publicMessage}
 }
 
 // mergeResponseData combines structured data with message if needed.
