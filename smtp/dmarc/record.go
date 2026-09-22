@@ -1,3 +1,4 @@
+// Package dmarc provides types for building a DMARC DNS TXT record.
 package dmarc
 
 import (
@@ -15,12 +16,14 @@ Should potentially reuse "github.com/emersion/go-msgauth/dmarc" `Record` struct
 and rather than repeating it here simply make a way to encode it into a string.
 */
 
+// DMARC policies, per RFC 7489 section 6.3.
 const (
 	PolicyNone       Policy = "none"
 	PolicyQuarantine Policy = "quarantine"
 	PolicyReject     Policy = "reject"
 )
 
+// DMARC identifier alignment modes, per RFC 7489 section 6.3.
 const (
 	AlignmentPolicyStrict  AlignmentPolicy = "s"
 	AlignmentPolicyRelaxed AlignmentPolicy = "r"
@@ -57,10 +60,12 @@ func formatDMARCEmails(label string, emails []string) string {
 	return fmt.Sprintf("%s=%s", label, strings.Join(addrs, ","))
 }
 
+// UnsetPercent clears Percent, omitting "pct=" from the rendered record.
 func (r *Record) UnsetPercent() {
 	r.Percent = nil
 }
 
+// SetPercent sets Percent to pct, returning an error if pct exceeds 100.
 func (r *Record) SetPercent(pct uint8) error {
 	if pct > 100 {
 		return errors.New("pct must be between 0 and 100")
@@ -93,6 +98,8 @@ func renderList(values []string, data any) ([]string, error) {
 	return ret, nil
 }
 
+// Render expands the Go template strings in ReportURIAggregate and
+// ReportURIFailure against data.
 func (r *Record) Render(data any) error {
 	var err error
 
@@ -109,14 +116,18 @@ func (r *Record) Render(data any) error {
 	return nil
 }
 
+// RecordType returns the DNS record type string, "TXT".
 func (r *Record) RecordType() string {
 	return "TXT"
 }
 
+// RecordPrefix returns the DNS owner label prefix for a DMARC record,
+// always "_dmarc.".
 func (r *Record) RecordPrefix() string {
 	return "_dmarc."
 }
 
+// RecordValue returns the wire-ready, quoted DMARC record value.
 func (r *Record) RecordValue() string {
 	return txtchunk.Quote(r.String())
 }
