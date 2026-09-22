@@ -41,7 +41,7 @@ func NewFastlyProvider() *FastlyProvider {
 }
 
 func transformFastlyRanges(data fastlyIPRanges) ([]netip.Prefix, error) {
-	var cidrs []string
+	cidrs := make([]string, 0, len(data.Addresses)+len(data.IPv6Addresses))
 	cidrs = append(cidrs, data.Addresses...)
 	cidrs = append(cidrs, data.IPv6Addresses...)
 

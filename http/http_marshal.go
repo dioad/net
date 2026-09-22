@@ -173,7 +173,7 @@ func normalizeStructValue(v any, requirePointer bool, allowNil bool) (reflect.Va
 func walkStructFields(val reflect.Value, typ reflect.Type, tagName string, opts HTTPMarshalOptions, fn func(field reflect.Value, fieldType reflect.StructField, fieldName string) error) error {
 	structName := typ.Name()
 
-	for i := 0; i < val.NumField(); i++ {
+	for i := range val.NumField() {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
 
@@ -296,7 +296,7 @@ func marshalSliceField(set fieldSet, fieldName string, field reflect.Value) erro
 	}
 
 	// Handle []string
-	for i := 0; i < field.Len(); i++ {
+	for i := range field.Len() {
 		value := field.Index(i).String()
 		if value != "" {
 			set.Add(fieldName, value)
