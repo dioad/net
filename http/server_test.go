@@ -509,6 +509,24 @@ func (m *MockHealthResource) Ready(_ context.Context) (any, error) {
 	return map[string]string{"status": "ok"}, nil
 }
 
+// expectHealthField requests path from server and asserts both the HTTP
+// status code and the given boolean field in the decoded JSON body. Shared
+// by TestLiveEndpoint and TestReadyEndpoint, which differ only in which
+// health endpoint and response field they check.
+func expectHealthField(t *testing.T, server *Server, path, field string, want bool, wantStatus int) {
+	t.Helper()
+	server.initialiseServer()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
+	w := httptest.NewRecorder()
+	server.handler().ServeHTTP(w, req)
+	assert.Equal(t, wantStatus, w.Code)
+
+	var response map[string]any
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, want, response[field])
+}
+
 // TestStatusEndpoint tests the status endpoint.
 func TestLiveEndpoint(t *testing.T) {
 	config := Config{
@@ -520,24 +538,10 @@ func TestLiveEndpoint(t *testing.T) {
 	// Add the resource
 	server.AddResource("/api", mockResource)
 
-	expectLive := func(t *testing.T, wantLive bool, wantStatus int) {
-		t.Helper()
-		server.initialiseServer()
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/live", nil)
-		w := httptest.NewRecorder()
-		server.handler().ServeHTTP(w, req)
-		assert.Equal(t, wantStatus, w.Code)
-
-		var liveResponse map[string]any
-		err := json.Unmarshal(w.Body.Bytes(), &liveResponse)
-		require.NoError(t, err)
-		assert.Equal(t, wantLive, liveResponse["live"])
-	}
-
-	expectLive(t, true, http.StatusOK)
+	expectHealthField(t, server, "/health/live", "live", true, http.StatusOK)
 
 	mockResource.LiveError = true
-	expectLive(t, false, http.StatusInternalServerError)
+	expectHealthField(t, server, "/health/live", "live", false, http.StatusInternalServerError)
 }
 
 // TestLiveEndpoint_ReportsEveryFailingResource verifies that, unlike the
@@ -582,24 +586,10 @@ func TestReadyEndpoint(t *testing.T) {
 	// Add the resource
 	server.AddResource("/api", mockResource)
 
-	expectReady := func(t *testing.T, wantReady bool, wantStatus int) {
-		t.Helper()
-		server.initialiseServer()
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/ready", nil)
-		w := httptest.NewRecorder()
-		server.handler().ServeHTTP(w, req)
-		assert.Equal(t, wantStatus, w.Code)
-
-		var readyResponse map[string]any
-		err := json.Unmarshal(w.Body.Bytes(), &readyResponse)
-		require.NoError(t, err)
-		assert.Equal(t, wantReady, readyResponse["ready"])
-	}
-
-	expectReady(t, true, http.StatusOK)
+	expectHealthField(t, server, "/health/ready", "ready", true, http.StatusOK)
 
 	mockResource.ReadyError = true
-	expectReady(t, false, http.StatusServiceUnavailable)
+	expectHealthField(t, server, "/health/ready", "ready", false, http.StatusServiceUnavailable)
 }
 
 // TestMiddleware tests adding middleware to the server.
