@@ -23,6 +23,15 @@ linters:
     - lll
     - mnd
     - noinlineerr
+    # funcorder demands constructor-then-exported-then-unexported ordering,
+    # which conflicts with this codebase's existing, deliberate convention
+    # of placing an unexported helper immediately after the exported method
+    # that calls it (e.g. Server.AddRootResource / registerRootRoute in
+    # http/server.go, predating this config) - readability here comes from
+    # proximity to the call site, not from export-status grouping. Pure
+    # code-organization preference, no correctness value; consistent with
+    # the other style linters already disabled above.
+    - funcorder
   settings:
     ireturn:
       allow:
