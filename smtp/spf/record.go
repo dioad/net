@@ -1,3 +1,4 @@
+// Package spf provides types for building an SPF DNS TXT record.
 package spf
 
 import (
@@ -12,6 +13,7 @@ import (
 	"github.com/dioad/net/smtp/internal/txtchunk"
 )
 
+// SPF mechanism qualifiers, per RFC 7208 section 4.6.1.
 const (
 	QualifierNone     Qualifier = ""
 	QualifierPass     Qualifier = "+"
@@ -32,6 +34,9 @@ type Mechanism struct {
 	ValuesFunc MechanismValuesFunc `json:"-"                  mapstructure:"-"`
 }
 
+// IPMechanisms splits values (a mix of IPv4 and IPv6 addresses) into a
+// separate "ip4" mechanism and "ip6" mechanism, either of which is nil if
+// no addresses of that family were present.
 func IPMechanisms(values ...string) (*Mechanism, *Mechanism) {
 	var ip4Mechanism *Mechanism
 	var ip6Mechanism *Mechanism
@@ -54,22 +59,27 @@ func IPMechanisms(values ...string) (*Mechanism, *Mechanism) {
 	return ip4Mechanism, ip6Mechanism
 }
 
+// IP4Mechanism returns an "ip4" mechanism listing values.
 func IP4Mechanism(values ...string) Mechanism {
 	return Mechanism{Name: "ip4", Values: values}
 }
 
+// IP6Mechanism returns an "ip6" mechanism listing values.
 func IP6Mechanism(values ...string) Mechanism {
 	return Mechanism{Name: "ip6", Values: values}
 }
 
+// MXMechanism returns an "mx" mechanism listing values.
 func MXMechanism(values ...string) Mechanism {
 	return Mechanism{Name: "mx", Values: values}
 }
 
+// AMechanism returns an "a" mechanism listing values.
 func AMechanism(values ...string) Mechanism {
 	return Mechanism{Name: "a", Values: values}
 }
 
+// IncludeMechanism returns an "include" mechanism listing values.
 func IncludeMechanism(values ...string) Mechanism {
 	return Mechanism{Name: "include", Values: values}
 }
@@ -86,6 +96,7 @@ type Record struct {
 	AllQualifier Qualifier `mapstructure:"all-qualifier"`
 }
 
+// Add appends m to the record's mechanisms.
 func (r *Record) Add(m Mechanism) {
 	r.Mechanisms = append(r.Mechanisms, m)
 }
@@ -113,6 +124,7 @@ func resolveValues(mech Mechanism, data any) []string {
 	return values
 }
 
+// Render expands each mechanism's ValueList/Values templates against data.
 func (r *Record) Render(data any) error {
 	for i := range r.Mechanisms {
 		r.Mechanisms[i].Values = resolveValues(r.Mechanisms[i], data)
@@ -121,14 +133,18 @@ func (r *Record) Render(data any) error {
 	return nil
 }
 
+// RecordPrefix returns the DNS owner label prefix for an SPF record: always
+// "" (the apex).
 func (r *Record) RecordPrefix() string {
 	return ""
 }
 
+// RecordType returns the DNS record type string, "TXT".
 func (r *Record) RecordType() string {
 	return "TXT"
 }
 
+// RecordValue returns the wire-ready, quoted SPF record value.
 func (r *Record) RecordValue() string {
 	return txtchunk.Quote(r.String())
 }
@@ -181,6 +197,8 @@ func formatIPMechanism(ipMechanism Mechanism) string {
 	}
 }
 
+// FormatMechanism formats a single mechanism as "<qualifier><name>:<value>"
+// entries (space-separated when it has multiple values), e.g. "ip4:1.2.3.4".
 func FormatMechanism(mechanism Mechanism) string {
 	if len(mechanism.Values) == 0 {
 		return ""
@@ -193,6 +211,8 @@ func FormatMechanism(mechanism Mechanism) string {
 	return strings.Join(outputs, " ")
 }
 
+// FormatMechanisms formats each mechanism (see FormatMechanism) and joins
+// the non-empty results with a space.
 func FormatMechanisms(mechanism ...Mechanism) string {
 	outputs := make([]string, 0, len(mechanism))
 	for _, m := range mechanism {
