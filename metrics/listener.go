@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// ListenerMetrics exposes accepted-connection counting for a listener.
 type ListenerMetrics interface {
 	AcceptedCount() int
 	ResetMetrics()
@@ -21,14 +22,18 @@ type Listener struct {
 	useLogger     bool
 }
 
+// ResetMetrics resets the accepted-connection count to zero.
 func (l *Listener) ResetMetrics() {
 	l.acceptedCount.Store(0)
 }
 
+// AcceptedCount returns the number of connections accepted so far.
 func (l *Listener) AcceptedCount() int {
 	return int(l.acceptedCount.Load())
 }
 
+// Accept waits for and returns the next connection, wrapped to track its
+// lifetime metrics.
 func (l *Listener) Accept() (net.Conn, error) {
 	conn, err := l.ln.Accept()
 
@@ -47,10 +52,12 @@ func (l *Listener) Accept() (net.Conn, error) {
 	return connWithMetrics, err
 }
 
+// Close closes the underlying listener.
 func (l *Listener) Close() error {
 	return l.ln.Close()
 }
 
+// Addr returns the underlying listener's network address.
 func (l *Listener) Addr() net.Addr {
 	return l.ln.Addr()
 }

@@ -168,6 +168,7 @@ func (s *Conn) Write(b []byte) (int, error) {
 	return n, err
 }
 
+// Done returns a channel that is closed when the underlying connection is closed.
 func (s *Conn) Done() <-chan struct{} {
 	return s.conn.Done()
 }
@@ -290,6 +291,8 @@ func NewConnWithLogger(c net.Conn, logger zerolog.Logger) net2.DoneConn {
 	})
 }
 
+// FindMetricsConn unwraps c's chain of RawConn wrappers to find the
+// innermost *Conn, or nil if none is present.
 func FindMetricsConn(c net2.RawConn) *Conn {
 	metricsConn, ok := c.NetConn().(*Conn)
 	if ok {
