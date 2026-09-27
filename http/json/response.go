@@ -280,6 +280,99 @@ func (r *Response) ServiceUnavailable(opts ...responseOption) {
 	r.respondWithStatus(http.StatusServiceUnavailable, "service unavailable", opts...)
 }
 
+// RFC 9457 Problem Details (https://www.rfc-editor.org/rfc/rfc9457)
+//
+// Problem is additive: it exists alongside BadRequest/Forbidden/NotFound/etc.
+// rather than changing what they emit, so adopting it is opt-in per call
+// site and per repo.
+
+// Problem is an RFC 9457 Problem Details object. Every field is optional per
+// the RFC; Type defaults to "about:blank" and Status is filled in from the
+// status code passed to (*Response).Problem when left zero, so the common
+// case only needs Title (and Detail, for an occurrence-specific message).
+type Problem struct {
+	// Type is a URI reference identifying the problem type. Defaults to
+	// "about:blank" (RFC 9457 section 3.1) when empty. Consumers MUST use
+	// Type, not Status, as the problem's primary identifier.
+	Type string
+	// Title is a short, human-readable summary. It should stay stable
+	// across occurrences of this problem type, except for localization.
+	Title string
+	// Status is the HTTP status code, advisory only -- the response's
+	// actual status line is authoritative. Left zero, it is set to the
+	// status code passed to Problem.
+	Status int
+	// Detail is a human-readable explanation specific to this occurrence.
+	// It should help the client correct the problem, not aid debugging.
+	Detail string
+	// Instance is a URI reference identifying this specific occurrence.
+	Instance string
+	// Extensions carries problem-type-specific members (e.g. a
+	// machine-readable "reason" code) as additional top-level JSON members
+	// alongside type/title/status/detail/instance (RFC 9457 section 3.2). A
+	// key colliding with one of those five names is dropped in favour of
+	// the standard member.
+	Extensions map[string]any
+}
+
+// Problem sends an RFC 9457 "application/problem+json" response. status
+// sets the HTTP status line; p.Status is set to status when p.Status is
+// zero, since RFC 9457 requires the two to match.
+//
+// opts accepts LogErr, LogMessage and Header/Location for side effects,
+// exactly as the other Response methods do. Data and PublicMessage do not
+// apply to a Problem body -- there is no message-merging step to plug them
+// into -- and are dropped with a logged warning if passed.
+func (r *Response) Problem(status int, p Problem, opts ...responseOption) {
+	cfg := &responseConfig{headers: make(map[string]string)}
+	for _, opt := range opts {
+		opt.apply(cfg)
+	}
+
+	if cfg.data != nil || cfg.publicMessage != "" {
+		r.logWarn("Data()/PublicMessage() do not apply to Problem() and were dropped")
+	}
+
+	if cfg.logErr != nil {
+		msg := cfg.logMessage
+		if msg == "" {
+			msg = p.Title
+		}
+		r.logError(cfg.logErr, msg)
+	}
+
+	for k, v := range cfg.headers {
+		r.Writer.Header().Set(k, v)
+	}
+
+	if p.Type == "" {
+		p.Type = "about:blank"
+	}
+	if p.Status == 0 {
+		p.Status = status
+	}
+
+	body := make(map[string]any, len(p.Extensions)+5)
+	maps.Copy(body, p.Extensions)
+	body["type"] = p.Type
+	body["status"] = p.Status
+	if p.Title != "" {
+		body["title"] = p.Title
+	}
+	if p.Detail != "" {
+		body["detail"] = p.Detail
+	}
+	if p.Instance != "" {
+		body["instance"] = p.Instance
+	}
+
+	r.Writer.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
+	r.Writer.WriteHeader(status)
+	if err := json.NewEncoder(r.Writer).Encode(body); err != nil {
+		r.logError(err, "error encoding response")
+	}
+}
+
 // Semantic success response functions
 
 // OK sends a 200 OK response.

@@ -321,6 +321,104 @@ func TestServiceUnavailable_DefaultMessage(t *testing.T) {
 	assert.Equal(t, "service unavailable", result["error"])
 }
 
+func TestProblem_DefaultsTypeAndStatus(t *testing.T) {
+	w := httptest.NewRecorder()
+	resp := NewResponse(w)
+
+	resp.Problem(http.StatusForbidden, Problem{Title: "account quota exceeded"})
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Equal(t, "application/problem+json; charset=utf-8", w.Header().Get("Content-Type"))
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "about:blank", body["type"])
+	assert.Equal(t, "account quota exceeded", body["title"])
+	assert.Equal(t, float64(http.StatusForbidden), body["status"])
+	assert.NotContains(t, body, "detail")
+	assert.NotContains(t, body, "instance")
+}
+
+func TestProblem_ExplicitFields(t *testing.T) {
+	w := httptest.NewRecorder()
+	resp := NewResponse(w)
+
+	resp.Problem(http.StatusForbidden, Problem{
+		Type:     "https://example.com/problems/quota-exceeded",
+		Title:    "account quota exceeded",
+		Status:   http.StatusForbidden,
+		Detail:   "the account has exhausted its monthly connection quota",
+		Instance: "/accounts/acc-123/quota",
+	})
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "https://example.com/problems/quota-exceeded", body["type"])
+	assert.Equal(t, "account quota exceeded", body["title"])
+	assert.Equal(t, float64(http.StatusForbidden), body["status"])
+	assert.Equal(t, "the account has exhausted its monthly connection quota", body["detail"])
+	assert.Equal(t, "/accounts/acc-123/quota", body["instance"])
+}
+
+func TestProblem_ExtensionsAreTopLevelMembers(t *testing.T) {
+	w := httptest.NewRecorder()
+	resp := NewResponse(w)
+
+	resp.Problem(http.StatusForbidden, Problem{
+		Title:      "account quota exceeded",
+		Extensions: map[string]any{"reason": "quota_exceeded"},
+	})
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "quota_exceeded", body["reason"])
+	assert.Equal(t, "account quota exceeded", body["title"])
+}
+
+func TestProblem_ExtensionsCannotOverrideStandardMembers(t *testing.T) {
+	w := httptest.NewRecorder()
+	resp := NewResponse(w)
+
+	resp.Problem(http.StatusForbidden, Problem{
+		Title:      "account quota exceeded",
+		Extensions: map[string]any{"status": "not-a-number", "type": "hijacked"},
+	})
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, float64(http.StatusForbidden), body["status"])
+	assert.Equal(t, "about:blank", body["type"])
+}
+
+func TestProblem_LogErr(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := zerolog.New(&logOutput)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+
+	resp := NewResponseWithLogger(w, req, logger)
+	resp.Problem(http.StatusForbidden, Problem{Title: "account quota exceeded"}, LogErr(errors.New("quota check failed")))
+
+	assert.NotZero(t, logOutput.Len())
+}
+
+func TestProblem_DataAndPublicMessageAreDroppedWithWarning(t *testing.T) {
+	var logOutput bytes.Buffer
+	logger := zerolog.New(&logOutput)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+
+	resp := NewResponseWithLogger(w, req, logger)
+	resp.Problem(http.StatusForbidden, Problem{Title: "account quota exceeded"},
+		Data(map[string]any{"ignored": true}), PublicMessage("ignored too"))
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.NotContains(t, body, "ignored")
+	assert.NotContains(t, body, "message")
+	assert.NotZero(t, logOutput.Len(), "dropping Data()/PublicMessage() for a Problem() response should be logged")
+}
+
 func TestCreatedWithMessage(t *testing.T) {
 	w := httptest.NewRecorder()
 	resp := NewResponse(w)
