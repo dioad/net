@@ -270,6 +270,16 @@ func (r *Response) InvalidInput(opts ...responseOption) {
 	r.respondWithStatus(http.StatusBadRequest, "invalid input", opts...)
 }
 
+// UnprocessableEntity sends a 422 Unprocessable Entity response.
+func (r *Response) UnprocessableEntity(opts ...responseOption) {
+	r.respondWithStatus(http.StatusUnprocessableEntity, "unprocessable entity", opts...)
+}
+
+// ServiceUnavailable sends a 503 Service Unavailable response.
+func (r *Response) ServiceUnavailable(opts ...responseOption) {
+	r.respondWithStatus(http.StatusServiceUnavailable, "service unavailable", opts...)
+}
+
 // Semantic success response functions
 
 // OK sends a 200 OK response.

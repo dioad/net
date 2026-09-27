@@ -269,6 +269,58 @@ func TestNotAcceptableWithMessage(t *testing.T) {
 	}
 }
 
+func TestUnprocessableEntity(t *testing.T) {
+	w := httptest.NewRecorder()
+	resp := NewResponse(w)
+
+	resp.UnprocessableEntity(PublicMessage("state must be \"running\" or \"stopped\""))
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+
+	var result map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+	assert.Equal(t, "state must be \"running\" or \"stopped\"", result["error"])
+}
+
+func TestUnprocessableEntity_DefaultMessage(t *testing.T) {
+	w := httptest.NewRecorder()
+	resp := NewResponse(w)
+
+	resp.UnprocessableEntity()
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+
+	var result map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+	assert.Equal(t, "unprocessable entity", result["error"])
+}
+
+func TestServiceUnavailable(t *testing.T) {
+	w := httptest.NewRecorder()
+	resp := NewResponse(w)
+
+	resp.ServiceUnavailable(PublicMessage("event store unavailable"))
+
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+
+	var result map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+	assert.Equal(t, "event store unavailable", result["error"])
+}
+
+func TestServiceUnavailable_DefaultMessage(t *testing.T) {
+	w := httptest.NewRecorder()
+	resp := NewResponse(w)
+
+	resp.ServiceUnavailable()
+
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+
+	var result map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+	assert.Equal(t, "service unavailable", result["error"])
+}
+
 func TestCreatedWithMessage(t *testing.T) {
 	w := httptest.NewRecorder()
 	resp := NewResponse(w)
