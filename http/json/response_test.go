@@ -321,6 +321,32 @@ func TestServiceUnavailable_DefaultMessage(t *testing.T) {
 	assert.Equal(t, "service unavailable", result["error"])
 }
 
+func TestNotImplemented(t *testing.T) {
+	w := httptest.NewRecorder()
+	resp := NewResponse(w)
+
+	resp.NotImplemented(PublicMessage("entitlements integration is not configured"))
+
+	assert.Equal(t, http.StatusNotImplemented, w.Code)
+
+	var result map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+	assert.Equal(t, "entitlements integration is not configured", result["error"])
+}
+
+func TestNotImplemented_DefaultMessage(t *testing.T) {
+	w := httptest.NewRecorder()
+	resp := NewResponse(w)
+
+	resp.NotImplemented()
+
+	assert.Equal(t, http.StatusNotImplemented, w.Code)
+
+	var result map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+	assert.Equal(t, "not implemented", result["error"])
+}
+
 func TestProblem_DefaultsTypeAndStatus(t *testing.T) {
 	w := httptest.NewRecorder()
 	resp := NewResponse(w)

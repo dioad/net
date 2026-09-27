@@ -280,6 +280,11 @@ func (r *Response) ServiceUnavailable(opts ...responseOption) {
 	r.respondWithStatus(http.StatusServiceUnavailable, "service unavailable", opts...)
 }
 
+// NotImplemented sends a 501 Not Implemented response.
+func (r *Response) NotImplemented(opts ...responseOption) {
+	r.respondWithStatus(http.StatusNotImplemented, "not implemented", opts...)
+}
+
 // RFC 9457 Problem Details (https://www.rfc-editor.org/rfc/rfc9457)
 //
 // Problem is additive: it exists alongside BadRequest/Forbidden/NotFound/etc.
