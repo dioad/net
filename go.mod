@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/pires/go-proxyproto v0.15.0
 	github.com/prometheus/client_golang v1.24.1
-	github.com/prometheus/common v0.71.0 // indirect
+	github.com/prometheus/common v0.72.0 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/rs/zerolog v1.35.1
@@ -26,14 +26,13 @@ require (
 	github.com/dioad/generics v0.0.9
 	github.com/dioad/util v0.7.0
 	github.com/emersion/go-msgauth v0.7.0
-	github.com/go-acme/lego/v5 v5.5.1
+	github.com/go-acme/lego/v5 v5.5.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/miekg/dns v1.1.73
 	github.com/prometheus/client_model v0.6.3
 	github.com/rs/cors v1.11.1
 	github.com/stretchr/testify v1.12.1
-	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
 	golang.org/x/sync v0.23.0
 	golang.org/x/time v0.16.0
 )
