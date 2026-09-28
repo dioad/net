@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// CacheConfig configures the caching behavior of a CachingFetcher
+// CacheConfig configures the caching behavior of a CachingFetcher.
 type CacheConfig struct {
 	// StaticExpiry defines a fixed cache duration (e.g., 1 hour)
 	StaticExpiry time.Duration
@@ -23,29 +23,29 @@ type CacheConfig struct {
 	ReturnStale bool
 }
 
-// FetchFunc is a custom function type for fetching data from an HTTP endpoint
+// FetchFunc is a custom function type for fetching data from an HTTP endpoint.
 type FetchFunc[T any] func(ctx context.Context, url string) (T, error)
 
-// CacheResult indicates the status of cached data
+// CacheResult indicates the status of cached data.
 type CacheResult int
 
 const (
-	// CacheResultFresh indicates data was freshly fetched
+	// CacheResultFresh indicates data was freshly fetched.
 	CacheResultFresh CacheResult = iota
-	// CacheResultCached indicates data was returned from cache
+	// CacheResultCached indicates data was returned from cache.
 	CacheResultCached
-	// CacheResultStale indicates stale data was returned due to fetch error
+	// CacheResultStale indicates stale data was returned due to fetch error.
 	CacheResultStale
 )
 
-// FetchResult contains the fetched data and metadata about the fetch
+// FetchResult contains the fetched data and metadata about the fetch.
 type FetchResult[T any] struct {
 	Data   T
 	Result CacheResult
 	Error  error
 }
 
-// CachingFetcher is a generic caching HTTP fetcher that handles HTTP requests with caching
+// CachingFetcher is a generic caching HTTP fetcher that handles HTTP requests with caching.
 type CachingFetcher[T any] struct {
 	url        string
 	config     CacheConfig
@@ -73,6 +73,7 @@ func NewCachingFetcher[T any](url string, config CacheConfig) *CachingFetcher[T]
 		httpClient: defaultFetchClient,
 	}
 	f.refreshCond = sync.NewCond(&f.mu)
+
 	return f
 }
 
@@ -87,6 +88,7 @@ func NewCachingFetcherWithFunc[T any](url string, config CacheConfig, fetchFunc 
 		httpClient: defaultFetchClient,
 	}
 	f.refreshCond = sync.NewCond(&f.mu)
+
 	return f
 }
 
@@ -101,7 +103,7 @@ func NewCachingFetcherWithFunc[T any](url string, config CacheConfig, fetchFunc 
 // failed. A caller that follows the common `if err != nil { return }`
 // pattern must not have that discard perfectly usable stale data; check the
 // returned CacheResult, not just err, to distinguish "no data at all" from
-// "stale but usable."
+// "stale but usable.".
 func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	f.mu.Lock()
 
@@ -109,6 +111,7 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 	if f.cachedData != nil && time.Now().Before(f.expiresAt) {
 		data := *f.cachedData
 		f.mu.Unlock()
+
 		return data, CacheResultCached, nil
 	}
 
@@ -127,40 +130,16 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 		}
 
 		f.mu.Unlock()
+
 		return data, CacheResultStale, nil
 	}
 
-	// Need to fetch now (blocking)
-	// If already refreshing, wait for it and share its result instead of
-	// starting our own fetch. Looping on the condition (rather than a
-	// single check) also protects against spurious wakeups, per
-	// sync.Cond's documented contract.
-	waited := false
-	for f.refreshing {
-		waited = true
-		f.refreshCond.Wait()
-	}
-	if waited {
-		if f.cachedData != nil {
-			data := *f.cachedData
-			result := CacheResultFresh
-			if f.lastError != nil {
-				// The fetch we waited on failed, but there is still usable
-				// (stale) data -- CacheResultStale never carries a non-nil
-				// error; see Get's doc comment.
-				result = CacheResultStale
-			}
-			f.mu.Unlock()
-			return data, result, nil
-		}
-		// The fetch we waited on failed and left no stale data to fall
-		// back to. Every waiter shares that single failure rather than
-		// each independently retrying against an already-struggling
-		// origin.
-		var zero T
-		err := f.lastError
+	// Need to fetch now (blocking). If already refreshing, wait for it and
+	// share its result instead of starting our own fetch.
+	if data, result, waited, err := f.waitForConcurrentRefresh(); waited {
 		f.mu.Unlock()
-		return zero, CacheResultFresh, err
+
+		return data, result, err
 	}
 
 	// Mark as refreshing
@@ -183,12 +162,14 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 			result := *staleData
 			f.mu.Unlock()
 			f.refreshCond.Broadcast()
+
 			return result, CacheResultStale, nil
 		}
 		// No stale data, return zero value
 		var zero T
 		f.mu.Unlock()
 		f.refreshCond.Broadcast()
+
 		return zero, CacheResultFresh, err
 	}
 
@@ -199,10 +180,51 @@ func (f *CachingFetcher[T]) Get(ctx context.Context) (T, CacheResult, error) {
 
 	f.mu.Unlock()
 	f.refreshCond.Broadcast()
+
 	return data, CacheResultFresh, nil
 }
 
-// backgroundRefresh performs a refresh in the background
+// waitForConcurrentRefresh waits while another goroutine is already
+// refreshing (looping on the condition, rather than a single check, to
+// protect against spurious wakeups per sync.Cond's documented contract)
+// and, once that refresh completes, reports its shared result with
+// waited=true. waited=false means no refresh was in progress, so the
+// caller remains responsible for performing its own fetch. f.mu must be
+// held on entry and remains held on return either way.
+func (f *CachingFetcher[T]) waitForConcurrentRefresh() (T, CacheResult, bool, error) {
+	waited := false
+	for f.refreshing {
+		waited = true
+		f.refreshCond.Wait()
+	}
+	if !waited {
+		var zero T
+
+		return zero, CacheResultFresh, false, nil
+	}
+
+	if f.cachedData == nil {
+		// The fetch we waited on failed and left no stale data to fall
+		// back to. Every waiter shares that single failure rather than
+		// each independently retrying against an already-struggling
+		// origin.
+		var zero T
+
+		return zero, CacheResultFresh, true, f.lastError
+	}
+
+	result := CacheResultFresh
+	if f.lastError != nil {
+		// The fetch we waited on failed, but there is still usable
+		// (stale) data -- CacheResultStale never carries a non-nil
+		// error; see Get's doc comment.
+		result = CacheResultStale
+	}
+
+	return *f.cachedData, result, true, nil
+}
+
+// backgroundRefresh performs a refresh in the background.
 func (f *CachingFetcher[T]) backgroundRefresh(ctx context.Context) {
 	data, headers, err := f.doFetch(ctx)
 
@@ -227,8 +249,10 @@ func (f *CachingFetcher[T]) backgroundRefresh(ctx context.Context) {
 func (f *CachingFetcher[T]) doFetch(ctx context.Context) (T, http.Header, error) {
 	if f.fetchFunc != nil {
 		data, err := f.fetchFunc(ctx, f.url)
+
 		return data, nil, err
 	}
+
 	return f.fetchJSON(ctx)
 }
 
@@ -238,7 +262,7 @@ func (f *CachingFetcher[T]) doFetch(ctx context.Context) (T, http.Header, error)
 func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, http.Header, error) {
 	var result T
 
-	req, err := http.NewRequestWithContext(ctx, "GET", f.url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, f.url, nil)
 	if err != nil {
 		return result, nil, fmt.Errorf("create request: %w", err)
 	}
@@ -267,7 +291,7 @@ func (f *CachingFetcher[T]) fetchJSON(ctx context.Context) (T, http.Header, erro
 	return result, headers, nil
 }
 
-// calculateExpiry determines when the cached data expires based on HTTP cache headers
+// calculateExpiry determines when the cached data expires based on HTTP cache headers.
 func (f *CachingFetcher[T]) calculateExpiry(headers http.Header) time.Time {
 	now := time.Now()
 
@@ -292,72 +316,64 @@ func (f *CachingFetcher[T]) calculateExpiry(headers http.Header) time.Time {
 	return now.Add(1 * time.Hour)
 }
 
-// parseCacheControl extracts max-age from Cache-Control header and handles caching directives
+// cacheControlDirectives holds the caching-relevant directives extracted
+// from a Cache-Control header.
+type cacheControlDirectives struct {
+	maxAge    time.Duration
+	hasMaxAge bool
+	noStore   bool
+	noCache   bool
+}
+
+// applyCacheControlDirective parses a single (already-trimmed) Cache-Control
+// directive, updating d with whichever of no-store, no-cache, or max-age it
+// recognizes. must-revalidate is accepted but otherwise ignored: it is
+// implicitly satisfied by this fetcher's existing expiry logic, since it
+// never serves stale content past expiry without revalidating.
+func applyCacheControlDirective(directive string, d *cacheControlDirectives) {
+	switch directive {
+	case "no-store":
+		d.noStore = true
+	case "no-cache":
+		d.noCache = true
+	case "must-revalidate":
+	default:
+		after, ok := strings.CutPrefix(directive, "max-age=")
+		if !ok {
+			return
+		}
+
+		maxAgeStr := strings.Trim(after, "\"") // handle quoted values
+		if duration, err := time.ParseDuration(maxAgeStr + "s"); err == nil {
+			d.maxAge = duration
+			d.hasMaxAge = true
+		}
+	}
+}
+
+// parseCacheControl extracts max-age from Cache-Control header and handles caching directives.
 func (f *CachingFetcher[T]) parseCacheControl(cacheControl string, now time.Time) time.Time {
-	// Parse comma-separated directives
-	directives := strings.Split(cacheControl, ",")
-
-	var maxAge time.Duration
-	var hasMaxAge bool
-	var noStore, noCache bool
-
-	for _, directive := range directives {
-		directive = strings.TrimSpace(directive)
-
-		// Check for no-store directive - response should not be cached
-		if directive == "no-store" {
-			noStore = true
-			continue
-		}
-
-		// Check for no-cache directive - response can be cached but must be revalidated
-		if directive == "no-cache" {
-			noCache = true
-			continue
-		}
-
-		// Check for must-revalidate directive - handled implicitly by our expiry logic
-		// (we don't serve stale content beyond expiry without revalidation)
-		if directive == "must-revalidate" {
-			// This directive is implicitly handled by our existing expiry logic
-			continue
-		}
-
-		// Extract max-age value
-		if after, ok := strings.CutPrefix(directive, "max-age="); ok {
-			maxAgeStr := after
-			// Handle quoted values
-			maxAgeStr = strings.Trim(maxAgeStr, "\"")
-			if duration, err := time.ParseDuration(maxAgeStr + "s"); err == nil {
-				maxAge = duration
-				hasMaxAge = true
-			}
-		}
+	var directives cacheControlDirectives
+	for directive := range strings.SplitSeq(cacheControl, ",") {
+		applyCacheControlDirective(strings.TrimSpace(directive), &directives)
 	}
 
-	// Handle no-store: don't cache (use immediate expiry)
-	if noStore {
+	switch {
+	case directives.noStore:
+		// Don't cache: use immediate expiry.
 		return now
-	}
-
-	// Handle no-cache: cache but with very short expiry to force revalidation
-	if noCache {
-		// Use a very short expiry (1 second) to effectively force revalidation
-		// while still allowing brief caching to prevent request storms
+	case directives.noCache:
+		// Cache, but with a very short expiry (1 second) to effectively
+		// force revalidation while still allowing brief caching to
+		// prevent request storms.
 		return now.Add(1 * time.Second)
-	}
-
-	// Use max-age if found
-	if hasMaxAge {
-		return now.Add(maxAge)
-	}
-
-	// If no max-age found, use static expiry
-	if f.config.StaticExpiry > 0 {
+	case directives.hasMaxAge:
+		return now.Add(directives.maxAge)
+	case f.config.StaticExpiry > 0:
 		return now.Add(f.config.StaticExpiry)
+	default:
+		return now.Add(1 * time.Hour)
 	}
-
-	return now.Add(1 * time.Hour)
 }
 
 // parseExpires parses the HTTP Expires header.
@@ -388,14 +404,16 @@ func (f *CachingFetcher[T]) parseExpires(expiresStr string, now time.Time) time.
 func (f *CachingFetcher[T]) GetCachedData() *T {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
+
 	return f.cachedData
 }
 
 // GetCacheInfo returns information about the current cache status.
 // It returns the time the data was cached, the time it expires, and whether data is present.
-func (f *CachingFetcher[T]) GetCacheInfo() (cachedAt, expiresAt time.Time, hasData bool) {
+func (f *CachingFetcher[T]) GetCacheInfo() (time.Time, time.Time, bool) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
+
 	return f.cachedAt, f.expiresAt, f.cachedData != nil
 }
 
@@ -406,5 +424,6 @@ func (f *CachingFetcher[T]) GetCacheInfo() (cachedAt, expiresAt time.Time, hasDa
 func (f *CachingFetcher[T]) LastError() error {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
+
 	return f.lastError
 }

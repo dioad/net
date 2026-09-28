@@ -97,6 +97,7 @@ func TestParseCIDRs(t *testing.T) {
 			got, err := parseCIDRs(tt.cidrs)
 			if tt.wantErr {
 				require.Error(t, err)
+
 				return
 			}
 			require.NoError(t, err)

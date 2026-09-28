@@ -14,8 +14,10 @@ import (
 func newAutocertTLSConfig(c ACMEConfig) (*tls.Config, error) {
 	autoCertManager := NewAutocertManagerFromConfig(c)
 	if autoCertManager == nil {
+		//nolint:nilnil // package convention: a zero-value config means "nothing to build", not an error
 		return nil, nil
 	}
+
 	return autoCertManager.TLSConfig(), nil
 }
 

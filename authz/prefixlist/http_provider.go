@@ -7,10 +7,10 @@ import (
 	"github.com/dioad/net/httpcache"
 )
 
-// TransformFunc is a function that transforms fetched data into a list of prefixes
+// TransformFunc is a function that transforms fetched data into a list of prefixes.
 type TransformFunc[T any] func(T) ([]netip.Prefix, error)
 
-// HTTPJSONProvider is a generic provider that fetches JSON data and transforms it into prefixes
+// HTTPJSONProvider is a generic provider that fetches JSON data and transforms it into prefixes.
 type HTTPJSONProvider[T any] struct {
 	name      string
 	fetcher   *httpcache.CachingFetcher[T]
@@ -31,10 +31,13 @@ func NewHTTPJSONProvider[T any](name, url string, config httpcache.CacheConfig, 
 	}
 }
 
+// Name returns the provider's name.
 func (p *HTTPJSONProvider[T]) Name() string {
 	return p.name
 }
 
+// Prefixes fetches (or returns cached) JSON data from the provider's
+// endpoint and transforms it into a list of prefixes.
 func (p *HTTPJSONProvider[T]) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	data, _, err := p.fetcher.Get(ctx)
 	if err != nil {
@@ -44,6 +47,8 @@ func (p *HTTPJSONProvider[T]) Prefixes(ctx context.Context) ([]netip.Prefix, err
 	return p.transform(data)
 }
 
+// Contains reports whether addr is contained in any of the provider's
+// prefixes.
 func (p *HTTPJSONProvider[T]) Contains(addr netip.Addr) bool {
 	prefixes, err := p.Prefixes(context.Background())
 	if err != nil {
@@ -54,17 +59,18 @@ func (p *HTTPJSONProvider[T]) Contains(addr netip.Addr) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
-// HTTPTextProvider is a provider for HTTP endpoints that return plain text lists of prefixes
+// HTTPTextProvider is a provider for HTTP endpoints that return plain text lists of prefixes.
 type HTTPTextProvider struct {
 	name    string
 	fetcher *httpcache.CachingFetcher[[]string]
 }
 
 // NewHTTPTextProvider creates a new HTTP text-based provider
-// The endpoint is expected to return a plain text list of CIDR ranges (one per line)
+// The endpoint is expected to return a plain text list of CIDR ranges (one per line).
 func NewHTTPTextProvider(name, url string, config httpcache.CacheConfig) *HTTPTextProvider {
 	return &HTTPTextProvider{
 		name: name,
@@ -76,10 +82,13 @@ func NewHTTPTextProvider(name, url string, config httpcache.CacheConfig) *HTTPTe
 	}
 }
 
+// Name returns the provider's name.
 func (p *HTTPTextProvider) Name() string {
 	return p.name
 }
 
+// Prefixes fetches (or returns cached) text data from the provider's
+// endpoint and parses it into a list of prefixes.
 func (p *HTTPTextProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	cidrs, _, err := p.fetcher.Get(ctx)
 	if err != nil {
@@ -89,6 +98,8 @@ func (p *HTTPTextProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error)
 	return parseCIDRs(cidrs)
 }
 
+// Contains reports whether addr is contained in any of the provider's
+// prefixes.
 func (p *HTTPTextProvider) Contains(addr netip.Addr) bool {
 	prefixes, err := p.Prefixes(context.Background())
 	if err != nil {
@@ -99,5 +110,6 @@ func (p *HTTPTextProvider) Contains(addr netip.Addr) bool {
 			return true
 		}
 	}
+
 	return false
 }

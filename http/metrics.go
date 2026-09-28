@@ -22,6 +22,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// Prometheus label names shared across MetricSet's counter/histogram vectors.
+const (
+	labelRoute  = "route"
+	labelCode   = "code"
+	labelMethod = "method"
+	labelWS     = "ws"
+)
+
 // MetricSet holds the standard HTTP server instrumentation metrics.
 type MetricSet struct {
 	RequestCounter  *prometheus.CounterVec
@@ -42,7 +50,7 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 				Name: "dioad_net_http_requests_total",
 				Help: "Counter of HTTP requests.",
 			},
-			[]string{"route", "code", "method"},
+			[]string{labelRoute, labelCode, labelMethod},
 		),
 		RequestDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -50,7 +58,7 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 				Help:    "Histogram of latencies for HTTP requests.",
 				Buckets: []float64{.1, .2, .4, 1, 3, 8, 20, 60, 120},
 			},
-			[]string{"route", "method", "ws"},
+			[]string{labelRoute, labelMethod, labelWS},
 		),
 		RequestSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -58,7 +66,7 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 				Help:    "Histogram of request size for HTTP requests.",
 				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
 			},
-			[]string{"route", "method"},
+			[]string{labelRoute, labelMethod},
 		),
 		ResponseSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -66,7 +74,7 @@ func NewMetricSet(r *prometheus.Registry) *MetricSet {
 				Help:    "Histogram of response size for HTTP requests.",
 				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
 			},
-			[]string{"route", "method"},
+			[]string{labelRoute, labelMethod},
 		),
 		InFlightGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
@@ -112,11 +120,11 @@ func (m *MetricSet) Middleware(mux *http.ServeMux, next http.Handler) http.Handl
 		}
 
 		labels := prometheus.Labels{
-			"route": route,
+			labelRoute: route,
 		}
 		durationLabels := prometheus.Labels{
-			"route": route,
-			"ws":    strconv.FormatBool(isWebsocketHandshake(r)),
+			labelRoute: route,
+			labelWS:    strconv.FormatBool(isWebsocketHandshake(r)),
 		}
 		promhttp.InstrumentHandlerInFlight(
 			m.InFlightGauge,

@@ -13,13 +13,15 @@ func init() {
 		// Atlassian: support "region" and "product" keys (comma-separated values)
 		regions := parseCommaSeparated(cfg.Filter["region"])
 		products := parseCommaSeparated(cfg.Filter["product"])
+
 		return NewAtlassianProvider(regions, products), nil
 	})
 }
 
-// AtlassianProvider fetches IP ranges from Atlassian
+// AtlassianProvider fetches IP ranges from Atlassian.
 type AtlassianProvider struct {
 	*HTTPJSONProvider[atlassianIPRanges]
+
 	regions  []string // optional filter for regions (e.g., ["us-east-1", "global"])
 	products []string // optional filter for products (e.g., ["jira", "confluence"])
 }
@@ -36,7 +38,7 @@ type atlassianIPRanges struct {
 // NewAtlassianProvider creates a new Atlassian prefix list provider
 // regions: optional list of regions to filter by (e.g., ["global", "us-east-1"])
 // products: optional list of products to filter by (e.g., ["jira", "confluence"])
-// Only prefixes with "egress" direction are included
+// Only prefixes with "egress" direction are included.
 func NewAtlassianProvider(regions, products []string) *AtlassianProvider {
 	name := "atlassian"
 	if len(products) > 0 {
@@ -88,7 +90,7 @@ func (p *AtlassianProvider) transformAtlassianRanges(data atlassianIPRanges) ([]
 	return parseCIDRs(cidrs)
 }
 
-// containsAny checks if any item from needles exists in haystack (case-insensitive)
+// containsAny checks if any item from needles exists in haystack (case-insensitive).
 func containsAny(haystack, needles []string) bool {
 	if len(needles) == 0 {
 		return true
@@ -98,5 +100,6 @@ func containsAny(haystack, needles []string) bool {
 			return true
 		}
 	}
+
 	return false
 }

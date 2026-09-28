@@ -11,7 +11,7 @@ import (
 	"github.com/dioad/net/authz/prefixlist"
 )
 
-// Example demonstrates basic usage of the prefix list system
+// Example demonstrates basic usage of the prefix list system.
 func Example() {
 	logger := zerolog.Nop()
 
@@ -39,7 +39,7 @@ func Example() {
 	// Output: IP is allowed
 }
 
-// ExampleNewMultiProviderFromConfig demonstrates creating a multi-provider from configuration
+// ExampleNewMultiProviderFromConfig demonstrates creating a multi-provider from configuration.
 func ExampleNewMultiProviderFromConfig() {
 	logger := zerolog.Nop()
 
@@ -72,12 +72,14 @@ func ExampleNewMultiProviderFromConfig() {
 	// Output: MultiProvider created with multiple providers
 }
 
-// ExampleListener demonstrates using the prefix list listener
+// ExampleListener demonstrates using the prefix list listener.
 func ExampleListener() {
 	logger := zerolog.Nop()
 
+	ctx := context.Background()
+
 	// Create a base listener
-	baseListener, err := net.Listen("tcp", "127.0.0.1:0")
+	baseListener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", "127.0.0.1:0")
 	if err != nil {
 		panic(err)
 	}
@@ -87,7 +89,6 @@ func ExampleListener() {
 	gitlabProvider := prefixlist.NewGitLabProvider()
 	multiProvider := prefixlist.NewMultiProvider([]prefixlist.Provider{gitlabProvider}, logger)
 
-	ctx := context.Background()
 	_, err = multiProvider.Prefixes(ctx)
 	if err != nil {
 		panic(err)
@@ -96,8 +97,10 @@ func ExampleListener() {
 	// Wrap with prefix list listener
 	plListener := prefixlist.NewListener(baseListener, multiProvider, logger)
 
-	fmt.Printf("Listening on %s with prefix list filtering\n", plListener.Addr())
+	fmt.Printf("Listening on %s with prefix list filtering\n", plListener.Addr().Network())
 
 	// Now only connections from allowed IPs will be accepted
 	// conn, err := plListener.Accept()
+
+	// Output: Listening on tcp with prefix list filtering
 }

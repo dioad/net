@@ -18,6 +18,7 @@ func TestReverseIP(t *testing.T) {
 		out, err := ReverseIP(test.in)
 		if (err != nil) != test.wantErr {
 			t.Errorf("ReverseIP(%v) error = %v, wantErr %v", test.in, err, test.wantErr)
+
 			continue
 		}
 		if out != test.out {
@@ -49,7 +50,7 @@ func TestBlockListLookupAddr(t *testing.T) {
 		{"127.0.0.2", true},
 	}
 	for _, test := range tests {
-		if out, _ := BlocklistLookupAddr(test.in); out != test.out {
+		if out, _ := BlocklistLookupAddr(t.Context(), test.in); out != test.out {
 			t.Errorf("BlocklistLookupAddr(%v) = %v", test.in, out)
 		}
 	}
@@ -61,7 +62,7 @@ func TestBlockListLookupAddr_IPv6Errors(t *testing.T) {
 	// ".zen.spamhaus.org", which failed DNS resolution and was
 	// interpreted as "not listed" -- an IPv6 address could never
 	// actually be checked, but no error surfaced either.
-	_, err := BlocklistLookupAddr("2001:db8::1")
+	_, err := BlocklistLookupAddr(t.Context(), "2001:db8::1")
 	if err == nil {
 		t.Error("BlocklistLookupAddr on an IPv6 address should return an error, not silently report \"not listed\"")
 	}

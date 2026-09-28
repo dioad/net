@@ -1,3 +1,5 @@
+// Package main demonstrates rate limiting a raw TCP listener by source IP
+// using ratelimit.Listener.
 package main
 
 import (
@@ -25,6 +27,7 @@ func main() {
 	)
 
 	// Create a listener
+	//nolint:noctx // binding a local listen socket is instant, no context needed for a demo
 	ln, err := net.Listen("tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
 	if err != nil {
 		log.Fatalf("Error creating listener: %v\n", err)
@@ -57,6 +60,7 @@ func main() {
 				break
 			}
 			log.Printf("Error accepting connection: %v\n", err)
+
 			continue
 		}
 
@@ -80,9 +84,10 @@ func handleConnection(conn net.Conn) {
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
-			if err != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				log.Printf("Error reading from connection: %v\n", err)
 			}
+
 			break
 		}
 
@@ -90,6 +95,7 @@ func handleConnection(conn net.Conn) {
 			msg := string(buf[:n])
 			if msg == "quit\n" || msg == "quit\r\n" {
 				_, _ = io.WriteString(conn, "Goodbye!\n")
+
 				break
 			}
 			_, _ = conn.Write(buf[:n])

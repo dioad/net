@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,6 +12,7 @@ var libraryUserAgent = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
 		return "DioadClient/" + info.Main.Version
 	}
+
 	return "DioadClient/dev"
 }()
 
@@ -40,7 +42,8 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 	}
 
 	if c.Config.RequestModifier != nil {
-		if err := c.Config.RequestModifier(req); err != nil {
+		err := c.Config.RequestModifier(req)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -52,7 +55,7 @@ func (c *Client) Request(req *http.Request) (*http.Response, error) {
 // It returns an error if the client was not configured with a BaseURL.
 func (c *Client) ResolveRelativeRequestPath(requestPath string) (*url.URL, error) {
 	if c.Config.BaseURL == nil {
-		return nil, fmt.Errorf("no base url configured for client")
+		return nil, errors.New("no base url configured for client")
 	}
 	relativePathURL, err := url.Parse(requestPath)
 	if err != nil {
@@ -71,6 +74,7 @@ func NewDefaultClient() *Client {
 	if err != nil {
 		panic(fmt.Sprintf("NewDefaultClient: invalid default config: %v", err))
 	}
+
 	return c
 }
 
@@ -79,10 +83,11 @@ func NewDefaultClient() *Client {
 // BaseURL is optional; it is only required when calling ResolveRelativeRequestPath.
 func NewClient(config *ClientConfig) (*Client, error) {
 	if config == nil {
-		return nil, fmt.Errorf("no config specified for client")
+		return nil, errors.New("no config specified for client")
 	}
 	if config.Client == nil {
-		return nil, fmt.Errorf("no HTTP client specified for client")
+		return nil, errors.New("no HTTP client specified for client")
 	}
+
 	return &Client{Config: config}, nil
 }

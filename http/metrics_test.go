@@ -10,6 +10,8 @@ import (
 )
 
 func TestIsWebsocketHandshake(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		upgrade    string
@@ -29,7 +31,7 @@ func TestIsWebsocketHandshake(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 			if tt.upgrade != "" {
 				r.Header.Set("Upgrade", tt.upgrade)
 			}
@@ -61,13 +63,13 @@ func TestMetricSet_Middleware_WSLabel(t *testing.T) {
 			m := NewMetricSet(registry)
 
 			mux := http.NewServeMux()
-			mux.HandleFunc("GET /widgets/{id}", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("GET /widgets/{id}", func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
 
 			handler := m.Middleware(mux, mux)
 
-			r := httptest.NewRequest(http.MethodGet, "/widgets/42", nil)
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/widgets/42", nil)
 			if tt.upgrade != "" {
 				r.Header.Set("Upgrade", tt.upgrade)
 			}
@@ -94,7 +96,7 @@ func TestMetricSet_Middleware_UnmatchedRouteDoesNotLeakRawPath(t *testing.T) {
 	m := NewMetricSet(registry)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /widgets/{id}", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /widgets/{id}", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -106,7 +108,7 @@ func TestMetricSet_Middleware_UnmatchedRouteDoesNotLeakRawPath(t *testing.T) {
 	// prevent, but that a scanner probing thousands of nonexistent paths
 	// would otherwise trigger via this fallback.
 	for _, path := range []string{"/does-not-exist", "/another-scan-attempt"} {
-		r := httptest.NewRequest(http.MethodGet, path, nil)
+		r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
 		handler.ServeHTTP(httptest.NewRecorder(), r)
 	}
 
@@ -134,6 +136,7 @@ func routeLabelExists(families []*dto.MetricFamily, name, routeWant string) bool
 			}
 		}
 	}
+
 	return false
 }
 
@@ -152,6 +155,7 @@ func findHistogramMetric(t *testing.T, families []*dto.MetricFamily, name, label
 	}
 
 	t.Fatalf("no metric found for family %q with label %s=%s", name, labelName, labelValueWant)
+
 	return nil
 }
 
@@ -161,5 +165,6 @@ func labelValue(m *dto.Metric, name string) string {
 			return lp.GetValue()
 		}
 	}
+
 	return ""
 }

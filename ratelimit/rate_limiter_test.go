@@ -122,11 +122,11 @@ func TestNewRateLimiterWithConfig_ClampsInvalidInputs(t *testing.T) {
 	t.Run("negative rps clamps to zero, small positive rps is preserved", func(t *testing.T) {
 		clamped := NewRateLimiterWithConfig(-0.5, 5, time.Minute, time.Minute, logger)
 		defer clamped.Stop()
-		assert.Equal(t, 0.0, clamped.requestsPerSecond)
+		assert.Equal(t, 0.0, clamped.requestsPerSecond) //nolint:testifylint // exact clamp target, not a computed float
 
 		preserved := NewRateLimiterWithConfig(0.5, 5, time.Minute, time.Minute, logger)
 		defer preserved.Stop()
-		assert.Equal(t, 0.5, preserved.requestsPerSecond)
+		assert.Equal(t, 0.5, preserved.requestsPerSecond) //nolint:testifylint // exact passthrough of the input literal, not a computed float
 	})
 
 	t.Run("negative burst clamps to zero", func(t *testing.T) {
@@ -189,11 +189,11 @@ func TestNewRateLimiterWithContextAndConfig_ClampsInvalidInputs(t *testing.T) {
 	t.Run("negative rps clamps to zero, small positive rps is preserved", func(t *testing.T) {
 		clamped := NewRateLimiterWithContextAndConfig(context.Background(), -0.5, 5, time.Minute, time.Minute, logger)
 		defer clamped.Stop()
-		assert.Equal(t, 0.0, clamped.requestsPerSecond)
+		assert.Equal(t, 0.0, clamped.requestsPerSecond) //nolint:testifylint // exact clamp target, not a computed float
 
 		preserved := NewRateLimiterWithContextAndConfig(context.Background(), 0.5, 5, time.Minute, time.Minute, logger)
 		defer preserved.Stop()
-		assert.Equal(t, 0.5, preserved.requestsPerSecond)
+		assert.Equal(t, 0.5, preserved.requestsPerSecond) //nolint:testifylint // exact passthrough of the input literal, not a computed float
 	})
 
 	t.Run("negative burst clamps to zero", func(t *testing.T) {
@@ -225,6 +225,8 @@ func TestNewRateLimiterWithContextAndConfig_ClampsInvalidInputs(t *testing.T) {
 }
 
 func TestNewRateLimiterWithContextAndConfig_StartsBackgroundCleanup(t *testing.T) {
+	t.Parallel()
+
 	logger := zerolog.Nop()
 	rl := NewRateLimiterWithContextAndConfig(context.Background(), 10, 10, 20*time.Millisecond, 10*time.Millisecond, logger)
 	defer rl.Stop()
@@ -234,6 +236,7 @@ func TestNewRateLimiterWithContextAndConfig_StartsBackgroundCleanup(t *testing.T
 	require.Eventually(t, func() bool {
 		rl.mu.RLock()
 		defer rl.mu.RUnlock()
+
 		return len(rl.limiters) == 0
 	}, 500*time.Millisecond, 10*time.Millisecond, "background cleanup goroutine should remove the stale limiter")
 }
@@ -264,6 +267,8 @@ func TestNewRateLimiterWithSourceAndConfig_ClampsInvalidInputs(t *testing.T) {
 }
 
 func TestNewRateLimiterWithSourceAndConfig_StartsBackgroundCleanup(t *testing.T) {
+	t.Parallel()
+
 	logger := zerolog.Nop()
 	source := &StaticRateLimitSource{RequestsPerSecond: 1000, Burst: 1000}
 	rl := NewRateLimiterWithSourceAndConfig(source, 20*time.Millisecond, 10*time.Millisecond, logger)
@@ -274,6 +279,7 @@ func TestNewRateLimiterWithSourceAndConfig_StartsBackgroundCleanup(t *testing.T)
 	require.Eventually(t, func() bool {
 		rl.mu.RLock()
 		defer rl.mu.RUnlock()
+
 		return len(rl.limiters) == 0
 	}, 500*time.Millisecond, 10*time.Millisecond, "background cleanup goroutine should remove the stale limiter")
 }
@@ -290,6 +296,7 @@ func (m *mockSource) GetLimit(principal string) (float64, int, bool) {
 	if !ok {
 		return 0, 0, false
 	}
+
 	return l.rps, l.burst, true
 }
 
@@ -405,7 +412,7 @@ func TestRateLimiter_WarnsWhenSourceFallbackIsZeroValue(t *testing.T) {
 	})
 }
 
-func TestRateLimiter_ConcurrentLimitSourceMutation(t *testing.T) {
+func TestRateLimiter_ConcurrentLimitSourceMutation(_ *testing.T) {
 	// Regression test for a data race: SetLimitSource must be safe to call
 	// concurrently with Allow() from other goroutines -- the natural way to
 	// hot-reload limits for something documented as "dynamic". Run with
@@ -521,7 +528,7 @@ func TestStaticRateLimitSource(t *testing.T) {
 	source := &StaticRateLimitSource{RequestsPerSecond: 10, Burst: 20}
 	rps, burst, ok := source.GetLimit("any")
 	assert.True(t, ok)
-	assert.Equal(t, 10.0, rps)
+	assert.Equal(t, 10.0, rps) //nolint:testifylint // exact passthrough of the struct literal field, not a computed float
 	assert.Equal(t, 20, burst)
 }
 
@@ -531,7 +538,7 @@ func BenchmarkRateLimiter_Allow_Sequential(b *testing.B) {
 	defer rl.Stop()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rl.Allow("user1")
 	}
 }
@@ -743,6 +750,8 @@ func TestRateLimiter_WithContextCancellation(t *testing.T) {
 }
 
 func TestRateLimiter_BackgroundCleanup(t *testing.T) {
+	t.Parallel()
+
 	logger := zerolog.Nop()
 	rl := NewRateLimiterWithConfig(10, 10, 50*time.Millisecond, 30*time.Millisecond, logger)
 	defer rl.Stop()
@@ -784,6 +793,8 @@ func TestRateLimiter_BackgroundCleanup(t *testing.T) {
 }
 
 func TestRateLimiter_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
+
 	logger := zerolog.Nop()
 	rl := NewRateLimiter(1000000, 1000000, logger)
 	defer rl.Stop()
@@ -809,7 +820,7 @@ func TestRateLimiter_ConcurrentAccess(t *testing.T) {
 
 	// Verify no panics occurred and limiters were created
 	rl.mu.RLock()
-	assert.True(t, len(rl.limiters) > 0)
-	assert.True(t, len(rl.limiters) <= 10) // Max 10 unique principals
+	assert.NotEmpty(t, rl.limiters)
+	assert.LessOrEqual(t, len(rl.limiters), 10) // Max 10 unique principals
 	rl.mu.RUnlock()
 }

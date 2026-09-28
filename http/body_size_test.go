@@ -19,7 +19,7 @@ func TestLimitBodySize_UnderLimit(t *testing.T) {
 		_, _ = w.Write(body)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader("hello"))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", strings.NewReader("hello"))
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -31,12 +31,12 @@ func TestLimitBodySize_UnderLimit(t *testing.T) {
 func TestLimitBodySize_OverLimit_ContentLength(t *testing.T) {
 	l := NewBodySizeLimiter(WithMaxBodyBytes(10))
 
-	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
 	body := strings.NewReader("this is way more than 10 bytes")
-	req := httptest.NewRequest(http.MethodPost, "/test", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", body)
 	req.ContentLength = int64(body.Len())
 	rec := httptest.NewRecorder()
 
@@ -51,6 +51,7 @@ func TestLimitBodySize_OverLimit_MaxBytesReader(t *testing.T) {
 		_, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "body too large", http.StatusRequestEntityTooLarge)
+
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -58,7 +59,7 @@ func TestLimitBodySize_OverLimit_MaxBytesReader(t *testing.T) {
 
 	// Don't set Content-Length to test MaxBytesReader path
 	body := strings.NewReader("this is way more than 10 bytes")
-	req := httptest.NewRequest(http.MethodPost, "/test", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", body)
 	req.ContentLength = -1 // Unknown length
 	rec := httptest.NewRecorder()
 
@@ -69,11 +70,11 @@ func TestLimitBodySize_OverLimit_MaxBytesReader(t *testing.T) {
 
 func TestLimitBodySize_DefaultLimit(t *testing.T) {
 	l := NewBodySizeLimiter() // Use default limits
-	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader("test"))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", strings.NewReader("test"))
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -85,11 +86,11 @@ func TestLimitBodySize_MaxLimit(t *testing.T) {
 	// Request a limit higher than MaxBodyBytes, should be capped
 	l := NewBodySizeLimiter(WithMaxBodyBytes(100 * 1024 * 1024))
 
-	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := l.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader("test"))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", strings.NewReader("test"))
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)

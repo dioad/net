@@ -1,12 +1,12 @@
 package prefixlist
 
-// Config represents the configuration for prefix list providers
+// Config represents the configuration for prefix list providers.
 type Config struct {
 	// Providers lists the enabled providers
 	Providers []ProviderConfig `mapstructure:"providers" yaml:"providers"`
 }
 
-// ProviderConfig represents configuration for a single provider
+// ProviderConfig represents configuration for a single provider.
 type ProviderConfig struct {
 	// Name is the provider name (github, cloudflare, google, atlassian, gitlab, aws)
 	Name string `mapstructure:"name" yaml:"name"`

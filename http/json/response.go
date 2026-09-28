@@ -114,6 +114,7 @@ func NewResponseWithLogger(w http.ResponseWriter, r *http.Request, l zerolog.Log
 		Str("remote_addr", r.RemoteAddr).
 		Str("user_agent", r.UserAgent()).
 		Logger()
+
 	return &Response{
 		Writer: w,
 		logger: &logger,
@@ -154,25 +155,8 @@ func (r *Response) respondWithStatus(code int, defaultMessage string, opts ...re
 		r.logError(cfg.logErr, msg)
 	}
 
-	// HTTP requires a 204 No Content response to have no body; drop
-	// whatever the caller supplied rather than silently writing one.
-	if code == http.StatusNoContent && (cfg.data != nil || cfg.publicMessage != "") {
-		r.logWarn("Data()/PublicMessage() is ignored on a 204 No Content response, which must not have a body")
-		cfg.data = nil
-		cfg.publicMessage = ""
-	}
-
-	// Build response body
-	var body any
-	if cfg.data != nil {
-		body = r.mergeResponseData(cfg.data, cfg.publicMessage, code)
-	} else if cfg.publicMessage != "" {
-		if isErrorStatus(code) {
-			body = map[string]string{"error": cfg.publicMessage}
-		} else {
-			body = map[string]string{"message": cfg.publicMessage}
-		}
-	}
+	r.dropBodyForNoContent(cfg, code)
+	body := r.buildResponseBody(cfg, code)
 
 	// Apply headers
 	for k, v := range cfg.headers {
@@ -183,6 +167,37 @@ func (r *Response) respondWithStatus(code int, defaultMessage string, opts ...re
 	r.Data(code, body)
 }
 
+// dropBodyForNoContent clears cfg's body fields when code is 204 No
+// Content, which HTTP requires to have no body. Whatever the caller
+// supplied is dropped rather than silently written.
+func (r *Response) dropBodyForNoContent(cfg *responseConfig, code int) {
+	if code != http.StatusNoContent || (cfg.data == nil && cfg.publicMessage == "") {
+		return
+	}
+
+	r.logWarn("Data()/PublicMessage() is ignored on a 204 No Content response, which must not have a body")
+	cfg.data = nil
+	cfg.publicMessage = ""
+}
+
+// buildResponseBody builds the response body from cfg, preferring
+// structured data over a bare public message.
+func (r *Response) buildResponseBody(cfg *responseConfig, code int) any {
+	if cfg.data != nil {
+		return r.mergeResponseData(cfg.data, cfg.publicMessage, code)
+	}
+
+	if cfg.publicMessage == "" {
+		return nil
+	}
+
+	if isErrorStatus(code) {
+		return map[string]string{"error": cfg.publicMessage}
+	}
+
+	return map[string]string{"message": cfg.publicMessage}
+}
+
 // mergeResponseData combines structured data with message if needed.
 func (r *Response) mergeResponseData(data any, message string, code int) any {
 	m, ok := data.(map[string]any)
@@ -190,6 +205,7 @@ func (r *Response) mergeResponseData(data any, message string, code int) any {
 		if message != "" {
 			r.logWarn("PublicMessage is dropped: Data() payload is not a map[string]any, so it cannot be merged with a message")
 		}
+
 		return data
 	}
 
@@ -254,6 +270,114 @@ func (r *Response) InvalidInput(opts ...responseOption) {
 	r.respondWithStatus(http.StatusBadRequest, "invalid input", opts...)
 }
 
+// UnprocessableEntity sends a 422 Unprocessable Entity response.
+func (r *Response) UnprocessableEntity(opts ...responseOption) {
+	r.respondWithStatus(http.StatusUnprocessableEntity, "unprocessable entity", opts...)
+}
+
+// ServiceUnavailable sends a 503 Service Unavailable response.
+func (r *Response) ServiceUnavailable(opts ...responseOption) {
+	r.respondWithStatus(http.StatusServiceUnavailable, "service unavailable", opts...)
+}
+
+// NotImplemented sends a 501 Not Implemented response.
+func (r *Response) NotImplemented(opts ...responseOption) {
+	r.respondWithStatus(http.StatusNotImplemented, "not implemented", opts...)
+}
+
+// RFC 9457 Problem Details (https://www.rfc-editor.org/rfc/rfc9457)
+//
+// Problem is additive: it exists alongside BadRequest/Forbidden/NotFound/etc.
+// rather than changing what they emit, so adopting it is opt-in per call
+// site and per repo.
+
+// Problem is an RFC 9457 Problem Details object. Every field is optional per
+// the RFC; Type defaults to "about:blank" and Status is filled in from the
+// status code passed to (*Response).Problem when left zero, so the common
+// case only needs Title (and Detail, for an occurrence-specific message).
+type Problem struct {
+	// Type is a URI reference identifying the problem type. Defaults to
+	// "about:blank" (RFC 9457 section 3.1) when empty. Consumers MUST use
+	// Type, not Status, as the problem's primary identifier.
+	Type string
+	// Title is a short, human-readable summary. It should stay stable
+	// across occurrences of this problem type, except for localization.
+	Title string
+	// Status is the HTTP status code, advisory only -- the response's
+	// actual status line is authoritative. Left zero, it is set to the
+	// status code passed to Problem.
+	Status int
+	// Detail is a human-readable explanation specific to this occurrence.
+	// It should help the client correct the problem, not aid debugging.
+	Detail string
+	// Instance is a URI reference identifying this specific occurrence.
+	Instance string
+	// Extensions carries problem-type-specific members (e.g. a
+	// machine-readable "reason" code) as additional top-level JSON members
+	// alongside type/title/status/detail/instance (RFC 9457 section 3.2). A
+	// key colliding with one of those five names is dropped in favour of
+	// the standard member.
+	Extensions map[string]any
+}
+
+// Problem sends an RFC 9457 "application/problem+json" response. status
+// sets the HTTP status line; p.Status is set to status when p.Status is
+// zero, since RFC 9457 requires the two to match.
+//
+// opts accepts LogErr, LogMessage and Header/Location for side effects,
+// exactly as the other Response methods do. Data and PublicMessage do not
+// apply to a Problem body -- there is no message-merging step to plug them
+// into -- and are dropped with a logged warning if passed.
+func (r *Response) Problem(status int, p Problem, opts ...responseOption) {
+	cfg := &responseConfig{headers: make(map[string]string)}
+	for _, opt := range opts {
+		opt.apply(cfg)
+	}
+
+	if cfg.data != nil || cfg.publicMessage != "" {
+		r.logWarn("Data()/PublicMessage() do not apply to Problem() and were dropped")
+	}
+
+	if cfg.logErr != nil {
+		msg := cfg.logMessage
+		if msg == "" {
+			msg = p.Title
+		}
+		r.logError(cfg.logErr, msg)
+	}
+
+	for k, v := range cfg.headers {
+		r.Writer.Header().Set(k, v)
+	}
+
+	if p.Type == "" {
+		p.Type = "about:blank"
+	}
+	if p.Status == 0 {
+		p.Status = status
+	}
+
+	body := make(map[string]any, len(p.Extensions)+5)
+	maps.Copy(body, p.Extensions)
+	body["type"] = p.Type
+	body["status"] = p.Status
+	if p.Title != "" {
+		body["title"] = p.Title
+	}
+	if p.Detail != "" {
+		body["detail"] = p.Detail
+	}
+	if p.Instance != "" {
+		body["instance"] = p.Instance
+	}
+
+	r.Writer.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
+	r.Writer.WriteHeader(status)
+	if err := json.NewEncoder(r.Writer).Encode(body); err != nil {
+		r.logError(err, "error encoding response")
+	}
+}
+
 // Semantic success response functions
 
 // OK sends a 200 OK response.
@@ -281,61 +405,98 @@ func (r *Response) NoContent(opts ...responseOption) {
 	r.respondWithStatus(http.StatusNoContent, "", opts...)
 }
 
+// BadRequestWithMessage sends a 400 Bad Request response with message as
+// the public message.
+//
 // Deprecated: Use BadRequest() with options instead.
 func (r *Response) BadRequestWithMessage(message string) {
 	r.BadRequest(PublicMessage(message))
 }
 
+// BadRequestWithMessages sends a 400 Bad Request response with
+// responseMessage as the public message and logMessage logged separately.
+//
 // Deprecated: Use BadRequest() with options instead.
 func (r *Response) BadRequestWithMessages(responseMessage, logMessage string) {
 	r.BadRequest(LogMessage(logMessage), PublicMessage(responseMessage))
 }
 
+// InvalidInputWithMessage sends a 400 Bad Request response with message as
+// the public message and err logged.
+//
 // Deprecated: Use InvalidInput() with options instead.
 func (r *Response) InvalidInputWithMessage(err error, message string) {
 	r.InvalidInput(PublicMessage(message), LogErr(err))
 }
 
+// InvalidInputWithMessages sends a 400 Bad Request response with
+// responseMessage as the public message, and err and logMessage logged.
+//
 // Deprecated: Use InvalidInput() with options instead.
 func (r *Response) InvalidInputWithMessages(err error, responseMessage, logMessage string) {
 	r.InvalidInput(PublicMessage(responseMessage), LogErr(err), LogMessage(logMessage))
 }
 
+// InternalServerErrorWithMessage sends a 500 Internal Server Error response
+// with message as the public message and err logged.
+//
 // Deprecated: Use InternalServerError() with options instead.
 func (r *Response) InternalServerErrorWithMessage(err error, message string) {
 	r.InternalServerError(LogErr(err), PublicMessage(message))
 }
 
+// InternalServerErrorWithMessages sends a 500 Internal Server Error
+// response with responseMessage as the public message, and err and
+// logMessage logged.
+//
 // Deprecated: Use InternalServerError() with options instead.
 func (r *Response) InternalServerErrorWithMessages(err error, responseMessage string, logMessage string) {
 	r.InternalServerError(PublicMessage(responseMessage), LogErr(err), LogMessage(logMessage))
 }
 
+// ForbiddenWithMessages sends a 403 Forbidden response with
+// responseMessage as the public message and logMessage logged separately.
+//
 // Deprecated: Use Forbidden() with options instead.
 func (r *Response) ForbiddenWithMessages(responseMessage, logMessage string) {
 	r.Forbidden(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
+// ForbiddenWithMessage sends a 403 Forbidden response with message as both
+// the public message and the logged message.
+//
 // Deprecated: Use Forbidden() with options instead.
 func (r *Response) ForbiddenWithMessage(message string) {
 	r.Forbidden(PublicMessage(message), LogMessage(message))
 }
 
+// UnauthorizedWithMessages sends a 401 Unauthorized response with
+// responseMessage as the public message and logMessage logged separately.
+//
 // Deprecated: Use Unauthorized() with options instead.
 func (r *Response) UnauthorizedWithMessages(responseMessage, logMessage string) {
 	r.Unauthorized(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
+// UnauthorizedWithMessage sends a 401 Unauthorized response with message
+// as both the public message and the logged message.
+//
 // Deprecated: Use Unauthorized() with options instead.
 func (r *Response) UnauthorizedWithMessage(message string) {
 	r.Unauthorized(PublicMessage(message), LogMessage(message))
 }
 
+// ConflictWithMessage sends a 409 Conflict response with message as the
+// public message.
+//
 // Deprecated: Use Conflict() with options instead.
 func (r *Response) ConflictWithMessage(message string) {
 	r.Conflict(PublicMessage(message))
 }
 
+// ConflictWithMessages sends a 409 Conflict response with responseMessage
+// as the public message and logMessage logged separately.
+//
 // Deprecated: Use Conflict() with options instead.
 func (r *Response) ConflictWithMessages(responseMessage, logMessage string) {
 	r.Conflict(PublicMessage(responseMessage), LogMessage(logMessage))
@@ -353,31 +514,49 @@ func (r *Response) logWarn(message string) {
 	}
 }
 
+// NotFoundWithMessage sends a 404 Not Found response with message as the
+// public message.
+//
 // Deprecated: Use NotFound() with options instead.
 func (r *Response) NotFoundWithMessage(message string) {
 	r.NotFound(PublicMessage(message))
 }
 
+// NotFoundWithMessages sends a 404 Not Found response with responseMessage
+// as the public message and logMessage logged separately.
+//
 // Deprecated: Use NotFound() with options instead.
 func (r *Response) NotFoundWithMessages(responseMessage, logMessage string) {
 	r.NotFound(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
+// NotAcceptableWithMessage sends a 406 Not Acceptable response with
+// message as the public message.
+//
 // Deprecated: Use NotAcceptable() with options instead.
 func (r *Response) NotAcceptableWithMessage(message string) {
 	r.NotAcceptable(PublicMessage(message))
 }
 
+// NotAcceptableWithMessages sends a 406 Not Acceptable response with
+// responseMessage as the public message and logMessage logged separately.
+//
 // Deprecated: Use NotAcceptable() with options instead.
 func (r *Response) NotAcceptableWithMessages(responseMessage, logMessage string) {
 	r.NotAcceptable(PublicMessage(responseMessage), LogMessage(logMessage))
 }
 
+// CreatedWithMessage sends a 201 Created response with message as the
+// public message.
+//
 // Deprecated: Use Created() with options instead.
 func (r *Response) CreatedWithMessage(message string) {
 	r.Created(PublicMessage(message))
 }
 
+// CreatedWithURI sends a 201 Created response with a Location header and
+// public message set to uri, and a body containing uri.
+//
 // Deprecated: Use Created() with Location() option instead.
 func (r *Response) CreatedWithURI(uri string) {
 	r.Created(Location(uri), PublicMessage(uri), Data(map[string]any{
@@ -385,11 +564,18 @@ func (r *Response) CreatedWithURI(uri string) {
 	}))
 }
 
+// CreatedWithURIAndMessage sends a 201 Created response with a Location
+// header set to uri, a body containing uri, and message as the public
+// message.
+//
 // Deprecated: Use Created() with Location() and PublicMessage() options instead.
 func (r *Response) CreatedWithURIAndMessage(uri string, message string) {
 	r.Created(Location(uri), Data(map[string]any{"uri": uri}), PublicMessage(message))
 }
 
+// AcceptedWithMessage sends a 202 Accepted response with message as the
+// public message.
+//
 // Deprecated: Use Accepted() with options instead.
 func (r *Response) AcceptedWithMessage(message string) {
 	r.Accepted(PublicMessage(message))
@@ -417,7 +603,9 @@ func ReadBody[T any](req *http.Request) (T, error) {
 	err := decoder.Decode(&t)
 	if err != nil {
 		_ = req.Body.Close()
+
 		return t, err
 	}
+
 	return t, req.Body.Close()
 }

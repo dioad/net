@@ -10,6 +10,7 @@ import (
 // KeyType represents the DKIM key type (e.g., "rsa").
 type KeyType string
 
+// DKIM key types, per RFC 6376 section 3.6.1.
 const (
 	KeyTypeRSA KeyType = "rsa"
 )
@@ -43,16 +44,16 @@ func (r *Record) String() string {
 	if r.Version == "" {
 		parts = append(parts, "v=DKIM1")
 	} else {
-		parts = append(parts, fmt.Sprintf("v=%s", r.Version))
+		parts = append(parts, "v="+r.Version)
 	}
 
 	if r.KeyType == "" {
 		parts = append(parts, fmt.Sprintf("k=%s", KeyTypeRSA))
 	} else {
-		parts = append(parts, fmt.Sprintf("k=%s", r.KeyType))
+		parts = append(parts, "k="+r.KeyType)
 	}
 
-	parts = append(parts, fmt.Sprintf("p=%s", r.PublicKey))
+	parts = append(parts, "p="+r.PublicKey)
 
 	return strings.Join(parts, "; ")
 }
@@ -68,6 +69,7 @@ func FromRecordFile(r io.Reader) (*Record, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &Record{
 		Version:   "DKIM1",
 		KeyType:   m["k"],
@@ -75,6 +77,9 @@ func FromRecordFile(r io.Reader) (*Record, error) {
 	}, nil
 }
 
+// ParseParams parses a DKIM-style "tag=value; tag=value" string s into a
+// map, extracting only the v, k, and p tags and ignoring any other
+// (per RFC 6376 section 3.2, unrecognized tags must be ignored, not rejected).
 func ParseParams(s string) (map[string]string, error) {
 	validParams := map[string]bool{
 		"v": true,
@@ -108,5 +113,6 @@ func parseParams(validParams map[string]bool, s string) (map[string]string, erro
 			params[strippedK] = strings.TrimSpace(v)
 		}
 	}
+
 	return params, nil
 }

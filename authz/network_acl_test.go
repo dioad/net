@@ -46,17 +46,17 @@ func TestContains(t *testing.T) {
 	addrOne := net.ParseIP("127.0.0.123")
 
 	gotOne := containsAddress(list, addrOne)
-	require.Equal(t, gotOne, true)
+	require.True(t, gotOne)
 
 	addrTwo := net.ParseIP("10.0.0.1")
 
 	gotTwo := containsAddress(list, addrTwo)
-	require.Equal(t, gotTwo, true)
+	require.True(t, gotTwo)
 
 	addrThree := net.ParseIP("192.164.12.45")
 
 	gotThree := containsAddress(list, addrThree)
-	require.Equal(t, gotThree, false)
+	require.False(t, gotThree)
 }
 
 func TestAuthoriserDenyByDefault(t *testing.T) {

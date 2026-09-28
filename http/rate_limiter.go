@@ -2,9 +2,9 @@ package http
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
@@ -13,8 +13,11 @@ import (
 )
 
 var (
-	DefaultRequestsPerSecond = float64(10) // default to 10 rps
-	DefaultBurst             = 20          // DefaultBurst specifies the default maximum burst size for rate limiting.
+	// DefaultRequestsPerSecond is the default per-principal request rate
+	// used when NewRateLimiter is not given WithStaticRateLimit.
+	DefaultRequestsPerSecond = float64(10)
+	// DefaultBurst specifies the default maximum burst size for rate limiting.
+	DefaultBurst = 20
 )
 
 // PrincipalFunc defines a function type that extracts a principal identifier from an HTTP request for rate limiting purposes.
@@ -90,7 +93,7 @@ func ClientIPPrincipalFunc(r *http.Request) (string, error) {
 
 // StaticPrincipalFunc returns a PrincipalFunc that always returns the given principal.
 func StaticPrincipalFunc(principal string) PrincipalFunc {
-	return func(r *http.Request) (string, error) {
+	return func(_ *http.Request) (string, error) {
 		return principal, nil
 	}
 }
@@ -143,18 +146,33 @@ func NewRateLimiter(opts ...RateLimiterOption) *RateLimiter {
 		[]string{"result"},
 	)
 	if err := reg.Register(r.counter); err != nil {
-		if are, ok := errors.AsType[prometheus.AlreadyRegisteredError](err); ok {
-			if existing, ok := are.ExistingCollector.(*prometheus.CounterVec); ok {
-				r.counter = existing
-			} else {
-				r.logger.Error().Err(err).Msg("rate-limit counter registration conflict: existing collector has unexpected type")
-			}
-		} else {
-			r.logger.Error().Err(err).Msg("rate-limit counter registration failed; metrics will not be exported")
-		}
+		r.resolveCounterRegistrationConflict(err)
 	}
 
 	return r
+}
+
+// resolveCounterRegistrationConflict handles a failed Register call for
+// rl.counter: if it failed because an equivalent counter is already
+// registered, reuse that instance; otherwise log and leave rl.counter
+// unregistered, so requests still get rate-limited even though this
+// process's metrics for it won't be exported.
+func (rl *RateLimiter) resolveCounterRegistrationConflict(err error) {
+	are, ok := errors.AsType[prometheus.AlreadyRegisteredError](err)
+	if !ok {
+		rl.logger.Error().Err(err).Msg("rate-limit counter registration failed; metrics will not be exported")
+
+		return
+	}
+
+	existing, ok := are.ExistingCollector.(*prometheus.CounterVec)
+	if !ok {
+		rl.logger.Error().Err(err).Msg("rate-limit counter registration conflict: existing collector has unexpected type")
+
+		return
+	}
+
+	rl.counter = existing
 }
 
 // Stop shuts down the background cleanup goroutine started by the rate limiter.
@@ -169,7 +187,7 @@ func (rl *RateLimiter) setRetryAfterHeader(w http.ResponseWriter, principal stri
 	retryAfter := rl.limiter.RetryAfter(principal)
 	retryAfterSeconds := max(
 		int(math.Ceil(retryAfter.Seconds())), 1)
-	w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSeconds))
+	w.Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds))
 }
 
 // Middleware returns an HTTP middleware for rate limiting.
@@ -178,6 +196,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		p, err := rl.getPrincipal(r)
 		if err != nil {
 			http.Error(w, "unable to determine principal for rate limiting", http.StatusBadRequest)
+
 			return
 		}
 		if !rl.limiter.Allow(p) {
@@ -189,6 +208,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			rl.counter.WithLabelValues("blocked").Inc()
 			rl.setRetryAfterHeader(w, p)
 			http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+
 			return
 		}
 		rl.counter.WithLabelValues("allowed").Inc()

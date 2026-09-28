@@ -63,7 +63,7 @@ func TestNewClientTLSConfigDefaults(t *testing.T) {
 
 func TestNewClientTLSConfigRequiresCertAndKey(t *testing.T) {
 	_, err := NewClientTLSConfig(ClientConfig{Certificate: "cert.pem"})
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	_, err = NewClientTLSConfig(ClientConfig{Key: "key.pem"})
 	assert.Error(t, err)
@@ -133,7 +133,7 @@ func TestNewServerTLSConfigLoadsClientCA(t *testing.T) {
 
 func TestLoadCertPoolFromFileErrors(t *testing.T) {
 	_, err := LoadCertPoolFromFile(filepath.Join(t.TempDir(), "missing.pem"))
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	invalidPath := filepath.Join(t.TempDir(), "invalid.pem")
 	require.NoError(t, os.WriteFile(invalidPath, []byte("not-a-pem"), 0600))

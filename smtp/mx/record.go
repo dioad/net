@@ -12,27 +12,33 @@ import (
 // and spf.Record: fields may contain Go template strings expanded at render time.
 type Record struct {
 	// Priority is the MX preference value.
-	Priority uint16 `mapstructure:"priority" json:"priority"`
+	Priority uint16 `json:"priority" mapstructure:"priority"`
 	// Host is a Go template string for the mail exchange FQDN (must end in ".").
 	// Empty defaults to "{{.Domain}}." at render time — the tunnel's own FQDN.
-	Host string `mapstructure:"host" json:"host,omitempty"`
+	Host string `json:"host,omitempty" mapstructure:"host"`
 	// Prefix is the DNS owner label relative to the base domain. "" = apex.
-	Prefix string `mapstructure:"prefix" json:"prefix,omitempty"`
+	Prefix string `json:"prefix,omitempty" mapstructure:"prefix"`
 	// TTL is the DNS TTL in seconds advertised to resolvers. Zero uses dns.DefaultTTL.
-	TTL uint32 `mapstructure:"ttl" json:"ttl,omitempty"`
+	TTL uint32 `json:"ttl,omitempty" mapstructure:"ttl"`
 }
 
+// RecordPrefix returns the DNS owner label prefix relative to the base
+// domain, e.g. "sub." or "" for the apex.
 func (r *Record) RecordPrefix() string {
 	if r.Prefix == "" {
 		return ""
 	}
+
 	return r.Prefix + "."
 }
 
+// RecordType returns the DNS record type string, "MX".
 func (r *Record) RecordType() string { return "MX" }
 
+// RecordValue returns the wire-ready MX record value, "<priority> <host>".
 func (r *Record) RecordValue() string { return fmt.Sprintf("%d %s", r.Priority, r.Host) }
 
+// Empty reports whether Priority and Host are both unset.
 func (r *Record) Empty() bool { return r.Priority == 0 && r.Host == "" }
 
 // RecordTTL returns the TTL to use for this record, falling back to dns.DefaultTTL.
@@ -40,6 +46,7 @@ func (r *Record) RecordTTL() uint32 {
 	if r.TTL == 0 {
 		return dns.DefaultTTL
 	}
+
 	return r.TTL
 }
 
@@ -55,6 +62,7 @@ func (r *Record) Render(data any) error {
 		return fmt.Errorf("rendering MX host: %w", err)
 	}
 	r.Host = rendered
+
 	return nil
 }
 

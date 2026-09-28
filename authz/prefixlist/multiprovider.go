@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// MultiProvider wraps multiple providers and implements the Provider interface
+// MultiProvider wraps multiple providers and implements the Provider interface.
 type MultiProvider struct {
 	providers []Provider
 	prefixes  []netip.Prefix
@@ -17,7 +17,7 @@ type MultiProvider struct {
 	logger    zerolog.Logger
 }
 
-// NewMultiProvider creates a new multi-provider that wraps multiple providers
+// NewMultiProvider creates a new multi-provider that wraps multiple providers.
 func NewMultiProvider(providers []Provider, logger zerolog.Logger) *MultiProvider {
 	return &MultiProvider{
 		providers: providers,
@@ -26,7 +26,7 @@ func NewMultiProvider(providers []Provider, logger zerolog.Logger) *MultiProvide
 	}
 }
 
-// Name returns a combined name of all providers
+// Name returns a combined name of all providers.
 func (m *MultiProvider) Name() string {
 	if len(m.providers) == 0 {
 		return "multiprovider-empty"
@@ -34,10 +34,11 @@ func (m *MultiProvider) Name() string {
 	if len(m.providers) == 1 {
 		return m.providers[0].Name()
 	}
+
 	return fmt.Sprintf("multiprovider-%d-providers", len(m.providers))
 }
 
-// Prefixes fetches prefixes from all wrapped providers
+// Prefixes fetches prefixes from all wrapped providers.
 func (m *MultiProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 	var allPrefixes []netip.Prefix
 	var fetchErrors []error
@@ -50,6 +51,7 @@ func (m *MultiProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
 				Str("provider", provider.Name()).
 				Msg("failed to fetch prefixes")
 			fetchErrors = append(fetchErrors, fmt.Errorf("%s: %w", provider.Name(), err))
+
 			continue
 		}
 
@@ -88,15 +90,17 @@ func (m *MultiProvider) Contains(addr netip.Addr) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
-// GetPrefixes returns a copy of all current prefixes
+// GetPrefixes returns a copy of all current prefixes.
 func (m *MultiProvider) GetPrefixes() []netip.Prefix {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	result := make([]netip.Prefix, len(m.prefixes))
 	copy(result, m.prefixes)
+
 	return result
 }

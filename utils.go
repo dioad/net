@@ -20,6 +20,7 @@ func TCPAddrFromURL(url *url.URL) (string, error) {
 		}
 		addr = net.JoinHostPort(url.Host, port)
 	}
+
 	return addr, nil
 }
 
@@ -31,12 +32,14 @@ func TCPPortFromURL(url *url.URL) (string, error) {
 		if url.Scheme == "" {
 			return "0", nil
 		}
-		protoPort, err := net.LookupPort("tcp", url.Scheme)
+		protoPort, err := net.LookupPort("tcp", url.Scheme) //nolint:noctx // service-name lookup is a local table/file read, not a network round-trip; no meaningful cancellation surface
 		if err != nil {
 			return "", err
 		}
+
 		return strconv.Itoa(protoPort), nil
 	}
+
 	return defaultPort, nil
 }
 
@@ -112,5 +115,6 @@ func ExpandStringTemplate(templateString string, data any) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return buf.String(), nil
 }

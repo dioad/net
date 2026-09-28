@@ -1,3 +1,6 @@
+// Package main demonstrates IP-based access control: authorizing individual
+// requests against a network ACL and wrapping a net.Listener so that only
+// connections from allowed IPs are accepted.
 package main
 
 import (
@@ -50,7 +53,7 @@ func main() {
 	}
 
 	// Create listener that ALLOWS localhost connections
-	allowListener, err := net.Listen("tcp", "127.0.0.1:9001")
+	allowListener, err := net.Listen("tcp", "127.0.0.1:9001") //nolint:noctx // binding a local listen socket is instant, no context needed for a demo
 	if err != nil {
 		log.Fatalf("Error creating allow listener: %v\n", err)
 	}
@@ -59,9 +62,12 @@ func main() {
 	aclAllowListener := authz.NewListener(allowListener, allowLocalACL, logger)
 
 	// Create listener that DENIES localhost connections
-	denyListener, err := net.Listen("tcp", "127.0.0.1:9002")
+	denyListener, err := net.Listen("tcp", "127.0.0.1:9002") //nolint:noctx // binding a local listen socket is instant, no context needed for a demo
 	if err != nil {
-		log.Fatalf("Error creating deny listener: %v\n", err)
+		// log.Fatalf exits immediately, so the defer registered above for
+		// allowListener would never run - close it explicitly first.
+		_ = allowListener.Close()
+		log.Fatalf("Error creating deny listener: %v\n", err) //nolint:gocritic // allowListener is already closed above; gocritic can't see that
 	}
 	defer func() { _ = denyListener.Close() }()
 
@@ -175,6 +181,7 @@ func acceptConnections(listener *authz.Listener, listenerType string, logger zer
 				return
 			}
 			logger.Error().Err(err).Str("type", listenerType).Msg("accept error")
+
 			continue
 		}
 
@@ -204,9 +211,10 @@ func handleConnection(conn net.Conn, logger zerolog.Logger) {
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
-			if err != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				logger.Error().Err(err).Msg("read error")
 			}
+
 			break
 		}
 
@@ -214,6 +222,7 @@ func handleConnection(conn net.Conn, logger zerolog.Logger) {
 			msg := string(buf[:n])
 			if msg == "quit\n" || msg == "quit\r\n" {
 				_, _ = io.WriteString(conn, "Goodbye!\n")
+
 				break
 			}
 			// Echo back

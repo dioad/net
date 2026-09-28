@@ -21,6 +21,8 @@ type limiterEntry struct {
 }
 
 // RateLimitSource defines the interface for determining rate limits.
+//
+//nolint:revive // stutters (ratelimit.RateLimitSource), but it's a public interface external implementers already use by this name; renaming it is a breaking change of its own, out of scope here
 type RateLimitSource interface {
 	// GetLimit returns the rate limits to apply for a principal.
 	// If it returns ok=false, the RateLimiter's static requestsPerSecond/burst
@@ -40,7 +42,7 @@ type StaticRateLimitSource struct {
 }
 
 // GetLimit returns the fixed limits.
-func (s *StaticRateLimitSource) GetLimit(principal string) (float64, int, bool) {
+func (s *StaticRateLimitSource) GetLimit(_ string) (float64, int, bool) {
 	return s.RequestsPerSecond, s.Burst, true
 }
 
@@ -68,8 +70,10 @@ type RateLimiter struct {
 	// logged at most once per RateLimiter, rather than once per Allow() call.
 	warnedZeroFallback atomic.Bool
 
-	// Background cleanup
-	ctx      context.Context
+	// Background cleanup. ctx is stored (rather than threaded through
+	// method calls) because it bounds a goroutine RateLimiter itself
+	// owns and starts in its constructor; Stop() cancels it directly.
+	ctx      context.Context //nolint:containedctx // owns its background cleanup goroutine's lifetime; see Stop()
 	cancel   context.CancelFunc
 	wg       sync.WaitGroup
 	stopOnce sync.Once
@@ -105,6 +109,7 @@ func clampNonNegativeLimits(requestsPerSecond float64, burst int, logger zerolog
 		logger.Warn().Int("burst", burst).Msg("negative burst clamped to 0")
 		burst = 0
 	}
+
 	return requestsPerSecond, burst
 }
 
@@ -133,6 +138,7 @@ func NewRateLimiterWithConfig(requestsPerSecond float64, burst int, cleanupInter
 		cancel:            cancel,
 	}
 	rl.start()
+
 	return rl
 }
 
@@ -161,6 +167,7 @@ func NewRateLimiterWithContextAndConfig(ctx context.Context, requestsPerSecond f
 		cancel:            cancel,
 	}
 	rl.start()
+
 	return rl
 }
 
@@ -203,6 +210,7 @@ func NewRateLimiterWithSourceAndConfig(source RateLimitSource, cleanupInterval, 
 		cancel:          cancel,
 	}
 	rl.start()
+
 	return rl
 }
 
@@ -230,6 +238,7 @@ func NewRateLimiterWithSourceContextAndConfig(ctx context.Context, source RateLi
 		cancel:          cancel,
 	}
 	rl.start()
+
 	return rl
 }
 
@@ -237,7 +246,7 @@ func NewRateLimiterWithSourceContextAndConfig(ctx context.Context, source RateLi
 type Option func(*rateLimiterOptions)
 
 type rateLimiterOptions struct {
-	ctx             context.Context
+	ctx             context.Context //nolint:containedctx // transient functional-options builder, consumed immediately by NewRateLimiterWithOptions
 	requestsPerSec  float64
 	burst           int
 	cleanupInterval time.Duration
@@ -313,6 +322,7 @@ func NewRateLimiterWithOptions(opts ...Option) *RateLimiter {
 		cancel:            cancel,
 	}
 	rl.start()
+
 	return rl
 }
 
@@ -325,52 +335,9 @@ func NewRateLimiterWithOptions(opts ...Option) *RateLimiter {
 func (rl *RateLimiter) Allow(principal string) bool {
 	// Get rate limits (potentially from external source) before acquiring
 	// any further locks
-	rps := rl.requestsPerSecond
-	burst := rl.burst
+	rps, burst := rl.resolveLimits(principal)
 
-	rl.mu.RLock()
-	limitSource := rl.limitSource
-	rl.mu.RUnlock()
-
-	if limitSource != nil {
-		if sRps, sBurst, ok := limitSource.GetLimit(principal); ok {
-			rps = sRps
-			burst = sBurst
-		} else if rps == 0 && burst == 0 && rl.warnedZeroFallback.CompareAndSwap(false, true) {
-			// A RateLimitSource is configured but returned ok=false for this
-			// principal, and no static fallback limits were configured
-			// either -- every such principal is silently denied. Logged
-			// once per RateLimiter, not once per request.
-			rl.logger.Warn().
-				Str("principal", principal).
-				Msg("RateLimitSource returned ok=false and no static fallback limits are configured (WithRateLimiterStaticLimits); unmatched principals will be denied")
-		}
-	}
-
-	// Try to get existing entry with read lock first
-	rl.mu.RLock()
-	entry, exists := rl.limiters[principal]
-	rl.mu.RUnlock()
-
-	// If entry doesn't exist, acquire write lock to create it
-	if !exists {
-		rl.mu.Lock()
-		// Zero-value RateLimiter safety: a caller that skipped the
-		// constructors (var rl RateLimiter) has a nil limiters map.
-		if rl.limiters == nil {
-			rl.limiters = make(map[string]*limiterEntry)
-		}
-		// Double-check that another goroutine didn't create it while we were waiting
-		entry, exists = rl.limiters[principal]
-		if !exists {
-			entry = &limiterEntry{
-				limiter:  rate.NewLimiter(rate.Limit(rps), burst),
-				lastUsed: time.Now(),
-			}
-			rl.limiters[principal] = entry
-		}
-		rl.mu.Unlock()
-	}
+	entry := rl.getOrCreateEntry(principal, rps, burst)
 
 	// Update limits if they have changed (rate.Limiter methods are thread-safe)
 	if entry.limiter.Limit() != rate.Limit(rps) {
@@ -393,6 +360,72 @@ func (rl *RateLimiter) Allow(principal string) bool {
 	rl.mu.Unlock()
 
 	return allowed
+}
+
+// resolveLimits returns the effective requests-per-second and burst for
+// principal: the configured RateLimitSource's limits when one is set and
+// returns ok=true for this principal, otherwise the static fallback limits.
+// Warns (once per RateLimiter) when a RateLimitSource is configured but
+// returns ok=false with no static fallback configured either, since every
+// such principal is then silently denied.
+func (rl *RateLimiter) resolveLimits(principal string) (float64, int) {
+	rps := rl.requestsPerSecond
+	burst := rl.burst
+
+	rl.mu.RLock()
+	limitSource := rl.limitSource
+	rl.mu.RUnlock()
+
+	if limitSource == nil {
+		return rps, burst
+	}
+
+	if sRps, sBurst, ok := limitSource.GetLimit(principal); ok {
+		return sRps, sBurst
+	}
+
+	if rps == 0 && burst == 0 && rl.warnedZeroFallback.CompareAndSwap(false, true) {
+		rl.logger.Warn().
+			Str("principal", principal).
+			Msg("RateLimitSource returned ok=false and no static fallback limits are configured (WithRateLimiterStaticLimits); unmatched principals will be denied")
+	}
+
+	return rps, burst
+}
+
+// getOrCreateEntry returns the existing limiterEntry for principal, creating
+// one (seeded with rps/burst) if none exists yet. Uses a read lock for the
+// common case and only takes the write lock, with a double-check, to create
+// a missing entry.
+func (rl *RateLimiter) getOrCreateEntry(principal string, rps float64, burst int) *limiterEntry {
+	rl.mu.RLock()
+	entry, exists := rl.limiters[principal]
+	rl.mu.RUnlock()
+
+	if exists {
+		return entry
+	}
+
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	// Zero-value RateLimiter safety: a caller that skipped the
+	// constructors (var rl RateLimiter) has a nil limiters map.
+	if rl.limiters == nil {
+		rl.limiters = make(map[string]*limiterEntry)
+	}
+	// Double-check that another goroutine didn't create it while we were waiting.
+	if entry, exists = rl.limiters[principal]; exists {
+		return entry
+	}
+
+	entry = &limiterEntry{
+		limiter:  rate.NewLimiter(rate.Limit(rps), burst),
+		lastUsed: time.Now(),
+	}
+	rl.limiters[principal] = entry
+
+	return entry
 }
 
 // RetryAfter returns the duration until the next request would be allowed for the given principal.

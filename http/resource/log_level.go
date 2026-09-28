@@ -1,3 +1,5 @@
+// Package resource provides HTTP resources for wiring into a dioad/net/http
+// server (e.g. runtime log-level control).
 package resource
 
 import (
@@ -41,12 +43,14 @@ func (dr *LogLevelResource) PostIndex() http.HandlerFunc {
 		var req LogLevelPost
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+
 			return
 		}
 
 		duration, err := time.ParseDuration(req.Duration)
 		if err != nil {
 			http.Error(w, "Invalid duration format", http.StatusBadRequest)
+
 			return
 		}
 
@@ -54,6 +58,7 @@ func (dr *LogLevelResource) PostIndex() http.HandlerFunc {
 		if err != nil {
 			dr.Logger.Error().Err(err).Msg("Failed to set log level")
 			http.Error(w, err.Error(), http.StatusBadRequest)
+
 			return
 		}
 
@@ -67,6 +72,7 @@ func (dr *LogLevelResource) PostIndex() http.HandlerFunc {
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			dr.Logger.Error().Err(err).Msg("Failed to encode response")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
+
 			return
 		}
 	}
@@ -74,7 +80,7 @@ func (dr *LogLevelResource) PostIndex() http.HandlerFunc {
 
 // GetIndex returns an HTTP handler for getting the current log level.
 func (dr *LogLevelResource) GetIndex() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		resp := LogLevelGet{
 			Level: dr.LogSetter.CurrentLogLevel(),
 		}
@@ -85,9 +91,11 @@ func (dr *LogLevelResource) GetIndex() http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
+		err := json.NewEncoder(w).Encode(resp)
+		if err != nil {
 			dr.Logger.Error().Err(err).Msg("Failed to encode response")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
+
 			return
 		}
 	}
@@ -98,6 +106,7 @@ func (dr *LogLevelResource) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", dr.GetIndex())
 	mux.HandleFunc("POST /{$}", dr.PostIndex())
+
 	return mux
 }
 

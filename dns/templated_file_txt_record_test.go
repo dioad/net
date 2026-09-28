@@ -20,7 +20,7 @@ func writeDKIMFixture(t *testing.T, stateDir, domain, content string) {
 	t.Helper()
 
 	dir := filepath.Join(stateDir, "dkim_keys")
-	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.MkdirAll(dir, 0o750))
 
 	path := filepath.Join(dir, domain+"_default.dns")
 	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
@@ -84,6 +84,8 @@ func TestTemplatedFileTXTRecord_Render_FetchesOnce(t *testing.T) {
 // from the ticker goroutine while RecordValue/String read it concurrently
 // from the test goroutine.
 func TestTemplatedFileTXTRecord_Render_AutoRefresh_NoRace(t *testing.T) {
+	t.Parallel()
+
 	stateDir := t.TempDir()
 	writeDKIMFixture(t, stateDir, "example.com", "v=DKIM1; k=rsa; p=initial")
 
@@ -100,6 +102,7 @@ func TestTemplatedFileTXTRecord_Render_AutoRefresh_NoRace(t *testing.T) {
 		case <-deadline:
 			assert.NotEmpty(t, r.RecordValue())
 			assert.NotEmpty(t, r.String())
+
 			return
 		default:
 			_ = r.RecordValue()

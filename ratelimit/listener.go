@@ -1,3 +1,6 @@
+// Package ratelimit provides per-principal, token-bucket rate limiting for
+// network listeners and HTTP handlers, with optional dynamic limits from an
+// external RateLimitSource.
 package ratelimit
 
 import (
@@ -9,6 +12,7 @@ import (
 // Listener is a network listener that enforces rate limiting on all incoming connections.
 type Listener struct {
 	net.Listener
+
 	RateLimiter *RateLimiter
 	Logger      zerolog.Logger
 }
@@ -37,9 +41,11 @@ func (l *Listener) Accept() (net.Conn, error) {
 				Str("remoteAddr", conn.RemoteAddr().String()).
 				Str("principal", principal).
 				Msg("rate limit exceeded, rejecting connection")
-			if err := conn.Close(); err != nil {
+			err := conn.Close()
+			if err != nil {
 				l.Logger.Debug().Err(err).Msg("error closing rejected connection")
 			}
+
 			continue
 		}
 

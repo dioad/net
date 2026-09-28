@@ -13,17 +13,20 @@ import (
 // tell delegation apart from a full Close() fallback.
 type fakeCloseWriteConn struct {
 	net.Conn
+
 	closeWriteCalled bool
 	closeCalled      bool
 }
 
 func (f *fakeCloseWriteConn) CloseWrite() error {
 	f.closeWriteCalled = true
+
 	return nil
 }
 
 func (f *fakeCloseWriteConn) Close() error {
 	f.closeCalled = true
+
 	return nil
 }
 
@@ -33,7 +36,10 @@ func TestDoneConn_CloseWrite_DelegatesWhenSupported(t *testing.T) {
 	fake := &fakeCloseWriteConn{}
 	d := NewDoneConn(fake)
 
-	err := d.(interface{ CloseWrite() error }).CloseWrite()
+	closeWriter, ok := d.(interface{ CloseWrite() error })
+	require.True(t, ok, "DoneConn must implement CloseWrite() error")
+
+	err := closeWriter.CloseWrite()
 
 	require.NoError(t, err)
 	assert.True(t, fake.closeWriteCalled, "expected CloseWrite to delegate to the wrapped conn's own CloseWrite")
@@ -50,7 +56,10 @@ func TestDoneConn_CloseWrite_FallsBackToCloseWhenUnsupported(t *testing.T) {
 	_, client := net.Pipe()
 	d := NewDoneConn(client)
 
-	err := d.(interface{ CloseWrite() error }).CloseWrite()
+	closeWriter, ok := d.(interface{ CloseWrite() error })
+	require.True(t, ok, "DoneConn must implement CloseWrite() error")
+
+	err := closeWriter.CloseWrite()
 
 	require.NoError(t, err)
 	assert.True(t, d.Closed(), "CloseWrite must fall back to a full Close() when the wrapped conn has no half-close of its own")

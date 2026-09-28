@@ -32,8 +32,10 @@ func (s *connWithCloser) Close() error {
 		if s.onClose != nil {
 			s.onClose(s.conn)
 		}
+
 		return s.conn.Close()
 	}
+
 	return net.ErrClosed
 }
 
@@ -58,6 +60,7 @@ func (s *connWithCloser) CloseWrite() error {
 	if wc, ok := s.conn.NetConn().(interface{ CloseWrite() error }); ok {
 		return wc.CloseWrite()
 	}
+
 	return s.Close()
 }
 

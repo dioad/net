@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// IsUserAuthorised
+// IsUserAuthorised.
 func TestIsPrincipalAuthorised(t *testing.T) {
 	tests := map[string]struct {
 		user           string

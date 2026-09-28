@@ -40,6 +40,7 @@ func TestHetznerProvider(t *testing.T) {
 	for _, prefix := range prefixes {
 		if prefix.String() == "5.9.0.0/16" {
 			found = true
+
 			break
 		}
 	}

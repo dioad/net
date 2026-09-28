@@ -34,7 +34,7 @@ func (h *HealthRegistry) AddStaticMetadata(key string, value any) {
 	h.metadataMap[key] = value
 }
 
-// aggregateLivenessHandler checks all LivenessResource implementations
+// aggregateLivenessHandler checks all LivenessResource implementations.
 func (h *HealthRegistry) aggregateLivenessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		httpStatus := http.StatusOK
@@ -66,7 +66,7 @@ func (h *HealthRegistry) aggregateLivenessHandler() http.HandlerFunc {
 	}
 }
 
-// aggregateReadinessHandler checks all ReadinessResource implementations
+// aggregateReadinessHandler checks all ReadinessResource implementations.
 func (h *HealthRegistry) aggregateReadinessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		httpStatus := http.StatusOK
@@ -80,6 +80,7 @@ func (h *HealthRegistry) aggregateReadinessHandler() http.HandlerFunc {
 					httpStatus = http.StatusServiceUnavailable
 					h.logger.Error().Err(err).Str("path", path).Msg("error checking resource readiness")
 					resourceErrors[path] = err.Error()
+
 					continue
 				}
 				resourceReadiness[path] = ready
@@ -102,7 +103,7 @@ func (h *HealthRegistry) aggregateReadinessHandler() http.HandlerFunc {
 	}
 }
 
-// aggregateStatusHandler checks all StatusResource implementations
+// aggregateStatusHandler checks all StatusResource implementations.
 func (h *HealthRegistry) aggregateStatusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		statusMap := make(map[string]any)
@@ -117,6 +118,7 @@ func (h *HealthRegistry) aggregateStatusHandler() http.HandlerFunc {
 					httpStatus = http.StatusInternalServerError
 					h.logger.Error().Err(err).Str("path", path).Msg("error getting resource status")
 					resourceErrors[path] = err.Error()
+
 					continue
 				}
 				resourceStatus[path] = status

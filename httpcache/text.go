@@ -13,7 +13,7 @@ import (
 // It returns a slice of non-empty, non-comment lines. Lines starting with '#' are
 // treated as comments and ignored.
 func FetchTextLines(ctx context.Context, url string) ([]string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -31,7 +31,7 @@ func FetchTextLines(ctx context.Context, url string) ([]string, error) {
 	return parseTextLines(resp.Body)
 }
 
-// parseTextLines parses plain text list of items (one per line)
+// parseTextLines parses plain text list of items (one per line).
 func parseTextLines(r io.Reader) ([]string, error) {
 	var lines []string
 	scanner := bufio.NewScanner(r)
@@ -42,7 +42,8 @@ func parseTextLines(r io.Reader) ([]string, error) {
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
+	err := scanner.Err()
+	if err != nil {
 		return nil, err
 	}
 

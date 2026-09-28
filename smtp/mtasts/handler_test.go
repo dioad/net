@@ -22,7 +22,7 @@ func TestHandleMTASTS(t *testing.T) {
 
 	expected := "version: STSv1\nmode: testing\nmx: mx.example.com\nmax_age: 3600\n"
 
-	request, _ := http.NewRequest(http.MethodGet, "/mtsts", nil)
+	request, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/mtsts", nil)
 	response := httptest.NewRecorder()
 
 	handler(response, request)
@@ -52,7 +52,7 @@ func TestHTTPHandler_ReflectsLaterPolicyMutations(t *testing.T) {
 	// hosts) -- HTTPHandler takes a pointer, not a value.
 	p.MX = []string{"mx2.example.com"}
 
-	request, _ := http.NewRequest(http.MethodGet, "/mtsts", nil)
+	request, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/mtsts", nil)
 	response := httptest.NewRecorder()
 	handler(response, request)
 

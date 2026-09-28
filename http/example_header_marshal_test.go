@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	dhttp "github.com/dioad/net/http"
 )
 
-// Example demonstrates encoding and decoding structs to/from HTTP headers
+// Example demonstrates encoding and decoding structs to/from HTTP headers.
 func Example() {
 	// Define a struct to encode
 	type RequestMetadata struct {
@@ -66,12 +67,12 @@ func Example() {
 	//   Tags: [tag1 tag2 tag3]
 }
 
-// ExampleMarshalHeader demonstrates basic marshaling of a struct to headers
+// ExampleMarshalHeader demonstrates basic marshaling of a struct to headers.
 func ExampleMarshalHeader() {
 	type UserInfo struct {
 		Name  string   `header:"X-User-Name"`
 		Roles []string `header:"X-User-Roles"`
-		ID    int      `header:"X-User-ID"`
+		ID    int      `header:"X-User-Id"`
 	}
 
 	user := UserInfo{
@@ -85,12 +86,13 @@ func ExampleMarshalHeader() {
 	header, err := dhttp.MarshalHeader(user, dhttp.DefaultHTTPMarshalOptions())
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
+
 		return
 	}
 
 	fmt.Printf("X-User-Name: %s\n", header.Get("X-User-Name"))
 	fmt.Printf("X-User-Roles: %v\n", header.Values("X-User-Roles"))
-	fmt.Printf("X-User-ID: %s\n", header.Get("X-User-ID"))
+	fmt.Printf("X-User-ID: %s\n", header.Get("X-User-Id"))
 
 	// Output:
 	// X-User-Name: Jane Doe
@@ -98,24 +100,25 @@ func ExampleMarshalHeader() {
 	// X-User-ID: 12345
 }
 
-// ExampleUnmarshalHeader demonstrates basic unmarshaling from headers to a struct
+// ExampleUnmarshalHeader demonstrates basic unmarshaling from headers to a struct.
 func ExampleUnmarshalHeader() {
 	type UserInfo struct {
 		Name  string   `header:"X-User-Name"`
 		Roles []string `header:"X-User-Roles"`
-		ID    int      `header:"X-User-ID"`
+		ID    int      `header:"X-User-Id"`
 	}
 
 	header := http.Header{}
 	header.Set("X-User-Name", "John Doe")
 	header.Add("X-User-Roles", "viewer")
 	header.Add("X-User-Roles", "support")
-	header.Set("X-User-ID", "67890")
+	header.Set("X-User-Id", "67890")
 
 	var user UserInfo
 	err := dhttp.UnmarshalHeader(header, &user, dhttp.DefaultHTTPMarshalOptions())
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
+
 		return
 	}
 
@@ -129,7 +132,7 @@ func ExampleUnmarshalHeader() {
 	// ID: 67890
 }
 
-// ExampleMarshalHeader_options demonstrates usage of HeaderMarshalOptions to customize header names
+// ExampleMarshalHeader_options demonstrates usage of HeaderMarshalOptions to customize header names.
 func ExampleMarshalHeader_options() {
 	type AppConfig struct {
 		Enabled bool
@@ -151,6 +154,7 @@ func ExampleMarshalHeader_options() {
 	header, err := dhttp.MarshalHeader(cfg, opts)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
+
 		return
 	}
 
@@ -164,15 +168,15 @@ func ExampleMarshalHeader_options() {
 	// X-App-App-Config-Timeout: 30
 }
 
-// ExampleMarshalHeader_withoutStructName demonstrates encoding without the struct name in headers
+// ExampleMarshalHeader_withoutStructName demonstrates encoding without the struct name in headers.
 func ExampleMarshalHeader_withoutStructName() {
 	type Config struct {
-		ApiKey string
+		APIKey string
 		Region string
 	}
 
 	config := Config{
-		ApiKey: "secret-key",
+		APIKey: "secret-key",
 		Region: "us-west-2",
 	}
 
@@ -188,7 +192,7 @@ func ExampleMarshalHeader_withoutStructName() {
 	}
 
 	fmt.Println("Headers without struct name:")
-	fmt.Printf("  X-ApiKey: %s\n", headers.Get("X-ApiKey"))
+	fmt.Printf("  X-ApiKey: %s\n", headers.Get("X-Apikey"))
 	fmt.Printf("  X-Region: %s\n", headers.Get("X-Region"))
 
 	// Output:
@@ -197,11 +201,11 @@ func ExampleMarshalHeader_withoutStructName() {
 	//   X-Region: us-west-2
 }
 
-// ExampleMarshalHeader_customTags demonstrates using custom header tags
+// ExampleMarshalHeader_customTags demonstrates using custom header tags.
 func ExampleMarshalHeader_customTags() {
 	type Metadata struct {
-		RequestID string `header:"request-id"`
-		TraceID   string `header:"trace-id"`
+		RequestID string `header:"Request-Id"`
+		TraceID   string `header:"Trace-Id"`
 		Internal  string `header:"-"` // This fieldSet will be ignored
 	}
 
@@ -219,9 +223,9 @@ func ExampleMarshalHeader_customTags() {
 	}
 
 	fmt.Println("Headers with custom tags:")
-	fmt.Printf("  request-id: %s\n", headers.Get("request-id"))
-	fmt.Printf("  trace-id: %s\n", headers.Get("trace-id"))
-	fmt.Printf("  internal present: %v\n", headers.Get("internal") != "")
+	fmt.Printf("  request-id: %s\n", headers.Get("Request-Id"))
+	fmt.Printf("  trace-id: %s\n", headers.Get("Trace-Id"))
+	fmt.Printf("  internal present: %v\n", headers.Get("Internal") != "")
 
 	// Output:
 	// Headers with custom tags:
@@ -230,10 +234,10 @@ func ExampleMarshalHeader_customTags() {
 	//   internal present: false
 }
 
-// ExampleUnmarshalHeader_middleware demonstrates using header marshaling in HTTP middleware
+// ExampleUnmarshalHeader_middleware demonstrates using header marshaling in HTTP middleware.
 func ExampleUnmarshalHeader_middleware() {
 	type RequestContext struct {
-		TenantId string
+		TenantID string
 		UserRole string
 	}
 
@@ -246,19 +250,21 @@ func ExampleUnmarshalHeader_middleware() {
 			}
 
 			var ctx RequestContext
-			if err := dhttp.UnmarshalHeader(r.Header, &ctx, opts); err != nil {
+			err := dhttp.UnmarshalHeader(r.Header, &ctx, opts)
+			if err != nil {
 				http.Error(w, "Invalid context headers", http.StatusBadRequest)
+
 				return
 			}
 
 			// Use the decoded context
-			fmt.Printf("Processing request for tenant: %s, role: %s\n", ctx.TenantId, ctx.UserRole)
+			fmt.Printf("Processing request for tenant: %s, role: %s\n", ctx.TenantID, ctx.UserRole)
 			next.ServeHTTP(w, r)
 		})
 	}
 
 	// Create a simple handler
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -266,9 +272,9 @@ func ExampleUnmarshalHeader_middleware() {
 	wrappedHandler := middleware(handler)
 
 	// Simulate a request with headers
-	req, _ := http.NewRequest("GET", "/api/data", nil)
-	req.Header.Set("X-Context-TenantId", "tenant-123")
-	req.Header.Set("X-Context-UserRole", "admin")
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/data", nil)
+	req.Header.Set("X-Context-Tenantid", "tenant-123")
+	req.Header.Set("X-Context-Userrole", "admin")
 
 	// Create a response recorder
 	w := httptest.NewRecorder()
@@ -281,7 +287,7 @@ func ExampleUnmarshalHeader_middleware() {
 }
 
 // ExampleMarshalHeader_rfc9110Compliance demonstrates RFC 9110 compliance
-// for handling multiple header occurrences
+// for handling multiple header occurrences.
 func ExampleMarshalHeader_rfc9110Compliance() {
 	type DataList struct {
 		Items []string
@@ -299,7 +305,7 @@ func ExampleMarshalHeader_rfc9110Compliance() {
 
 	// Show how multiple occurrences are created (RFC 9110 Section 5.5)
 	fmt.Println("Multiple header occurrences:")
-	for _, item := range headers.Values("items") {
+	for _, item := range headers.Values("Items") {
 		fmt.Printf("  items: %s\n", item)
 	}
 

@@ -8,12 +8,12 @@ import (
 )
 
 func init() {
-	RegisterProvider("fastly", func(cfg ProviderConfig) (Provider, error) {
+	RegisterProvider("fastly", func(_ ProviderConfig) (Provider, error) {
 		return NewFastlyProvider(), nil
 	})
 }
 
-// FastlyProvider fetches IP ranges from Fastly CDN
+// FastlyProvider fetches IP ranges from Fastly CDN.
 type FastlyProvider struct {
 	*HTTPJSONProvider[fastlyIPRanges]
 }
@@ -23,7 +23,7 @@ type fastlyIPRanges struct {
 	IPv6Addresses []string `json:"ipv6_addresses"`
 }
 
-// NewFastlyProvider creates a new Fastly prefix list provider
+// NewFastlyProvider creates a new Fastly prefix list provider.
 func NewFastlyProvider() *FastlyProvider {
 	p := &FastlyProvider{}
 
@@ -41,7 +41,7 @@ func NewFastlyProvider() *FastlyProvider {
 }
 
 func transformFastlyRanges(data fastlyIPRanges) ([]netip.Prefix, error) {
-	var cidrs []string
+	cidrs := make([]string, 0, len(data.Addresses)+len(data.IPv6Addresses))
 	cidrs = append(cidrs, data.Addresses...)
 	cidrs = append(cidrs, data.IPv6Addresses...)
 

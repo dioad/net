@@ -22,12 +22,12 @@ func TestRateLimiter_Middleware(t *testing.T) {
 		WithPrincipalFunc(StaticPrincipalFunc("user1")),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
 	// First request - allowed
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -49,14 +49,14 @@ func TestRateLimiter_Middleware_LogsRejectionViaRequestScopedLogger(t *testing.T
 		WithPrincipalFunc(StaticPrincipalFunc("user1")),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
 	var buf bytes.Buffer
 	requestLogger := zerolog.New(&buf)
 
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = req.WithContext(requestLogger.WithContext(req.Context()))
 
 	// First request - allowed, no log expected.
@@ -117,12 +117,12 @@ func TestRateLimiter_RetryAfterHeaderAccuracy(t *testing.T) {
 				WithRateLimitLogger(logger),
 				WithPrincipalFunc(StaticPrincipalFunc("user1")))
 
-			handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
 
 			// First request - allowed (uses up burst)
-			req := httptest.NewRequest("GET", "/", nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 			assert.Equal(t, http.StatusOK, rr.Code)
@@ -154,13 +154,13 @@ func TestRateLimiter_ClientIPPrincipalFuncExplicitlyConfigured(t *testing.T) {
 		WithPrincipalFunc(ClientIPPrincipalFunc),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req1 := httptest.NewRequest("GET", "/", nil)
+	req1 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req1.Header.Set("X-Forwarded-For", "10.0.0.1")
-	req2 := httptest.NewRequest("GET", "/", nil)
+	req2 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req2.Header.Set("X-Forwarded-For", "10.0.0.2")
 
 	rr := httptest.NewRecorder()
@@ -181,16 +181,16 @@ func TestRateLimiter_PrincipalFuncError(t *testing.T) {
 	rl := NewRateLimiter(
 		WithStaticRateLimit(1, 1),
 		WithRateLimitLogger(logger),
-		WithPrincipalFunc(func(r *http.Request) (string, error) {
+		WithPrincipalFunc(func(_ *http.Request) (string, error) {
 			return "", errors.New("missing principal")
 		}),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
@@ -209,15 +209,16 @@ func TestRateLimiter_CustomPrincipalFuncFromContext(t *testing.T) {
 			if !ok {
 				return "", errors.New("missing principal")
 			}
+
 			return principal, nil
 		}),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req = req.WithContext(context.WithValue(req.Context(), principalKey{}, "user1"))
 
 	rr := httptest.NewRecorder()
@@ -234,16 +235,16 @@ func TestRateLimiter_EmptyPrincipal(t *testing.T) {
 	rl := NewRateLimiter(
 		WithStaticRateLimit(1, 1),
 		WithRateLimitLogger(logger),
-		WithPrincipalFunc(func(r *http.Request) (string, error) {
+		WithPrincipalFunc(func(_ *http.Request) (string, error) {
 			return "", nil
 		}),
 	)
 
-	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)

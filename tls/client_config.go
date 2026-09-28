@@ -2,6 +2,7 @@ package tls
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 
 	"github.com/dioad/generics"
@@ -9,34 +10,31 @@ import (
 
 // ClientConfig specifies TLS client configuration.
 type ClientConfig struct {
-	RootCAFile         string `mapstructure:"root-ca-file" json:",omitempty"`
-	Certificate        string `mapstructure:"cert" json:",omitempty"`
-	Key                string `mapstructure:"key" json:",omitempty"`
-	InsecureSkipVerify bool   `mapstructure:"insecure-skip-verify"`
+	RootCAFile         string `json:"root_ca_file,omitempty"         mapstructure:"root-ca-file"`
+	Certificate        string `json:"certificate,omitempty"          mapstructure:"cert"`
+	Key                string `json:"key,omitempty"                  mapstructure:"key"`
+	InsecureSkipVerify bool   `json:"insecure_skip_verify,omitempty" mapstructure:"insecure-skip-verify"`
 }
 
 // NewClientTLSConfig creates a TLS configuration for a client from the given config.
 func NewClientTLSConfig(c ClientConfig) (*tls.Config, error) {
 	if generics.IsZeroValue(c) {
+		//nolint:nilnil // package convention: a zero-value config means "nothing to build", not an error
 		return nil, nil
 	}
 
-	var tlsConfig = &tls.Config{
+	cert, err := loadClientCertificate(c)
+	if err != nil {
+		return nil, err
+	}
+
+	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}
-
-	if (c.Certificate != "" && c.Key == "") || (c.Certificate == "" && c.Key != "") {
-		return nil, fmt.Errorf("both certificate and key need to be specified")
+	if cert != nil {
+		tlsConfig.Certificates = []tls.Certificate{*cert}
 	}
-
-	if c.Certificate != "" && c.Key != "" {
-		clientCertificate, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to load x509 key pair: %w", err)
-		}
-		tlsConfig.Certificates = []tls.Certificate{clientCertificate}
-	}
+	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
 
 	if c.RootCAFile != "" {
 		rootCAs, err := LoadCertPoolFromFile(c.RootCAFile)
@@ -46,7 +44,26 @@ func NewClientTLSConfig(c ClientConfig) (*tls.Config, error) {
 		tlsConfig.RootCAs = rootCAs
 	}
 
-	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
-
 	return tlsConfig, nil
+}
+
+// loadClientCertificate validates that Certificate and Key are both set or
+// both empty, then loads the key pair if present. Returns (nil, nil) when
+// neither is set.
+func loadClientCertificate(c ClientConfig) (*tls.Certificate, error) {
+	if (c.Certificate != "" && c.Key == "") || (c.Certificate == "" && c.Key != "") {
+		return nil, errors.New("both certificate and key need to be specified")
+	}
+
+	if c.Certificate == "" {
+		//nolint:nilnil // no certificate configured is "nothing to load", not an error
+		return nil, nil
+	}
+
+	cert, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load x509 key pair: %w", err)
+	}
+
+	return &cert, nil
 }

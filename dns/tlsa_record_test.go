@@ -30,7 +30,7 @@ func writeDANECertFixture(t *testing.T, stateDir, mxDomain string) {
 	t.Helper()
 
 	dir := filepath.Join(stateDir, "autocert", mxDomain)
-	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.MkdirAll(dir, 0o750))
 
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
@@ -97,6 +97,8 @@ func TestTLSARecord_Render_FetchesOnce(t *testing.T) {
 // goroutine while RecordValue/String read it concurrently from the test
 // goroutine.
 func TestTLSARecord_Render_AutoRefresh_NoRace(t *testing.T) {
+	t.Parallel()
+
 	stateDir := t.TempDir()
 	writeDANECertFixture(t, stateDir, "mx.example.com")
 
@@ -113,6 +115,7 @@ func TestTLSARecord_Render_AutoRefresh_NoRace(t *testing.T) {
 		case <-deadline:
 			assert.NotEmpty(t, r.RecordValue())
 			assert.NotEmpty(t, r.String())
+
 			return
 		default:
 			_ = r.RecordValue()

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockProvider is a test provider
+// mockProvider is a test provider.
 type mockProvider struct {
 	name     string
 	prefixes []string
@@ -23,10 +23,11 @@ func (m *mockProvider) Name() string {
 	return m.name
 }
 
-func (m *mockProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
+func (m *mockProvider) Prefixes(_ context.Context) ([]netip.Prefix, error) {
 	if m.fetchErr != nil {
 		return nil, m.fetchErr
 	}
+
 	return parseCIDRs(m.prefixes)
 }
 
@@ -40,6 +41,7 @@ func (m *mockProvider) Contains(addr netip.Addr) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -47,7 +49,7 @@ func TestListener(t *testing.T) {
 	logger := zerolog.Nop()
 
 	// Create a test server
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()
 
@@ -67,7 +69,7 @@ func TestListener(t *testing.T) {
 
 	// Test accepting a connection from allowed IP
 	go func() {
-		conn, err := net.Dial("tcp", listener.Addr().String())
+		conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", listener.Addr().String())
 		if err == nil {
 			defer func() { _ = conn.Close() }()
 			time.Sleep(100 * time.Millisecond)
@@ -83,7 +85,7 @@ func TestListener(t *testing.T) {
 func TestListenerAddr(t *testing.T) {
 	logger := zerolog.Nop()
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()
 

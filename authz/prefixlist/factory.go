@@ -1,6 +1,7 @@
 package prefixlist
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -64,7 +65,7 @@ func NewProviderFromConfig(cfg ProviderConfig) (Provider, error) {
 	return constructor(cfg)
 }
 
-// NewMultiProviderFromConfig creates a MultiProvider from configuration
+// NewMultiProviderFromConfig creates a MultiProvider from configuration.
 func NewMultiProviderFromConfig(cfg Config, logger zerolog.Logger) (*MultiProvider, error) {
 	var providers []Provider
 
@@ -72,6 +73,7 @@ func NewMultiProviderFromConfig(cfg Config, logger zerolog.Logger) (*MultiProvid
 		provider, err := NewProviderFromConfig(providerCfg)
 		if err != nil {
 			logger.Warn().Err(err).Str("provider", providerCfg.Name).Msg("failed to create provider")
+
 			continue
 		}
 
@@ -79,7 +81,7 @@ func NewMultiProviderFromConfig(cfg Config, logger zerolog.Logger) (*MultiProvid
 	}
 
 	if len(providers) == 0 {
-		return nil, fmt.Errorf("no valid providers configured")
+		return nil, errors.New("no valid providers configured")
 	}
 
 	return NewMultiProvider(providers, logger), nil

@@ -24,7 +24,7 @@ type fakeDNS01Provider struct{}
 func (fakeDNS01Provider) Present(_ context.Context, _, _, _ string) error { return nil }
 func (fakeDNS01Provider) CleanUp(_ context.Context, _, _, _ string) error { return nil }
 
-func genTestCertPEM(t *testing.T, notAfter time.Time) (certPEM, keyPEM []byte) {
+func genTestCertPEM(t *testing.T, notAfter time.Time) ([]byte, []byte) {
 	t.Helper()
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -46,8 +46,8 @@ func genTestCertPEM(t *testing.T, notAfter time.Time) (certPEM, keyPEM []byte) {
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
 	require.NoError(t, err)
 
-	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
 
 	return certPEM, keyPEM
 }
@@ -146,6 +146,12 @@ func TestConfigFuncFromConfigSelectsACME(t *testing.T) {
 // TestDNS01ManagersForDifferentDomainsDoNotCollide for that).
 func newTestDNS01Manager(dir string) *dns01Manager {
 	return &dns01Manager{
+		// CacheDirectory must be set: reissue's obtainGroup singleflight key is
+		// config.CacheDirectory+"|"+certName, and every manager built by this
+		// helper shares the same fixed certName above - without a per-manager
+		// CacheDirectory, reissue calls from unrelated tests/managers would
+		// collide on the same singleflight key.
+		config:         ACMEConfig{CacheDirectory: dir},
 		cache:          autocert.DirCache(dir),
 		accountKeyName: "test+account",
 		certName:       "test+crt",
@@ -164,6 +170,7 @@ func TestDNS01ManagerEnsureCertificateCacheHit(t *testing.T) {
 	var calls int
 	m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls++
+
 		return nil, assert.AnError
 	}
 
@@ -180,11 +187,13 @@ func TestDNS01ManagerEnsureCertificateCacheHit(t *testing.T) {
 // failed lookup rather than just checking its (identical) return value.
 type countingCache struct {
 	autocert.Cache
+
 	getCalls int
 }
 
 func (c *countingCache) Get(ctx context.Context, key string) ([]byte, error) {
 	c.getCalls++
+
 	return c.Cache.Get(ctx, key)
 }
 
@@ -250,6 +259,7 @@ func TestDNS01ManagerEnsureCertificateReissuesWhenNearExpiry(t *testing.T) {
 	var calls int
 	m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls++
+
 		return &obtainedCert{certPEM: newCertPEM, keyPEM: newKeyPEM}, nil
 	}
 
@@ -273,6 +283,7 @@ func TestDNS01ManagerRenewalLoopExitsOnContextCancellation(t *testing.T) {
 	var calls atomic.Int32
 	m.obtain = func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls.Add(1)
+
 		return &obtainedCert{certPEM: freshCertPEM, keyPEM: freshKeyPEM}, nil
 	}
 
@@ -309,6 +320,7 @@ func TestDNS01ManagerReissueReturnsPromptlyOnContextCancellation(t *testing.T) {
 	m.obtain = func(ctx context.Context, _ ACMEConfig, _ autocert.Cache, _ string) (*obtainedCert, error) {
 		close(obtainStarted)
 		<-unblock
+
 		return nil, ctx.Err()
 	}
 	t.Cleanup(func() { close(unblock) })
@@ -325,7 +337,7 @@ func TestDNS01ManagerReissueReturnsPromptlyOnContextCancellation(t *testing.T) {
 
 	select {
 	case err := <-errCh:
-		assert.ErrorIs(t, err, context.Canceled, "reissue should return the context error, not wait for obtain")
+		require.ErrorIs(t, err, context.Canceled, "reissue should return the context error, not wait for obtain")
 	case <-time.After(time.Second):
 		t.Fatal("reissue did not return promptly after context cancellation")
 	}
@@ -346,8 +358,8 @@ func TestDNS01ManagerReissueErrors(t *testing.T) {
 
 		err := m.reissue(ctx)
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "error persisting certificate")
-		assert.NotNil(t, errors.Unwrap(err), "the underlying error should be wrapped (%w), not just formatted as text")
+		require.ErrorContains(t, err, "error persisting certificate")
+		assert.Error(t, errors.Unwrap(err), "the underlying error should be wrapped (%w), not just formatted as text")
 	})
 
 	t.Run("cache Put error for the private key is wrapped", func(t *testing.T) {
@@ -358,6 +370,7 @@ func TestDNS01ManagerReissueErrors(t *testing.T) {
 				if key == m.certKeyName {
 					return errors.New("disk full")
 				}
+
 				return nil
 			},
 		}
@@ -389,6 +402,8 @@ func TestDNS01ManagerReissueErrors(t *testing.T) {
 // concurrently against a cold (empty) cache. Without coalescing, each
 // would call obtain (obtainViaLego in production) independently.
 func TestDNS01ManagerReissueColdCacheConcurrentCallsCoalesce(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 
 	const n = 5
@@ -404,6 +419,7 @@ func TestDNS01ManagerReissueColdCacheConcurrentCallsCoalesce(t *testing.T) {
 	obtain := func(context.Context, ACMEConfig, autocert.Cache, string) (*obtainedCert, error) {
 		calls.Add(1)
 		<-release
+
 		return &obtainedCert{certPEM: certPEM, keyPEM: keyPEM}, nil
 	}
 	for _, m := range managers {
@@ -432,7 +448,7 @@ func TestDNS01ManagerReissueColdCacheConcurrentCallsCoalesce(t *testing.T) {
 	wg.Wait()
 	close(errCh)
 	for err := range errCh {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	assert.Equal(t, int32(1), calls.Load(), "concurrent reissue calls sharing the same domain set and cache directory should coalesce into a single obtain call")

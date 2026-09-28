@@ -64,7 +64,7 @@ func TestMultipleNewDefaultServer(t *testing.T) {
 	}
 }
 
-// TestServerWithOptions tests creating a server with various options
+// TestServerWithOptions tests creating a server with various options.
 func TestServerWithOptions(t *testing.T) {
 	// Create a server with all options enabled
 	config := Config{
@@ -91,7 +91,8 @@ func TestServerWithOptions(t *testing.T) {
 	}
 
 	go func() {
-		if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		err := server.Serve(ln)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			t.Errorf("Server error: %v", err)
 		}
 	}()
@@ -107,7 +108,7 @@ func TestServerWithOptions(t *testing.T) {
 	}
 }
 
-// TestServerWithTLS tests creating a server with TLS configuration
+// TestServerWithTLS tests creating a server with TLS configuration.
 func TestServerWithTLS(t *testing.T) {
 	config := Config{
 		ListenAddress: ":0", // Use a random port
@@ -145,7 +146,8 @@ func TestServerWithTLS(t *testing.T) {
 	}
 
 	go func() {
-		if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		err := server.Serve(ln)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			t.Errorf("Server error: %v", err)
 		}
 	}()
@@ -166,7 +168,7 @@ type resourceFunc func(w http.ResponseWriter, r *http.Request)
 
 func (f resourceFunc) Handler() http.Handler { return http.HandlerFunc(f) }
 
-// MockResource implements Resource for testing
+// MockResource implements Resource for testing.
 type MockResource struct {
 	HandlerCalled bool
 }
@@ -174,10 +176,11 @@ type MockResource struct {
 func (m *MockResource) Handler() http.Handler {
 	m.HandlerCalled = true
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /test", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("test"))
 	})
+
 	return mux
 }
 
@@ -201,10 +204,11 @@ func (r *requestCapturingResource) Handler() http.Handler {
 func (r *requestCapturingResource) snapshot() (string, string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	return r.path, r.rawPath
 }
 
-// TestAddResource tests adding a resource to the server
+// TestAddResource tests adding a resource to the server.
 func TestAddResource(t *testing.T) {
 	server := NewServer(Config{})
 	mockResource := &MockResource{}
@@ -223,7 +227,7 @@ func TestAddResource(t *testing.T) {
 	}
 
 	// Create a test request
-	req := httptest.NewRequest("GET", "/api/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/test", nil)
 	w := httptest.NewRecorder()
 
 	// Serve the request
@@ -244,13 +248,14 @@ func TestAddResourcePreservesOriginalURLForLogHandler(t *testing.T) {
 	var loggedURL string
 
 	logger := zerolog.New(io.Discard)
-	server.LogHandler = ZerologStructuredLogHandlerWithFormatter(logger, func(r *http.Request, status, size int, duration time.Duration) *zerolog.Logger {
+	server.LogHandler = ZerologStructuredLogHandlerWithFormatter(logger, func(r *http.Request, _, _ int, _ time.Duration) *zerolog.Logger {
 		loggedURL = r.URL.String()
+
 		return &logger
 	})
 	server.AddResource("/api", resource)
 
-	req := httptest.NewRequest("GET", "/api/test?foo=bar", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/test?foo=bar", nil)
 	w := httptest.NewRecorder()
 
 	server.handler().ServeHTTP(w, req)
@@ -274,14 +279,15 @@ func TestAddResourceEnrichesContextLogger(t *testing.T) {
 	resource := resourceFunc(func(w http.ResponseWriter, r *http.Request) {
 		zerolog.Ctx(r.Context()).Info().Msg("handler log")
 		var entry map[string]string
-		if err := json.Unmarshal(logBuf.Bytes(), &entry); err == nil {
+		err := json.Unmarshal(logBuf.Bytes(), &entry)
+		if err == nil {
 			capturedEntry = entry
 		}
 		w.WriteHeader(http.StatusOK)
 	})
 	server.AddResource("/app", resource)
 
-	req := httptest.NewRequest(http.MethodPost, "/app/pricing", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/app/pricing", nil)
 	req.Header.Set("User-Agent", "test-agent/1.0")
 	req = req.WithContext(logger.WithContext(req.Context()))
 	w := httptest.NewRecorder()
@@ -320,6 +326,7 @@ func topLevelJSONKeys(t *testing.T, data []byte) []string {
 		var value json.RawMessage
 		require.NoError(t, dec.Decode(&value))
 	}
+
 	return keys
 }
 
@@ -335,12 +342,12 @@ func TestAddResource_AccessLogDoesNotDuplicateRequestFields(t *testing.T) {
 	logger := zerolog.New(&logBuf)
 
 	server := NewServer(Config{}, WithLogger(logger))
-	resource := resourceFunc(func(w http.ResponseWriter, r *http.Request) {
+	resource := resourceFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	server.AddResource("/api", resource)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/test", nil)
 	w := httptest.NewRecorder()
 
 	server.handler().ServeHTTP(w, req)
@@ -361,7 +368,7 @@ func TestAddResourceStripsEncodedRawPathPrefix(t *testing.T) {
 	resource := &requestCapturingResource{}
 	server.AddResource("/api[1]", resource)
 
-	req := httptest.NewRequest("GET", "/api%5B1%5D/test%2Fvalue", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api%5B1%5D/test%2Fvalue", nil)
 	w := httptest.NewRecorder()
 
 	server.handler().ServeHTTP(w, req)
@@ -372,9 +379,10 @@ func TestAddResourceStripsEncodedRawPathPrefix(t *testing.T) {
 	assert.Equal(t, "/test%2Fvalue", rawPath)
 }
 
-// MockStatusResource implements StatusResource for testing
+// MockStatusResource implements StatusResource for testing.
 type MockStatusResource struct {
 	MockResource
+
 	StatusCalled bool
 	StatusError  bool
 }
@@ -384,10 +392,11 @@ func (m *MockStatusResource) Status(_ context.Context) (any, error) {
 	if m.StatusError {
 		return nil, io.ErrUnexpectedEOF
 	}
+
 	return map[string]string{"status": "ok"}, nil
 }
 
-// TestStatusEndpoint tests the status endpoint
+// TestStatusEndpoint tests the status endpoint.
 func TestStatusEndpoint(t *testing.T) {
 	config := Config{
 		EnableStatus: true,
@@ -407,13 +416,14 @@ func TestStatusEndpoint(t *testing.T) {
 	getStatus := func(t *testing.T) (int, map[string]any) {
 		t.Helper()
 		server.initialiseServer()
-		req := httptest.NewRequest("GET", "/status", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 		w := httptest.NewRecorder()
 		server.handler().ServeHTTP(w, req)
 
 		var statusResponse map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &statusResponse)
 		require.NoError(t, err)
+
 		return w.Code, statusResponse
 	}
 
@@ -421,6 +431,7 @@ func TestStatusEndpoint(t *testing.T) {
 		t.Helper()
 		value, ok := obj[key].(map[string]any)
 		require.True(t, ok, "%s not found in status response", key)
+
 		return value
 	}
 
@@ -459,6 +470,7 @@ func TestStatusEndpoint(t *testing.T) {
 				e := getMap(t, statusResponse, "Errors")
 				_, ok := e[resourceRoute].(string)
 				require.True(t, ok, "API error not found in errors")
+
 				return
 			}
 
@@ -469,9 +481,10 @@ func TestStatusEndpoint(t *testing.T) {
 	}
 }
 
-// MockStatusResource implements StatusResource for testing
+// MockStatusResource implements StatusResource for testing.
 type MockHealthResource struct {
 	MockResource
+
 	LiveCalled  bool
 	LiveError   bool
 	ReadyCalled bool
@@ -483,6 +496,7 @@ func (m *MockHealthResource) Live(_ context.Context) error {
 	if m.LiveError {
 		return io.ErrUnexpectedEOF
 	}
+
 	return nil
 }
 
@@ -491,10 +505,29 @@ func (m *MockHealthResource) Ready(_ context.Context) (any, error) {
 	if m.ReadyError {
 		return nil, io.ErrUnexpectedEOF
 	}
+
 	return map[string]string{"status": "ok"}, nil
 }
 
-// TestStatusEndpoint tests the status endpoint
+// expectHealthField requests path from server and asserts both the HTTP
+// status code and the given boolean field in the decoded JSON body. Shared
+// by TestLiveEndpoint and TestReadyEndpoint, which differ only in which
+// health endpoint and response field they check.
+func expectHealthField(t *testing.T, server *Server, path, field string, want bool, wantStatus int) {
+	t.Helper()
+	server.initialiseServer()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
+	w := httptest.NewRecorder()
+	server.handler().ServeHTTP(w, req)
+	assert.Equal(t, wantStatus, w.Code)
+
+	var response map[string]any
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, want, response[field])
+}
+
+// TestStatusEndpoint tests the status endpoint.
 func TestLiveEndpoint(t *testing.T) {
 	config := Config{
 		EnableHealth: true,
@@ -505,25 +538,10 @@ func TestLiveEndpoint(t *testing.T) {
 	// Add the resource
 	server.AddResource("/api", mockResource)
 
-	expectLive := func(t *testing.T, wantLive bool, wantStatus int) map[string]any {
-		t.Helper()
-		server.initialiseServer()
-		req := httptest.NewRequest("GET", "/health/live", nil)
-		w := httptest.NewRecorder()
-		server.handler().ServeHTTP(w, req)
-		assert.Equal(t, wantStatus, w.Code)
-
-		var liveResponse map[string]any
-		err := json.Unmarshal(w.Body.Bytes(), &liveResponse)
-		require.NoError(t, err)
-		assert.Equal(t, wantLive, liveResponse["live"])
-		return liveResponse
-	}
-
-	expectLive(t, true, http.StatusOK)
+	expectHealthField(t, server, "/health/live", "live", true, http.StatusOK)
 
 	mockResource.LiveError = true
-	expectLive(t, false, http.StatusInternalServerError)
+	expectHealthField(t, server, "/health/live", "live", false, http.StatusInternalServerError)
 }
 
 // TestLiveEndpoint_ReportsEveryFailingResource verifies that, unlike the
@@ -541,7 +559,7 @@ func TestLiveEndpoint_ReportsEveryFailingResource(t *testing.T) {
 	server.AddResource("/api/second", second)
 
 	server.initialiseServer()
-	req := httptest.NewRequest("GET", "/health/live", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/live", nil)
 	w := httptest.NewRecorder()
 	server.handler().ServeHTTP(w, req)
 
@@ -568,27 +586,13 @@ func TestReadyEndpoint(t *testing.T) {
 	// Add the resource
 	server.AddResource("/api", mockResource)
 
-	expectReady := func(t *testing.T, wantReady bool, wantStatus int) {
-		t.Helper()
-		server.initialiseServer()
-		req := httptest.NewRequest("GET", "/health/ready", nil)
-		w := httptest.NewRecorder()
-		server.handler().ServeHTTP(w, req)
-		assert.Equal(t, wantStatus, w.Code)
-
-		var readyResponse map[string]any
-		err := json.Unmarshal(w.Body.Bytes(), &readyResponse)
-		require.NoError(t, err)
-		assert.Equal(t, wantReady, readyResponse["ready"])
-	}
-
-	expectReady(t, true, http.StatusOK)
+	expectHealthField(t, server, "/health/ready", "ready", true, http.StatusOK)
 
 	mockResource.ReadyError = true
-	expectReady(t, false, http.StatusServiceUnavailable)
+	expectHealthField(t, server, "/health/ready", "ready", false, http.StatusServiceUnavailable)
 }
 
-// TestMiddleware tests adding middleware to the server
+// TestMiddleware tests adding middleware to the server.
 func TestMiddleware(t *testing.T) {
 	server := NewServer(Config{})
 
@@ -601,13 +605,13 @@ func TestMiddleware(t *testing.T) {
 	})
 
 	// Add a handler
-	server.AddHandlerFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+	server.AddHandlerFunc("/test", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("test"))
 	})
 
 	// Create a test request
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
 	// Serve the request
@@ -671,7 +675,7 @@ func TestAddRootResource_DispatchesToIndex(t *testing.T) {
 	// registration - that only happens inside initialiseServer.
 	s.initialiseServer()
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	s.handler().ServeHTTP(w, req)
 
@@ -683,7 +687,7 @@ func TestAddRootResource_NeverCalled_RootIs404(t *testing.T) {
 	s := NewServer(Config{})
 	s.initialiseServer()
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	s.handler().ServeHTTP(w, req)
 
@@ -709,7 +713,7 @@ func TestAddRootResource_SafeAfterEarlyInitialisation(t *testing.T) {
 
 	s.AddRootResource(stubRootResource{})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	s.handler().ServeHTTP(w, req)
 
@@ -734,7 +738,7 @@ func TestServer_NeverCallingAddRootResource_DoesNotConflictWithOwnCatchAllRoute(
 		s.initialiseServer()
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/anything", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/anything", nil)
 	w := httptest.NewRecorder()
 	s.handler().ServeHTTP(w, req)
 

@@ -43,7 +43,8 @@ func (r *refreshableContent) Render(fetch func() (string, error), autoRefresh bo
 	r.state.mu.Unlock()
 
 	if empty {
-		if err := r.refetch(fetch); err != nil {
+		err := r.refetch(fetch)
+		if err != nil {
 			return err
 		}
 	}
@@ -64,6 +65,7 @@ func (r *refreshableContent) refetch(fetch func() (string, error)) error {
 	r.state.mu.Lock()
 	r.state.contents = contents
 	r.state.mu.Unlock()
+
 	return nil
 }
 
@@ -75,5 +77,6 @@ func (r *refreshableContent) Value() string {
 	}
 	r.state.mu.Lock()
 	defer r.state.mu.Unlock()
+
 	return r.state.contents
 }

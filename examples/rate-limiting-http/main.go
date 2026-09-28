@@ -1,3 +1,5 @@
+// Package main demonstrates rate limiting an HTTP server with static,
+// per-principal limits.
 package main
 
 import (
@@ -25,7 +27,7 @@ func main() {
 	)
 
 	// Create a simple handler
-	myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	myHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintf(w, "Request processed successfully\n")
 	})
 
@@ -38,6 +40,7 @@ func main() {
 	server.AddHandler("/limited", handler)
 
 	// Create listener
+	//nolint:noctx // binding a local listen socket is instant, no context needed for a demo
 	ln, err := net.Listen("tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
 	if err != nil {
 		log.Fatalf("Error creating listener: %v\n", err)
@@ -51,7 +54,8 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		if err := server.Serve(ln); err != nil {
+		err := server.Serve(ln)
+		if err != nil {
 			log.Printf("Server error: %v\n", err)
 		}
 	}()

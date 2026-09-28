@@ -1,3 +1,5 @@
+// Package main demonstrates configuring an HTTPS server with a self-signed
+// TLS certificate.
 package main
 
 import (
@@ -42,7 +44,10 @@ func main() {
 
 	_, _, err = diotls.CreateAndSaveSelfSignedKeyPair(selfSignedConfig, certFile, keyFile)
 	if err != nil {
-		log.Fatalf("Error generating certificate: %v\n", err)
+		// log.Fatalf exits immediately, so the defer registered above for
+		// tmpDir would never run - remove it explicitly first.
+		_ = os.RemoveAll(tmpDir)
+		log.Fatalf("Error generating certificate: %v\n", err) //nolint:gocritic // tmpDir is already removed above; gocritic can't see that
 	}
 
 	fmt.Printf("Certificate saved to: %s\n", certFile)
@@ -62,7 +67,7 @@ func main() {
 	}
 
 	// Create a simple handler
-	myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	myHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintf(w, "Hello from secure HTTPS server!\n")
 	})
 
@@ -75,6 +80,7 @@ func main() {
 	server.AddHandler("/", myHandler)
 
 	// Create listener
+	//nolint:noctx // binding a local listen socket is instant, no context needed for a demo
 	ln, err := net.Listen("tcp", ":8443") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
 	if err != nil {
 		log.Fatalf("Error creating listener: %v\n", err)
@@ -88,7 +94,8 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		if err := server.Serve(ln); err != nil {
+		err := server.Serve(ln)
+		if err != nil {
 			log.Printf("Server error: %v\n", err)
 		}
 	}()

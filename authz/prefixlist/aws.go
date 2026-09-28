@@ -12,13 +12,15 @@ func init() {
 		// AWS: support "service" and "region" keys
 		service := cfg.Filter["service"]
 		region := cfg.Filter["region"]
+
 		return NewAWSProvider(service, region), nil
 	})
 }
 
-// AWSProvider fetches IP ranges from AWS
+// AWSProvider fetches IP ranges from AWS.
 type AWSProvider struct {
 	*HTTPJSONProvider[awsIPRanges]
+
 	service string // optional filter for specific service (e.g., "CLOUDFRONT", "EC2")
 	region  string // optional filter for specific region (e.g., "us-east-1")
 }
@@ -36,7 +38,7 @@ type awsIPRanges struct {
 	} `json:"ipv6_prefixes"`
 }
 
-// NewAWSProvider creates a new AWS prefix list provider
+// NewAWSProvider creates a new AWS prefix list provider.
 func NewAWSProvider(service, region string) *AWSProvider {
 	name := "aws"
 	if service != "" {
@@ -91,5 +93,6 @@ func (p *AWSProvider) matchesFilter(service, region string) bool {
 	if p.region != "" && region != p.region {
 		return false
 	}
+
 	return true
 }

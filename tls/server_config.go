@@ -3,6 +3,7 @@ package tls
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -17,46 +18,46 @@ import (
 
 // SANConfig specifies Subject Alternative Names for a certificate (DNS names and IP addresses).
 type SANConfig struct {
-	DNSNames    []string `mapstructure:"dns-names" json:"dns_names,omitzero"`
-	IPAddresses []string `mapstructure:"ip-addresses" json:"ip_addresses,omitzero"`
+	DNSNames    []string `json:"dns_names,omitzero"    mapstructure:"dns-names"`
+	IPAddresses []string `json:"ip_addresses,omitzero" mapstructure:"ip-addresses"`
 }
 
 // CertificateSubject defines X.509 certificate subject information.
 type CertificateSubject struct {
-	Country            []string `mapstructure:"c" json:"country,omitzero"`
-	Organization       []string `mapstructure:"o" json:"organization,omitzero"`
-	OrganizationalUnit []string `mapstructure:"ou" json:"organizational_unit,omitzero"`
-	Locality           []string `mapstructure:"l" json:"locality,omitzero"`
-	Province           []string `mapstructure:"st" json:"province,omitzero"`
-	StreetAddress      []string `mapstructure:"street" json:"street_address,omitzero"`
-	PostalCode         []string `mapstructure:"postalcode" json:"postal_code,omitzero"`
-	SerialNumber       string   `mapstructure:"serialnumber" json:"serial_number,omitzero"`
-	CommonName         string   `mapstructure:"cn" json:"common_name,omitzero"`
+	Country            []string `json:"country,omitzero"             mapstructure:"c"`
+	Organization       []string `json:"organization,omitzero"        mapstructure:"o"`
+	OrganizationalUnit []string `json:"organizational_unit,omitzero" mapstructure:"ou"`
+	Locality           []string `json:"locality,omitzero"            mapstructure:"l"`
+	Province           []string `json:"province,omitzero"            mapstructure:"st"`
+	StreetAddress      []string `json:"street_address,omitzero"      mapstructure:"street"`
+	PostalCode         []string `json:"postal_code,omitzero"         mapstructure:"postalcode"`
+	SerialNumber       string   `json:"serial_number,omitzero"       mapstructure:"serialnumber"`
+	CommonName         string   `json:"common_name,omitzero"         mapstructure:"cn"`
 }
 
 // SelfSignedConfig specifies parameters for generating a self-signed certificate.
 type SelfSignedConfig struct {
-	Subject        CertificateSubject `mapstructure:"subject" json:"subject"`
-	SAN            SANConfig          `mapstructure:"san" json:"san"`
-	Duration       string             `mapstructure:"duration" json:"duration,omitzero"`
-	IsCA           bool               `mapstructure:"ca" json:"is_ca,omitzero"`
-	Bits           int                `mapstructure:"bits" json:"bits,omitzero"`
-	CacheDirectory string             `mapstructure:"cache-directory" json:"cache_directory,omitzero"`
-	Alias          string             `mapstructure:"alias" json:"alias,omitzero"`
+	Subject        CertificateSubject `json:"subject"                  mapstructure:"subject"`
+	SAN            SANConfig          `json:"san"                      mapstructure:"san"`
+	Duration       string             `json:"duration,omitzero"        mapstructure:"duration"`
+	IsCA           bool               `json:"is_ca,omitzero"           mapstructure:"ca"`
+	Bits           int                `json:"bits,omitzero"            mapstructure:"bits"`
+	CacheDirectory string             `json:"cache_directory,omitzero" mapstructure:"cache-directory"`
+	Alias          string             `json:"alias,omitzero"           mapstructure:"alias"`
 }
 
 // LocalConfig specifies local certificate and key file locations.
 type LocalConfig struct {
-	SinglePEMFile string         `mapstructure:"single-pem-file" json:",omitzero"`
-	Certificate   string         `mapstructure:"cert" json:",omitzero"`
-	Key           string         `mapstructure:"key" json:",omitzero"`
-	FileWait      FileWaitConfig `mapstructure:"file-wait,squash" json:",omitzero"`
+	SinglePEMFile string         `json:"single_pem_file,omitzero" mapstructure:"single-pem-file"`
+	Certificate   string         `json:"certificate,omitzero"     mapstructure:"cert"`
+	Key           string         `json:"key,omitzero"             mapstructure:"key"`
+	FileWait      FileWaitConfig `json:"file_wait,omitzero"       mapstructure:"file-wait,squash"`
 }
 
 // FileWaitConfig specifies wait parameters for loading certificate files.
 type FileWaitConfig struct {
-	WaitInterval uint `mapstructure:"file-wait-interval" json:",omitzero"`
-	WaitMax      uint `mapstructure:"file-wait-max" json:",omitzero"`
+	WaitInterval uint `json:"wait_interval,omitzero" mapstructure:"file-wait-interval"`
+	WaitMax      uint `json:"wait_max,omitzero"      mapstructure:"file-wait-max"`
 }
 
 // ServerConfig specifies TLS configuration for a server.
@@ -69,10 +70,10 @@ type ServerConfig struct {
 
 	LocalConfig LocalConfig `json:"local" mapstructure:"local"`
 
-	ClientAuthType string `mapstructure:"client-auth-type" json:"client_auth_type,omitzero"`
-	ClientCAFile   string `mapstructure:"client-ca-file" json:"client_ca_file,omitzero"`
+	ClientAuthType string `json:"client_auth_type,omitzero" mapstructure:"client-auth-type"`
+	ClientCAFile   string `json:"client_ca_file,omitzero"   mapstructure:"client-ca-file"`
 
-	NextProtos    []string `json:"next_protos,omitzero" mapstructure:"next-protos"`
+	NextProtos    []string `json:"next_protos,omitzero"     mapstructure:"next-protos"`
 	TLSMinVersion string   `json:"tls_min_version,omitzero" mapstructure:"tls-min-version"`
 }
 
@@ -104,13 +105,15 @@ func configFuncFromConfig(ctx context.Context, c ServerConfig) ConfigFunc {
 			Msg("multiple TLS config arms are configured; only the first in precedence order (ACME, then SelfSigned, then LocalConfig) is used")
 	}
 
-	if acmeSet {
+	switch {
+	case acmeSet:
 		return NewACMETLSConfigFunc(ctx, c.ACME)
-	} else if selfSignedSet {
+	case selfSignedSet:
 		return NewSelfSignedTLSConfigFunc(c.SelfSigned)
-	} else if localSet {
+	case localSet:
 		return NewLocalTLSConfigFunc(ctx, c.LocalConfig)
 	}
+
 	return nil
 }
 
@@ -118,6 +121,7 @@ func configFuncFromConfig(ctx context.Context, c ServerConfig) ConfigFunc {
 func NewServerTLSConfig(ctx context.Context, c ServerConfig) (*tls.Config, error) {
 	configFunc := configFuncFromConfig(ctx, c)
 	if configFunc == nil {
+		//nolint:nilnil // package convention: a zero-value config means "nothing to build", not an error
 		return nil, nil
 	}
 
@@ -140,28 +144,49 @@ func NewServerTLSConfig(ctx context.Context, c ServerConfig) (*tls.Config, error
 	if len(c.NextProtos) > 0 {
 		defaultNextProtos = c.NextProtos
 	}
+	tlsConfig.NextProtos = mergeNextProtos(tlsConfig.NextProtos, defaultNextProtos)
 
-	if len(tlsConfig.NextProtos) == 0 {
-		tlsConfig.NextProtos = defaultNextProtos
-	} else {
-		for _, proto := range defaultNextProtos {
-			if !slices.Contains(tlsConfig.NextProtos, proto) {
-				tlsConfig.NextProtos = append(tlsConfig.NextProtos, proto)
-			}
-		}
-	}
-
-	if c.ClientCAFile != "" {
-		tlsConfig.ClientAuth = convertClientAuthType(c.ClientAuthType)
-
-		clientCAs, err := LoadCertPoolFromFile(c.ClientCAFile)
-		if err != nil {
-			return nil, fmt.Errorf("error reading client CAs: %w", err)
-		}
-		tlsConfig.ClientCAs = clientCAs
+	if err := applyClientCA(tlsConfig, c); err != nil {
+		return nil, err
 	}
 
 	return tlsConfig, nil
+}
+
+// mergeNextProtos returns existing's ALPN protocol list merged with
+// defaultProtos: replacing it outright when existing is empty, or appending
+// whichever of defaultProtos aren't already present when it isn't.
+func mergeNextProtos(existing, defaultProtos []string) []string {
+	if len(existing) == 0 {
+		return defaultProtos
+	}
+
+	merged := existing
+	for _, proto := range defaultProtos {
+		if !slices.Contains(merged, proto) {
+			merged = append(merged, proto)
+		}
+	}
+
+	return merged
+}
+
+// applyClientCA configures tlsConfig's client-certificate verification from
+// c.ClientCAFile/ClientAuthType, when a CA file is set. A no-op otherwise.
+func applyClientCA(tlsConfig *tls.Config, c ServerConfig) error {
+	if c.ClientCAFile == "" {
+		return nil
+	}
+
+	clientCAs, err := LoadCertPoolFromFile(c.ClientCAFile)
+	if err != nil {
+		return fmt.Errorf("error reading client CAs: %w", err)
+	}
+
+	tlsConfig.ClientAuth = convertClientAuthType(c.ClientAuthType)
+	tlsConfig.ClientCAs = clientCAs
+
+	return nil
 }
 
 // NewLocalTLSConfigFunc creates a ConfigFunc for loading certificates from local files.
@@ -172,6 +197,7 @@ func NewLocalTLSConfigFunc(ctx context.Context, c LocalConfig) ConfigFunc {
 // NewLocalTLSConfig creates a TLS configuration from local certificate and key files.
 func NewLocalTLSConfig(ctx context.Context, config LocalConfig) (*tls.Config, error) {
 	if generics.IsZeroValue(config) {
+		//nolint:nilnil // package convention: a zero-value config means "nothing to build", not an error
 		return nil, nil
 	}
 	if config.SinglePEMFile != "" {
@@ -187,7 +213,7 @@ func NewLocalTLSConfig(ctx context.Context, config LocalConfig) (*tls.Config, er
 	}
 
 	if config.Certificate == "" || config.Key == "" {
-		return nil, fmt.Errorf("both certificate and key need to be specified")
+		return nil, errors.New("both certificate and key need to be specified")
 	}
 
 	cert, err := CertificateFromKeyAndCertificateFiles(ctx, config.Key,
@@ -211,6 +237,7 @@ func NewSelfSignedTLSConfigFunc(c SelfSignedConfig) ConfigFunc {
 // NewSelfSignedTLSConfig creates a TLS configuration with a self-signed certificate.
 func NewSelfSignedTLSConfig(config SelfSignedConfig) (*tls.Config, error) {
 	if generics.IsZeroValue(config) {
+		//nolint:nilnil // package convention: a zero-value config means "nothing to build", not an error
 		return nil, nil
 	}
 
@@ -223,14 +250,15 @@ func NewSelfSignedTLSConfig(config SelfSignedConfig) (*tls.Config, error) {
 		return nil, fmt.Errorf("error creating cache directory: %w", err)
 	}
 
-	certPath := filepath.Join(cacheDirectory, fmt.Sprintf("%s.pem", alias))
-	keyPath := filepath.Join(cacheDirectory, fmt.Sprintf("%s.key", alias))
+	certPath := filepath.Join(cacheDirectory, alias+".pem")
+	keyPath := filepath.Join(cacheDirectory, alias+".key")
 
 	cert, _, err := CreateAndSaveSelfSignedKeyPair(config, certPath, keyPath)
 
 	if err != nil {
 		return nil, fmt.Errorf("error generating self signed certificate: %w", err)
 	}
+
 	return &tls.Config{
 		MinVersion:   tls.VersionTLS12,
 		Certificates: []tls.Certificate{*cert},
@@ -248,6 +276,7 @@ func CertificatesFromSinglePEMFile(ctx context.Context, singlePEMFile string, wa
 	if err != nil {
 		return nil, fmt.Errorf("error loading key pair and certs from file: %w", err)
 	}
+
 	return []tls.Certificate{*cert}, nil
 }
 
@@ -258,11 +287,13 @@ func CertificateFromKeyAndCertificateFiles(ctx context.Context, key, cert string
 
 	serverCertificate, err := util.WaitForReturn(ctx, interval, waitConfig.WaitMax, func() (*tls.Certificate, error) {
 		certificate, err := tls.LoadX509KeyPair(cert, key)
+
 		return &certificate, err
 	})
 
 	if err != nil {
 		return nil, fmt.Errorf("error reading server certificates: %w", err)
 	}
+
 	return []tls.Certificate{*serverCertificate}, nil
 }

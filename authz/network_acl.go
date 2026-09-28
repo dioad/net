@@ -45,6 +45,7 @@ func (a *NetworkACL) AllowFromString(n string) error {
 		return err
 	}
 	a.Allow(tcpNet)
+
 	return nil
 }
 
@@ -60,6 +61,7 @@ func (a *NetworkACL) DenyFromString(n string) error {
 		return err
 	}
 	a.Deny(tcpNet)
+
 	return nil
 }
 
@@ -79,6 +81,7 @@ func (a *NetworkACL) AuthoriseFromString(addr string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	return a.Authorise(tcpAddr), nil
 }
 
@@ -112,6 +115,7 @@ func containsAddress(netList []*net.IPNet, ip net.IP) bool {
 			return true
 		}
 	}
+
 	return false
 }
 

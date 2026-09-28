@@ -32,9 +32,10 @@ type tlsHandshakeErrorFilter struct {
 	logger zerolog.Logger
 }
 
-func (f *tlsHandshakeErrorFilter) Write(p []byte) (n int, err error) {
+func (f *tlsHandshakeErrorFilter) Write(p []byte) (int, error) {
 	if !bytes.Contains(p, []byte("TLS handshake error from")) {
 		f.logger.Error().Msg(strings.TrimRight(string(p), "\r\n"))
+
 		return len(p), nil
 	}
 	msg := strings.TrimRight(string(p), "\r\n")
@@ -45,15 +46,18 @@ func (f *tlsHandshakeErrorFilter) Write(p []byte) (n int, err error) {
 				Str("remote_addr", remoteAddr).
 				Str("reason", reason).
 				Msg("tls_probe")
+
 			return len(p), nil
 		}
 		f.logger.Error().
 			Str("remote_addr", remoteAddr).
 			Str("reason", reason).
 			Msg("tls_handshake_error")
+
 		return len(p), nil
 	}
 	f.logger.Error().Msg(msg)
+
 	return len(p), nil
 }
 
@@ -70,5 +74,6 @@ func isBenignTLSHandshakeReason(reason string) bool {
 			return true
 		}
 	}
+
 	return false
 }

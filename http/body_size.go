@@ -53,6 +53,7 @@ func (l *BodySizeLimiter) Wrap(next http.Handler) http.Handler {
 				Msg("Request body too large (Content-Length)")
 
 			http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
+
 			return
 		}
 

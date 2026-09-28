@@ -24,6 +24,7 @@ func ContextWithClientIP(ctx context.Context, r *http.Request) context.Context {
 // ClientIPFromContext retrieves the client IP address from the context.
 func ClientIPFromContext(ctx context.Context) (string, bool) {
 	ip, ok := ctx.Value(httpContextKeyClientIP{}).(string)
+
 	return ip, ok
 }
 
@@ -47,6 +48,7 @@ func GetClientIP(r *http.Request) string {
 		if before, _, ok := strings.Cut(xff, ","); ok {
 			return strings.TrimSpace(before)
 		}
+
 		return strings.TrimSpace(xff)
 	}
 
@@ -70,8 +72,10 @@ func GetClientIP(r *http.Request) string {
 				return addr[1:bracketIdx]
 			}
 		}
+
 		return addr[:idx]
 	}
+
 	return addr
 }
 
@@ -90,10 +94,12 @@ func parseForwardedHeader(f string) string {
 				// Remove brackets if present (IPv6)
 				ip = strings.TrimPrefix(ip, "[")
 				ip = strings.TrimSuffix(ip, "]")
+
 				return ip
 			}
 		}
 	}
+
 	return ""
 }
 
@@ -148,6 +154,7 @@ func NewClientIPResolver(opts ...ClientIPResolverOption) *ClientIPResolver {
 	for _, opt := range opts {
 		opt(c)
 	}
+
 	return c
 }
 
@@ -173,6 +180,7 @@ func (c *ClientIPResolver) ClientIP(r *http.Request) string {
 	if len(c.trustedProxyCIDRs) > 0 {
 		return c.clientIPFromTrustedProxyCIDRs(r)
 	}
+
 	return c.remoteAddrString(r)
 }
 
@@ -220,6 +228,7 @@ func (c *ClientIPResolver) isTrustedProxy(addr netip.Addr) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -229,6 +238,7 @@ func (c *ClientIPResolver) remoteAddrString(r *http.Request) string {
 	if peer, ok := remoteAddrIP(r); ok {
 		return peer.String()
 	}
+
 	return r.RemoteAddr
 }
 
@@ -240,6 +250,7 @@ func remoteAddrIP(r *http.Request) (netip.Addr, bool) {
 		host = r.RemoteAddr
 	}
 	addr, err := netip.ParseAddr(host)
+
 	return addr, err == nil
 }
 
@@ -250,6 +261,7 @@ func parseForwardedIP(s string) (netip.Addr, bool) {
 	s = strings.TrimPrefix(s, "[")
 	s = strings.TrimSuffix(s, "]")
 	addr, err := netip.ParseAddr(s)
+
 	return addr, err == nil
 }
 

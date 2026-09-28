@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// parseCommaSeparated parses comma-separated values into a slice
+// parseCommaSeparated parses comma-separated values into a slice.
 func parseCommaSeparated(value string) []string {
 	if value == "" {
 		return nil
@@ -24,10 +24,11 @@ func parseCommaSeparated(value string) []string {
 	if len(result) == 0 {
 		return nil
 	}
+
 	return result
 }
 
-// parseCIDRs parses a list of CIDR strings into netip.Prefix objects
+// parseCIDRs parses a list of CIDR strings into netip.Prefix objects.
 func parseCIDRs(cidrs []string) ([]netip.Prefix, error) {
 	var result []netip.Prefix
 	seen := make(map[string]bool)

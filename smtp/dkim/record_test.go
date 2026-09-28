@@ -93,7 +93,7 @@ func FuzzParseParams(f *testing.F) {
 	f.Add("v=DKIM1; k=rsa; p=EXAMPLE=")
 	f.Add("v=DKIM1; k=; p=")
 	f.Add("invalid=param")
-	f.Fuzz(func(t *testing.T, s string) {
+	f.Fuzz(func(_ *testing.T, s string) {
 		_, _ = ParseParams(s)
 	})
 }

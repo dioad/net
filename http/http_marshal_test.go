@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsNilAny(t *testing.T) {
@@ -50,7 +51,7 @@ func TestUnmarshalQuery_IntFieldAcceptsValidValue(t *testing.T) {
 
 	err := UnmarshalQuery("Count=5&Total=10", &example, DefaultHTTPMarshalOptions())
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 5, example.Count)
 	assert.Equal(t, uint(10), example.Total)
 }

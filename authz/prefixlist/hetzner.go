@@ -6,17 +6,17 @@ import (
 )
 
 func init() {
-	RegisterProvider("hetzner", func(cfg ProviderConfig) (Provider, error) {
+	RegisterProvider("hetzner", func(_ ProviderConfig) (Provider, error) {
 		return NewHetznerProvider(), nil
 	})
 }
 
-// HetznerProvider provides static IP ranges for Hetzner Cloud
+// HetznerProvider provides static IP ranges for Hetzner Cloud.
 type HetznerProvider struct {
 	prefixes []netip.Prefix
 }
 
-// NewHetznerProvider creates a new Hetzner prefix list provider
+// NewHetznerProvider creates a new Hetzner prefix list provider.
 func NewHetznerProvider() *HetznerProvider {
 	// Hetzner Cloud main IP ranges
 	// These are well-known stable ranges for Hetzner services
@@ -61,24 +61,30 @@ func NewHetznerProvider() *HetznerProvider {
 	}
 
 	prefixes, _ := parseCIDRs(cidrs) // Safe to ignore error as these are hard-coded valid CIDRs
+
 	return &HetznerProvider{
 		prefixes: prefixes,
 	}
 }
 
+// Name returns the provider's name.
 func (p *HetznerProvider) Name() string {
 	return "hetzner"
 }
 
-func (p *HetznerProvider) Prefixes(ctx context.Context) ([]netip.Prefix, error) {
+// Prefixes returns the provider's static list of prefixes.
+func (p *HetznerProvider) Prefixes(_ context.Context) ([]netip.Prefix, error) {
 	return p.prefixes, nil
 }
 
+// Contains reports whether addr is contained in any of the provider's
+// prefixes.
 func (p *HetznerProvider) Contains(addr netip.Addr) bool {
 	for _, prefix := range p.prefixes {
 		if prefix.Contains(addr) {
 			return true
 		}
 	}
+
 	return false
 }
