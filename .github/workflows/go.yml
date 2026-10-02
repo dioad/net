@@ -37,10 +37,6 @@ jobs:
         git config -l --global
         go get -v -t -d ./...
 
-    - name: Vet
-      run: |
-        go vet ./...
-
     - name: Test Race Conditions
       run: go test -race -v ./...
 

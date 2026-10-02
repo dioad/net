@@ -347,6 +347,17 @@ func TestNotImplemented_DefaultMessage(t *testing.T) {
 	assert.Equal(t, "not implemented", result["error"])
 }
 
+// statusFromBody extracts the "status" member of a decoded Problem body as
+// an int; JSON numbers decode to float64 via map[string]any.
+func statusFromBody(t *testing.T, body map[string]any) int {
+	t.Helper()
+
+	v, ok := body["status"].(float64)
+	require.True(t, ok, "status field is not a number")
+
+	return int(v)
+}
+
 func TestProblem_DefaultsTypeAndStatus(t *testing.T) {
 	w := httptest.NewRecorder()
 	resp := NewResponse(w)
@@ -360,7 +371,7 @@ func TestProblem_DefaultsTypeAndStatus(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	assert.Equal(t, "about:blank", body["type"])
 	assert.Equal(t, "account quota exceeded", body["title"])
-	assert.Equal(t, float64(http.StatusForbidden), body["status"])
+	assert.Equal(t, http.StatusForbidden, statusFromBody(t, body))
 	assert.NotContains(t, body, "detail")
 	assert.NotContains(t, body, "instance")
 }
@@ -381,7 +392,7 @@ func TestProblem_ExplicitFields(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	assert.Equal(t, "https://example.com/problems/quota-exceeded", body["type"])
 	assert.Equal(t, "account quota exceeded", body["title"])
-	assert.Equal(t, float64(http.StatusForbidden), body["status"])
+	assert.Equal(t, http.StatusForbidden, statusFromBody(t, body))
 	assert.Equal(t, "the account has exhausted its monthly connection quota", body["detail"])
 	assert.Equal(t, "/accounts/acc-123/quota", body["instance"])
 }
@@ -412,7 +423,7 @@ func TestProblem_ExtensionsCannotOverrideStandardMembers(t *testing.T) {
 
 	var body map[string]any
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
-	assert.Equal(t, float64(http.StatusForbidden), body["status"])
+	assert.Equal(t, http.StatusForbidden, statusFromBody(t, body))
 	assert.Equal(t, "about:blank", body["type"])
 }
 

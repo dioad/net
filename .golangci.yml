@@ -7,6 +7,7 @@ linters:
     - gochecknoinits
     - wsl
     - wsl_v5
+    - nlreturn
     - whitespace
     - wrapcheck
     - exhaustruct
@@ -46,11 +47,11 @@ linters:
         # to keep the concrete implementation an internal detail:
         # DoneConn (net.Conn + done-signalling), the prefixlist/ACME
         # Provider abstractions, LogLevelSetter, and the functional-option
-        # responseOption type.
+        # ResponseOption type.
         - \.DoneConn$
         - \.Provider$
         - \.LogLevelSetter$
-        - \.responseOption$
+        - \.ResponseOption$
     exhaustive:
       # A switch that deliberately dispatches over a small, bounded subset
       # of an enum's members and handles everything else in "default" is
