@@ -36,13 +36,8 @@ type Handler struct {
 
 // AuthRequest checks if an HTTP request is authorized based on the remote IP address.
 func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
-	allowed, err := h.Authoriser.AuthoriseFromString(r.RemoteAddr)
-	if err != nil {
-		return r.Context(), fmt.Errorf("failed to authorise request: %w", err)
-	}
-
-	if !allowed {
-		return r.Context(), fmt.Errorf("request not allowed from %s", r.RemoteAddr)
+	if err := h.Authoriser.AuthoriseFromString(r.RemoteAddr); err != nil {
+		return r.Context(), fmt.Errorf("request not authorised from %s: %w", r.RemoteAddr, err)
 	}
 
 	return r.Context(), nil
