@@ -45,17 +45,19 @@ func TestContains(t *testing.T) {
 
 	addrOne := net.ParseIP("127.0.0.123")
 
-	gotOne := containsAddress(list, addrOne)
+	matchedOne, gotOne := matchingNetwork(list, addrOne)
 	require.True(t, gotOne)
+	require.Equal(t, cidrOne, matchedOne)
 
 	addrTwo := net.ParseIP("10.0.0.1")
 
-	gotTwo := containsAddress(list, addrTwo)
+	matchedTwo, gotTwo := matchingNetwork(list, addrTwo)
 	require.True(t, gotTwo)
+	require.Equal(t, cidrTwo, matchedTwo)
 
 	addrThree := net.ParseIP("192.164.12.45")
 
-	gotThree := containsAddress(list, addrThree)
+	_, gotThree := matchingNetwork(list, addrThree)
 	require.False(t, gotThree)
 }
 
@@ -70,12 +72,8 @@ func TestAuthoriserDenyByDefault(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	got, err := a.AuthoriseFromString("192.168.4.5:12345")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	require.False(t, got)
+	err = a.AuthoriseFromString("192.168.4.5:12345")
+	require.ErrorIs(t, err, ErrDenied)
 }
 
 func TestAuthoriserAllowByDefault(t *testing.T) {
@@ -90,12 +88,39 @@ func TestAuthoriserAllowByDefault(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	got, err := a.AuthoriseFromString("192.168.4.5:12354")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	err = a.AuthoriseFromString("192.168.4.5:12354")
+	require.NoError(t, err)
+}
 
-	require.True(t, got)
+func TestAuthoriserDeniedError_MatchedNetwork(t *testing.T) {
+	c := NetworkACLConfig{
+		AllowedNets:    []string{"192.168.0.0/16"},
+		DeniedNets:     []string{"192.168.4.0/24"},
+		AllowByDefault: false,
+	}
+	a, err := NewNetworkACL(c)
+	require.NoError(t, err)
+
+	err = a.AuthoriseFromString("192.168.4.5:1234")
+	require.ErrorIs(t, err, ErrDenied)
+
+	var denied *DeniedError
+	require.ErrorAs(t, err, &denied)
+	require.Equal(t, "192.168.4.0/24", denied.MatchedNetwork)
+}
+
+func TestAuthoriserDeniedError_NoMatchUsesDefault(t *testing.T) {
+	c := NetworkACLConfig{AllowByDefault: false}
+	a, err := NewNetworkACL(c)
+	require.NoError(t, err)
+
+	err = a.AuthoriseFromString("203.0.113.1:1234")
+	require.ErrorIs(t, err, ErrDenied)
+
+	var denied *DeniedError
+	require.ErrorAs(t, err, &denied)
+	require.Empty(t, denied.MatchedNetwork)
+	require.False(t, denied.AllowByDefault)
 }
 
 func TestAuthoriserAllowFromString(t *testing.T) {
@@ -110,12 +135,8 @@ func TestAuthoriserAllowFromString(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	got, err := a.AuthoriseFromString("192.168.4.5:1234")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	require.True(t, got)
+	err = a.AuthoriseFromString("192.168.4.5:1234")
+	require.NoError(t, err)
 }
 
 func TestParseNetIPv6WithDefault(t *testing.T) {
@@ -159,12 +180,8 @@ func TestAuthoriserIPv6Allow(t *testing.T) {
 	}
 
 	// Test with IPv6 address in the allowed range
-	got, err := a.AuthoriseFromString("[2001:db8::1]:1234")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	require.True(t, got)
+	err = a.AuthoriseFromString("[2001:db8::1]:1234")
+	require.NoError(t, err)
 }
 
 func TestAuthoriserIPv6Deny(t *testing.T) {
@@ -180,12 +197,8 @@ func TestAuthoriserIPv6Deny(t *testing.T) {
 	}
 
 	// Test with IPv6 address outside the allowed range
-	got, err := a.AuthoriseFromString("[2001:db9::1]:1234")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	require.False(t, got)
+	err = a.AuthoriseFromString("[2001:db9::1]:1234")
+	require.ErrorIs(t, err, ErrDenied)
 }
 
 func TestAuthoriserIPv6SingleAddress(t *testing.T) {
@@ -201,18 +214,10 @@ func TestAuthoriserIPv6SingleAddress(t *testing.T) {
 	}
 
 	// Test with the exact IPv6 address
-	got, err := a.AuthoriseFromString("[2001:db8::1]:1234")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	require.True(t, got)
+	err = a.AuthoriseFromString("[2001:db8::1]:1234")
+	require.NoError(t, err)
 
 	// Test with a different IPv6 address
-	got, err = a.AuthoriseFromString("[2001:db8::2]:1234")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	require.False(t, got)
+	err = a.AuthoriseFromString("[2001:db8::2]:1234")
+	require.ErrorIs(t, err, ErrDenied)
 }

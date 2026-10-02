@@ -1,6 +1,7 @@
 package authz
 
 import (
+	"errors"
 	"net"
 
 	"github.com/rs/zerolog"
@@ -22,17 +23,22 @@ func NewListener(l net.Listener, acl Authoriser, logger zerolog.Logger) *Listene
 }
 
 func (l *Listener) gate(c net.Conn) bool {
-	allowed, err := l.acl.AuthoriseConn(c)
-	if err != nil {
-		l.Logger.Error().Err(err).Stringer("remoteAddr", c.RemoteAddr()).Msg("authz error; denying connection")
+	err := l.acl.AuthoriseConn(c)
+	if err == nil {
+		return true
+	}
 
+	if errors.Is(err, ErrDenied) {
+		l.Logger.Warn().Err(err).Stringer("remote_addr", c.RemoteAddr()).Msg("network ACL denied connection")
 		return false
 	}
-	if !allowed {
-		l.Logger.Warn().Stringer("remoteAddr", c.RemoteAddr()).Msg("access denied")
-	}
 
-	return allowed
+	// Not a deliberate denial - the ACL couldn't evaluate the address at
+	// all (e.g. RemoteAddr didn't parse as host:port), which is a more
+	// unusual condition worth a higher severity.
+	l.Logger.Error().Err(err).Stringer("remote_addr", c.RemoteAddr()).Msg("network ACL check failed")
+
+	return false
 }
 
 // Accept waits for and returns the next connection that passes the Authoriser.

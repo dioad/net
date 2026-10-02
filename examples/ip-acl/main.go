@@ -143,32 +143,26 @@ func demonstrateIPChecks() {
 
 	// Check if IP is authorised
 	clientIP := "10.0.1.1:12345"
-	if authorised, err := acl.AuthoriseFromString(clientIP); err != nil {
-		log.Printf("Error checking authorization: %v\n", err)
-	} else if authorised {
-		fmt.Printf("✓ %s - Access allowed\n", clientIP)
+	if err := acl.AuthoriseFromString(clientIP); err != nil {
+		fmt.Printf("✗ %s - Access denied: %v\n", clientIP, err)
 	} else {
-		fmt.Printf("✗ %s - Access denied\n", clientIP)
+		fmt.Printf("✓ %s - Access allowed\n", clientIP)
 	}
 
 	// Check denied IP
 	deniedIP := "10.0.0.5:12345"
-	if authorised, err := acl.AuthoriseFromString(deniedIP); err != nil {
-		log.Printf("Error checking authorization: %v\n", err)
-	} else if authorised {
-		fmt.Printf("✓ %s - Access allowed\n", deniedIP)
+	if err := acl.AuthoriseFromString(deniedIP); err != nil {
+		fmt.Printf("✗ %s - Access denied: %v\n", deniedIP, err)
 	} else {
-		fmt.Printf("✗ %s - Access denied (explicitly blocked)\n", deniedIP)
+		fmt.Printf("✓ %s - Access allowed\n", deniedIP)
 	}
 
 	// Check IP outside allowed range
 	outsideIP := "192.168.1.1:12345"
-	if authorised, err := acl.AuthoriseFromString(outsideIP); err != nil {
-		log.Printf("Error checking authorization: %v\n", err)
-	} else if authorised {
-		fmt.Printf("✓ %s - Access allowed\n", outsideIP)
+	if err := acl.AuthoriseFromString(outsideIP); err != nil {
+		fmt.Printf("✗ %s - Access denied: %v\n", outsideIP, err)
 	} else {
-		fmt.Printf("✗ %s - Access denied (outside allowed range)\n", outsideIP)
+		fmt.Printf("✓ %s - Access allowed\n", outsideIP)
 	}
 }
 

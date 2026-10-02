@@ -16,8 +16,8 @@ type Response struct {
 	logger *zerolog.Logger
 }
 
-// responseOption represents a configuration option for responses.
-type responseOption interface {
+// ResponseOption represents a configuration option for responses.
+type ResponseOption interface {
 	apply(*responseConfig)
 }
 
@@ -66,32 +66,32 @@ func (w withHeader) apply(cfg *responseConfig) {
 // Public option factory functions
 
 // LogErr includes an underlying error for server-side logging.
-func LogErr(err error) responseOption {
+func LogErr(err error) ResponseOption {
 	return withError{err}
 }
 
 // LogMessage provides a custom message for server logs (separate from public message).
-func LogMessage(msg string) responseOption {
+func LogMessage(msg string) ResponseOption {
 	return withLogMessage{msg}
 }
 
 // PublicMessage sets the message sent to the client (overrides default).
-func PublicMessage(msg string) responseOption {
+func PublicMessage(msg string) ResponseOption {
 	return withPublicMessage{msg}
 }
 
 // Data includes structured data in the response.
-func Data(data any) responseOption {
+func Data(data any) ResponseOption {
 	return withData{data}
 }
 
 // Location sets the Location header (typically for 201 Created responses).
-func Location(uri string) responseOption {
+func Location(uri string) ResponseOption {
 	return withLocation{uri}
 }
 
 // Header sets a custom response header.
-func Header(key, value string) responseOption {
+func Header(key, value string) ResponseOption {
 	return withHeader{key, value}
 }
 
@@ -135,7 +135,7 @@ func NewResponseFromRequest(w http.ResponseWriter, r *http.Request) *Response {
 }
 
 // respondWithStatus sends a response with the given status code and applied options.
-func (r *Response) respondWithStatus(code int, defaultMessage string, opts ...responseOption) {
+func (r *Response) respondWithStatus(code int, defaultMessage string, opts ...ResponseOption) {
 	cfg := &responseConfig{
 		publicMessage: defaultMessage,
 		headers:       make(map[string]string),
@@ -231,57 +231,57 @@ func isErrorStatus(code int) bool {
 // Semantic error response functions
 
 // BadRequest sends a 400 Bad Request response.
-func (r *Response) BadRequest(opts ...responseOption) {
+func (r *Response) BadRequest(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusBadRequest, "bad request", opts...)
 }
 
 // Unauthorized sends a 401 Unauthorized response.
-func (r *Response) Unauthorized(opts ...responseOption) {
+func (r *Response) Unauthorized(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusUnauthorized, "unauthorized", opts...)
 }
 
 // Forbidden sends a 403 Forbidden response.
-func (r *Response) Forbidden(opts ...responseOption) {
+func (r *Response) Forbidden(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusForbidden, "forbidden", opts...)
 }
 
 // NotFound sends a 404 Not Found response.
-func (r *Response) NotFound(opts ...responseOption) {
+func (r *Response) NotFound(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusNotFound, "not found", opts...)
 }
 
 // Conflict sends a 409 Conflict response.
-func (r *Response) Conflict(opts ...responseOption) {
+func (r *Response) Conflict(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusConflict, "conflict", opts...)
 }
 
 // InternalServerError sends a 500 Internal Server Error response.
-func (r *Response) InternalServerError(opts ...responseOption) {
+func (r *Response) InternalServerError(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusInternalServerError, "internal server error", opts...)
 }
 
 // NotAcceptable sends a 406 Not Acceptable response.
-func (r *Response) NotAcceptable(opts ...responseOption) {
+func (r *Response) NotAcceptable(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusNotAcceptable, "not acceptable", opts...)
 }
 
 // InvalidInput sends a 400 Bad Request response for invalid input.
-func (r *Response) InvalidInput(opts ...responseOption) {
+func (r *Response) InvalidInput(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusBadRequest, "invalid input", opts...)
 }
 
 // UnprocessableEntity sends a 422 Unprocessable Entity response.
-func (r *Response) UnprocessableEntity(opts ...responseOption) {
+func (r *Response) UnprocessableEntity(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusUnprocessableEntity, "unprocessable entity", opts...)
 }
 
 // ServiceUnavailable sends a 503 Service Unavailable response.
-func (r *Response) ServiceUnavailable(opts ...responseOption) {
+func (r *Response) ServiceUnavailable(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusServiceUnavailable, "service unavailable", opts...)
 }
 
 // NotImplemented sends a 501 Not Implemented response.
-func (r *Response) NotImplemented(opts ...responseOption) {
+func (r *Response) NotImplemented(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusNotImplemented, "not implemented", opts...)
 }
 
@@ -328,28 +328,50 @@ type Problem struct {
 // exactly as the other Response methods do. Data and PublicMessage do not
 // apply to a Problem body -- there is no message-merging step to plug them
 // into -- and are dropped with a logged warning if passed.
-func (r *Response) Problem(status int, p Problem, opts ...responseOption) {
+func (r *Response) Problem(status int, p Problem, opts ...ResponseOption) {
 	cfg := &responseConfig{headers: make(map[string]string)}
 	for _, opt := range opts {
 		opt.apply(cfg)
 	}
 
-	if cfg.data != nil || cfg.publicMessage != "" {
-		r.logWarn("Data()/PublicMessage() do not apply to Problem() and were dropped")
-	}
-
-	if cfg.logErr != nil {
-		msg := cfg.logMessage
-		if msg == "" {
-			msg = p.Title
-		}
-		r.logError(cfg.logErr, msg)
-	}
+	r.logProblemConfig(cfg, p.Title)
 
 	for k, v := range cfg.headers {
 		r.Writer.Header().Set(k, v)
 	}
 
+	body := buildProblemBody(status, p)
+
+	r.Writer.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
+	r.Writer.WriteHeader(status)
+	if err := json.NewEncoder(r.Writer).Encode(body); err != nil {
+		r.logError(err, "error encoding response")
+	}
+}
+
+// logProblemConfig logs the side effects of options that don't apply to a
+// Problem response: Data/PublicMessage are warned about and dropped, and
+// LogErr is logged against defaultLogMessage when LogMessage is unset.
+func (r *Response) logProblemConfig(cfg *responseConfig, defaultLogMessage string) {
+	if cfg.data != nil || cfg.publicMessage != "" {
+		r.logWarn("Data()/PublicMessage() do not apply to Problem() and were dropped")
+	}
+
+	if cfg.logErr == nil {
+		return
+	}
+
+	msg := cfg.logMessage
+	if msg == "" {
+		msg = defaultLogMessage
+	}
+	r.logError(cfg.logErr, msg)
+}
+
+// buildProblemBody fills in p's RFC 9457 defaults (Type, Status) and renders
+// it as a map ready for JSON encoding, with Extensions merged underneath the
+// standard members.
+func buildProblemBody(status int, p Problem) map[string]any {
 	if p.Type == "" {
 		p.Type = "about:blank"
 	}
@@ -371,37 +393,33 @@ func (r *Response) Problem(status int, p Problem, opts ...responseOption) {
 		body["instance"] = p.Instance
 	}
 
-	r.Writer.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
-	r.Writer.WriteHeader(status)
-	if err := json.NewEncoder(r.Writer).Encode(body); err != nil {
-		r.logError(err, "error encoding response")
-	}
+	return body
 }
 
 // Semantic success response functions
 
 // OK sends a 200 OK response.
-func (r *Response) OK(opts ...responseOption) {
+func (r *Response) OK(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusOK, "", opts...)
 }
 
 // Created sends a 201 Created response.
-func (r *Response) Created(opts ...responseOption) {
+func (r *Response) Created(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusCreated, "created", opts...)
 }
 
 // Accepted sends a 202 Accepted response.
-func (r *Response) Accepted(opts ...responseOption) {
+func (r *Response) Accepted(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusAccepted, "accepted", opts...)
 }
 
 // WithStatus sends a response with a custom status code.
-func (r *Response) WithStatus(code int, opts ...responseOption) {
+func (r *Response) WithStatus(code int, opts ...ResponseOption) {
 	r.respondWithStatus(code, "", opts...)
 }
 
 // NoContent sends a 204 No Content response.
-func (r *Response) NoContent(opts ...responseOption) {
+func (r *Response) NoContent(opts ...ResponseOption) {
 	r.respondWithStatus(http.StatusNoContent, "", opts...)
 }
 
