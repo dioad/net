@@ -11,8 +11,6 @@ import (
 // Record is a DNS MX record following the same Render pattern as dmarc.Record
 // and spf.Record: fields may contain Go template strings expanded at render time.
 type Record struct {
-	// Priority is the MX preference value.
-	Priority uint16 `json:"priority" mapstructure:"priority"`
 	// Host is a Go template string for the mail exchange FQDN (must end in ".").
 	// Empty defaults to "{{.Domain}}." at render time — the tunnel's own FQDN.
 	Host string `json:"host,omitempty" mapstructure:"host"`
@@ -20,6 +18,8 @@ type Record struct {
 	Prefix string `json:"prefix,omitempty" mapstructure:"prefix"`
 	// TTL is the DNS TTL in seconds advertised to resolvers. Zero uses dns.DefaultTTL.
 	TTL uint32 `json:"ttl,omitempty" mapstructure:"ttl"`
+	// Priority is the MX preference value.
+	Priority uint16 `json:"priority" mapstructure:"priority"`
 }
 
 // RecordPrefix returns the DNS owner label prefix relative to the base

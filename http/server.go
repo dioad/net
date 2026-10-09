@@ -28,20 +28,10 @@ import (
 
 // Config represents the configuration for an HTTP server.
 type Config struct {
-	// ListenAddress is the address to listen on, e.g. ":8080"
-	ListenAddress string
-	// EnablePrometheusMetrics enables the /metrics endpoint for Prometheus metrics
-	EnablePrometheusMetrics bool
-	// EnableDebug enables the /debug endpoint for pprof debugging
-	EnableDebug bool
-	// EnableStatus enables the /status endpoint for server status
-	EnableStatus bool
-	// EnableProxyProtocol enables the PROXY protocol for client IP forwarding
-	EnableProxyProtocol bool
 	// TLSConfig is the TLS configuration for the server
 	TLSConfig *tls.Config
-	// EnableHealth enables the /health/live and /health/ready endpoints for health checks
-	EnableHealth bool
+	// ListenAddress is the address to listen on, e.g. ":8080"
+	ListenAddress string
 	// ReadHeaderTimeout is the maximum duration for reading request headers.
 	// If zero, defaults to defaultReadHeaderTimeout.
 	// Setting this prevents ghost TCP connections (accepted but no HTTP request sent)
@@ -51,6 +41,16 @@ type Config struct {
 	// remain open before being closed. If zero, Go's http.Server defaults to
 	// ReadTimeout.
 	IdleTimeout time.Duration
+	// EnablePrometheusMetrics enables the /metrics endpoint for Prometheus metrics
+	EnablePrometheusMetrics bool
+	// EnableDebug enables the /debug endpoint for pprof debugging
+	EnableDebug bool
+	// EnableStatus enables the /status endpoint for server status
+	EnableStatus bool
+	// EnableProxyProtocol enables the PROXY protocol for client IP forwarding
+	EnableProxyProtocol bool
+	// EnableHealth enables the /health/live and /health/ready endpoints for health checks
+	EnableHealth bool
 }
 
 // defaultReadHeaderTimeout is applied when Config.ReadHeaderTimeout is zero.

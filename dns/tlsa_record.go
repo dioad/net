@@ -15,30 +15,25 @@ import (
 // Render and, if AutoRefresh is set, kept fresh afterward by a background
 // ticker running every AutoRefreshPeriodSeconds -- see refreshableContent.
 type TLSARecord struct {
+	content refreshableContent
 	// CertPathTemplate is a Go template string (expanded against the data
 	// passed to Render) for the path to the PEM-encoded certificate file
 	// this record's value is derived from.
 	CertPathTemplate string `mapstructure:"cert-path-template"`
-
 	// Name is the DNS owner label this record targets, e.g. "mx" for a TLSA
 	// record on a mail exchanger.
-	Name string `mapstructure:"name"`
-
+	Name                     string `mapstructure:"name"`
+	Proto                    string `mapstructure:"proto"`
+	AutoRefreshPeriodSeconds int64  `mapstructure:"auto-refresh-period-seconds"`
 	// Port and Proto identify the service this TLSA record applies to,
 	// e.g. Port 25, Proto "tcp" for SMTP.
-	Port  uint8  `mapstructure:"port"`
-	Proto string `mapstructure:"proto"`
-
+	Port uint8 `mapstructure:"port"`
 	// Selector, MatchingType, and Usage are the TLSA record's own fields,
 	// as defined in RFC 6698.
 	Selector     uint8 `mapstructure:"selector"`
 	MatchingType uint8 `mapstructure:"matching-type"`
 	Usage        uint8 `mapstructure:"usage"`
-
-	AutoRefresh              bool  `mapstructure:"auto-refresh"`
-	AutoRefreshPeriodSeconds int64 `mapstructure:"auto-refresh-period-seconds"`
-
-	content refreshableContent
+	AutoRefresh  bool  `mapstructure:"auto-refresh"`
 }
 
 // fetchDNSContents derives the TLSA record value from the certificate at
