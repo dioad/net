@@ -3,7 +3,8 @@ package http
 import (
 	"net/http"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/rs/zerolog"
 )
 
@@ -23,10 +24,11 @@ const requestIDHeader = "X-Request-ID"
 //	logger := zerolog.Ctx(r.Context())
 func RequestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestID := uuid.NewString()
-		w.Header().Set(requestIDHeader, requestID)
+		requestID := uuid.New()
+
+		w.Header().Set(requestIDHeader, requestID.String())
 		zerolog.Ctx(r.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
-			return c.Str("request_id", requestID)
+			return c.Stringer("request_id", requestID)
 		})
 		next.ServeHTTP(w, r)
 	})
