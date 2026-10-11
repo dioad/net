@@ -65,7 +65,7 @@ func GetClientIP(r *http.Request) string {
 
 	// Fall back to RemoteAddr (remove port if present)
 	addr := r.RemoteAddr
-	if idx := strings.LastIndex(addr, ":"); idx != -1 {
+	if before, _, ok := strings.CutLast(addr, ":"); ok {
 		// Handle IPv6 addresses like [::1]:8080
 		if strings.HasPrefix(addr, "[") {
 			if bracketIdx := strings.Index(addr, "]"); bracketIdx != -1 {
@@ -73,7 +73,7 @@ func GetClientIP(r *http.Request) string {
 			}
 		}
 
-		return addr[:idx]
+		return before
 	}
 
 	return addr

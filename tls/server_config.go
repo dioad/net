@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/crypto/acme"
 
 	"github.com/dioad/generics"
 
@@ -140,17 +141,35 @@ func NewServerTLSConfig(ctx context.Context, c ServerConfig) (*tls.Config, error
 		tlsConfig.ServerName = c.ServerName
 	}
 
-	defaultNextProtos := []string{"h2", "http/1.1"}
-	if len(c.NextProtos) > 0 {
-		defaultNextProtos = c.NextProtos
-	}
-	tlsConfig.NextProtos = mergeNextProtos(tlsConfig.NextProtos, defaultNextProtos)
+	tlsConfig.NextProtos = resolveNextProtos(tlsConfig.NextProtos, c.NextProtos)
 
 	if err := applyClientCA(tlsConfig, c); err != nil {
 		return nil, err
 	}
 
 	return tlsConfig, nil
+}
+
+// resolveNextProtos returns the ALPN list for a server whose certificate
+// provider produced existing.
+//
+// With no configured list, the provider's own list is merged with the
+// [h2, http/1.1] default. A configured list is authoritative: it replaces
+// both the default and any application protocols the provider offers (ACME
+// tls-alpn-01's autocert config offers h2 and http/1.1 itself), keeping
+// only acme-tls/1, which the provider needs to answer certificate
+// challenges. Without that, a server that cannot speak h2 could never stop
+// clients negotiating it.
+func resolveNextProtos(existing, configured []string) []string {
+	if len(configured) == 0 {
+		return mergeNextProtos(existing, []string{"h2", "http/1.1"})
+	}
+
+	resolved := slices.Clone(configured)
+	if slices.Contains(existing, acme.ALPNProto) && !slices.Contains(resolved, acme.ALPNProto) {
+		resolved = append(resolved, acme.ALPNProto)
+	}
+	return resolved
 }
 
 // mergeNextProtos returns existing's ALPN protocol list merged with
