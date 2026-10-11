@@ -309,6 +309,44 @@ func TestNewServerTLSConfig(t *testing.T) {
 			},
 		},
 		{
+			// An explicit list is authoritative even over the protocols
+			// autocert offers itself, so a server that cannot speak h2 can
+			// stop clients negotiating it; acme-tls/1 is kept so tls-alpn-01
+			// challenges still work.
+			name: "with ACME config and explicit next protos, only acme-tls/1 is kept from the provider",
+			c: ServerConfig{
+				ACME: ACMEConfig{
+					Domains:        []string{"example.com"},
+					CacheDirectory: t.TempDir(),
+				},
+				NextProtos: []string{"http/1.1"},
+			},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
+				if want := []string{"http/1.1", "acme-tls/1"}; !slices.Equal(got.NextProtos, want) {
+					t.Errorf("NextProtos = %v, want %v", got.NextProtos, want)
+				}
+			},
+		},
+		{
+			name: "with ACME config and explicit next protos naming acme-tls/1, it is not duplicated",
+			c: ServerConfig{
+				ACME: ACMEConfig{
+					Domains:        []string{"example.com"},
+					CacheDirectory: t.TempDir(),
+				},
+				NextProtos: []string{"acme-tls/1", "http/1.1"},
+			},
+			checkFunc: func(t *testing.T, got *tls.Config) {
+				t.Helper()
+
+				if want := []string{"acme-tls/1", "http/1.1"}; !slices.Equal(got.NextProtos, want) {
+					t.Errorf("NextProtos = %v, want %v", got.NextProtos, want)
+				}
+			},
+		},
+		{
 			name: "client CA file read error is wrapped",
 			c: ServerConfig{
 				LocalConfig:  LocalConfig{Certificate: certPath, Key: keyPath},
