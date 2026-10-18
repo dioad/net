@@ -34,7 +34,7 @@ func NewClientTLSConfig(c ClientConfig) (*tls.Config, error) {
 	if cert != nil {
 		tlsConfig.Certificates = []tls.Certificate{*cert}
 	}
-	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
+	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify // #nosec G402 -- an explicit, opt-in client setting; false unless the caller asks for it
 
 	if c.RootCAFile != "" {
 		rootCAs, err := LoadCertPoolFromFile(c.RootCAFile)
