@@ -260,6 +260,14 @@ func filterNilMiddlewares(middlewares []Middleware) []Middleware {
 	})
 }
 
+// AddHealthSource adds source to the server's /health/live, /health/ready and
+// /status aggregates under name, without mounting a route. See
+// HealthRegistry.RegisterHealthSource. A source added to a server is also
+// reported by any operational server built from it.
+func (s *Server) AddHealthSource(name string, source any) error {
+	return s.HealthRegistry.RegisterHealthSource(name, source)
+}
+
 // AddResource adds a resource to the server at the specified path prefix
 // Optional middlewares can be provided to be applied exclusively to the resource's routes.
 func (s *Server) AddResource(pathPrefix string, r Resource, middlewares ...Middleware) {

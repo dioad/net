@@ -1,6 +1,7 @@
 package http
 
 import (
+	"crypto/tls"
 	"sort"
 	"strings"
 
@@ -20,6 +21,18 @@ type OperationalConfig struct {
 	// EnableDebug serves /debug (pprof). It exposes memory contents, so keep
 	// it off unless debugging.
 	EnableDebug bool
+	// TLSConfig, when set, serves the operational endpoints over TLS, for
+	// example with client-certificate verification where the listener is
+	// reachable beyond the platform.
+	TLSConfig *tls.Config
+	// EnableProxyProtocol accepts a PROXY protocol header, for a listener a
+	// proxy forwards to. Leave it off for a platform check or scraper that
+	// connects directly: with the default ProxyProtocolPolicy (require) a
+	// connection without a header is refused.
+	EnableProxyProtocol bool
+	// ProxyProtocolPolicy applies when EnableProxyProtocol is set; see
+	// Config.ProxyProtocolPolicy.
+	ProxyProtocolPolicy ProxyProtocolPolicy
 }
 
 // NewOperationalServer returns a server that serves primary's operational
@@ -31,8 +44,10 @@ type OperationalConfig struct {
 // primary's health registry, so a resource added to primary at any point is
 // reported here, and its /metrics serves primary's request metrics with the
 // process-wide default registry. It inherits none of primary's middlewares,
-// authentication or resources and does not use the PROXY protocol: bind it
-// where only the platform can reach it.
+// authentication or resources, and none of its TLS or PROXY protocol
+// settings: it serves plain HTTP with no PROXY protocol unless cfg says
+// otherwise. Bind it where only the platform can reach it, or give it TLS
+// with client verification.
 //
 // opts are applied last, so WithLogger or WithMetricsGatherers can override
 // the defaults.
@@ -43,6 +58,9 @@ func NewOperationalServer(primary *Server, cfg OperationalConfig, opts ...Server
 		EnableStatus:            cfg.EnableStatus,
 		EnableDebug:             cfg.EnableDebug,
 		EnableHealth:            true,
+		TLSConfig:               cfg.TLSConfig,
+		EnableProxyProtocol:     cfg.EnableProxyProtocol,
+		ProxyProtocolPolicy:     cfg.ProxyProtocolPolicy,
 	})
 	s.HealthRegistry = primary.HealthRegistry
 	// The operational server's own request metrics are left out: they carry
