@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	stdlog "log"
 	"net"
@@ -49,8 +50,46 @@ type Config struct {
 	EnableStatus bool
 	// EnableProxyProtocol enables the PROXY protocol for client IP forwarding
 	EnableProxyProtocol bool
+	// ProxyProtocolPolicy says what happens to a connection without a PROXY
+	// header when EnableProxyProtocol is set. Empty means
+	// ProxyProtocolRequire.
+	ProxyProtocolPolicy ProxyProtocolPolicy
 	// EnableHealth enables the /health/live and /health/ready endpoints for health checks
 	EnableHealth bool
+}
+
+// ProxyProtocolPolicy is what a PROXY protocol listener does with a connection
+// that does not start with a PROXY header. It is set explicitly here rather
+// than left to go-proxyproto's DefaultPolicy, which changed from optional to
+// required in v0.15.0 and silently changed what every listener accepted.
+type ProxyProtocolPolicy string
+
+const (
+	// ProxyProtocolRequire refuses a connection without a PROXY header. Use it
+	// when every client arrives through a proxy that adds one: a client that
+	// reaches the port directly cannot then forge its source address. This is
+	// the default.
+	ProxyProtocolRequire ProxyProtocolPolicy = "require"
+	// ProxyProtocolOptional uses a PROXY header when one is sent and accepts
+	// a connection without one, for a listener reached both through a proxy
+	// and directly (a platform health check, a metrics scrape). Anyone who
+	// can reach the port directly can then send a header and choose the
+	// source address the server sees.
+	ProxyProtocolOptional ProxyProtocolPolicy = "optional"
+)
+
+// connPolicy returns the go-proxyproto policy for p.
+func (p ProxyProtocolPolicy) connPolicy() (proxyproto.ConnPolicyFunc, error) {
+	var policy proxyproto.Policy
+	switch p {
+	case "", ProxyProtocolRequire:
+		policy = proxyproto.REQUIRE
+	case ProxyProtocolOptional:
+		policy = proxyproto.USE
+	default:
+		return nil, fmt.Errorf("unknown proxy protocol policy %q: want %q or %q", p, ProxyProtocolRequire, ProxyProtocolOptional)
+	}
+	return func(proxyproto.ConnPolicyOptions) (proxyproto.Policy, error) { return policy, nil }, nil
 }
 
 // defaultReadHeaderTimeout is applied when Config.ReadHeaderTimeout is zero.
@@ -484,11 +523,16 @@ func (s *Server) Serve(ln net.Listener) error {
 		Msg("starting server")
 
 	if s.Config.EnableProxyProtocol {
+		connPolicy, err := s.Config.ProxyProtocolPolicy.connPolicy()
+		if err != nil {
+			return err
+		}
 		ln = &proxyproto.Listener{
 			Listener:          ln,
 			ReadHeaderTimeout: 10 * time.Second,
+			ConnPolicy:        connPolicy,
 		}
-		s.Logger.Debug().Msg("proxy protocol enabled")
+		s.Logger.Debug().Str("proxy_protocol_policy", string(s.Config.ProxyProtocolPolicy)).Msg("proxy protocol enabled")
 	}
 
 	var err error
