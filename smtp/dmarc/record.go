@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/dioad/net/dns"
 	"github.com/dioad/net/smtp/internal/txtchunk"
 )
 
@@ -116,6 +117,13 @@ func (r *Record) Render(data any) error {
 	return nil
 }
 
+// Empty reports whether no field of the record is set.
+func (r *Record) Empty() bool {
+	return r.Version == "" && r.Policy == "" && r.Percent == nil &&
+		len(r.ReportURIAggregate) == 0 && len(r.ReportURIFailure) == 0 &&
+		r.SubdomainPolicy == "" && r.AlignmentPolicyDKIM == "" && r.AlignmentPolicySPF == ""
+}
+
 // RecordType returns the DNS record type string, "TXT".
 func (r *Record) RecordType() string {
 	return "TXT"
@@ -169,3 +177,8 @@ func (r *Record) String() string {
 
 	return strings.Join(parts, "; ")
 }
+
+var (
+	_ dns.DNSRecord       = (*Record)(nil)
+	_ dns.TemplatedRecord = (*Record)(nil)
+)

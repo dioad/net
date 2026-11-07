@@ -10,6 +10,7 @@ import (
 	"github.com/dioad/generics"
 	"github.com/dioad/util"
 
+	"github.com/dioad/net/dns"
 	"github.com/dioad/net/smtp/internal/txtchunk"
 )
 
@@ -125,12 +126,24 @@ func resolveValues(mech Mechanism, data any) []string {
 }
 
 // Render expands each mechanism's ValueList/Values templates against data.
+// It writes to a copy of Mechanisms, so a Record copied from another (a
+// config decoded once and rendered per tunnel, say) doesn't change the
+// mechanisms of the one it was copied from, and rendering each copy again
+// doesn't repeat values.
 func (r *Record) Render(data any) error {
-	for i := range r.Mechanisms {
-		r.Mechanisms[i].Values = resolveValues(r.Mechanisms[i], data)
+	mechanisms := make([]Mechanism, len(r.Mechanisms))
+	for i, m := range r.Mechanisms {
+		m.Values = resolveValues(m, data)
+		mechanisms[i] = m
 	}
+	r.Mechanisms = mechanisms
 
 	return nil
+}
+
+// Empty reports whether the record has no version, mechanisms or all term.
+func (r *Record) Empty() bool {
+	return r.Version == "" && len(r.Mechanisms) == 0 && !r.All && r.AllQualifier == ""
 }
 
 // RecordPrefix returns the DNS owner label prefix for an SPF record: always
@@ -221,3 +234,8 @@ func FormatMechanisms(mechanism ...Mechanism) string {
 
 	return strings.Join(outputs, " ")
 }
+
+var (
+	_ dns.DNSRecord       = (*Record)(nil)
+	_ dns.TemplatedRecord = (*Record)(nil)
+)
