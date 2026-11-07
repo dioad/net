@@ -286,7 +286,7 @@ func TestNewServerTLSConfig(t *testing.T) {
 				// "acme-tls/1", "h2" and "http/1.1" (in that order), so the
 				// [h2, http/1.1] default is already fully covered and must
 				// not be appended again as duplicates.
-				base, err := newAutocertTLSConfig(ACMEConfig{Domains: []string{"example.com"}, CacheDirectory: t.TempDir()})
+				base, err := newAutocertTLSConfig(t.Context(), ACMEConfig{Domains: []string{"example.com"}, CacheDirectory: t.TempDir()})
 				if err != nil {
 					t.Fatalf("newAutocertTLSConfig() error = %v", err)
 				}
