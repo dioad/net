@@ -32,7 +32,7 @@ func TestNewAutocertTLSConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newAutocertTLSConfig(tt.c)
+			got, err := newAutocertTLSConfig(t.Context(), tt.c)
 			if err != nil {
 				t.Errorf("newAutocertTLSConfig() error = %v", err)
 

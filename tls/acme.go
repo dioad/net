@@ -90,7 +90,7 @@ func NewACMETLSConfig(ctx context.Context, c ACMEConfig) (*tls.Config, error) {
 			return nil, fmt.Errorf("acme: %w", err)
 		}
 
-		return newAutocertTLSConfig(c)
+		return newAutocertTLSConfig(ctx, c)
 	case ACMEChallengeDNS01:
 		return newDNS01TLSConfig(ctx, c)
 	default:
