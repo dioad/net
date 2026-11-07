@@ -54,7 +54,8 @@ func (r *TLSARecord) fetchDNSContents(data any) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("%d %d %d %v", r.Selector, r.MatchingType, r.Usage, tlsaValue), nil
+	// RFC 6698 presentation order: usage, selector, matching type.
+	return fmt.Sprintf("%d %d %d %v", r.Usage, r.Selector, r.MatchingType, tlsaValue), nil
 }
 
 // Render computes this record's TLSA value from the certificate at
