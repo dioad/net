@@ -115,6 +115,54 @@ func TestSaveTLSCertificateToFiles(t *testing.T) {
 	})
 }
 
+// helperCertificateWithChain returns a certificate whose chain holds a second
+// certificate after the leaf, standing in for an intermediate.
+func helperCertificateWithChain(t *testing.T) *tls.Certificate {
+	t.Helper()
+
+	leaf, _ := helperCreateSelfSignedKeyPair(t, t.TempDir())
+	intermediate, _ := helperCreateSelfSignedKeyPair(t, t.TempDir())
+	return &tls.Certificate{
+		Certificate: [][]byte{leaf.Certificate[0], intermediate.Certificate[0]},
+		PrivateKey:  leaf.PrivateKey,
+	}
+}
+
+func TestSaveTLSCertificate_KeepsTheChain(t *testing.T) {
+	t.Run("to separate certificate and key files", func(t *testing.T) {
+		cert := helperCertificateWithChain(t)
+		dir := t.TempDir()
+		certPath := filepath.Join(dir, "cert.pem")
+		keyPath := filepath.Join(dir, "key.pem")
+
+		require.NoError(t, SaveTLSCertificateToFiles(cert, certPath, keyPath))
+
+		loaded, err := LoadKeyPairFromFiles(certPath, keyPath)
+		require.NoError(t, err)
+		assert.Equal(t, cert.Certificate, loaded.Certificate,
+			"a server loading the file must be able to send the intermediates, leaf first")
+	})
+
+	t.Run("to one file", func(t *testing.T) {
+		cert := helperCertificateWithChain(t)
+		path := filepath.Join(t.TempDir(), "cert.pem")
+
+		require.NoError(t, SaveTLSCertificateToFile(cert, path, 0600))
+
+		loaded, err := LoadKeyPairAndCertsFromFile(path)
+		require.NoError(t, err)
+		assert.Equal(t, cert.Certificate, loaded.Certificate)
+	})
+}
+
+func TestSaveTLSCertificate_NoCertificate(t *testing.T) {
+	empty := &tls.Certificate{PrivateKey: "irrelevant"}
+	dir := t.TempDir()
+
+	require.ErrorIs(t, SaveTLSCertificateToFiles(empty, filepath.Join(dir, "cert.pem"), filepath.Join(dir, "key.pem")), errNoCertificate)
+	require.ErrorIs(t, SaveTLSCertificateToFile(empty, filepath.Join(dir, "both.pem"), 0600), errNoCertificate)
+}
+
 func TestLoadKeyPairAndCertsFromFile(t *testing.T) {
 	t.Run("returns an error when the file cannot be read", func(t *testing.T) {
 		_, err := LoadKeyPairAndCertsFromFile(filepath.Join(t.TempDir(), "missing.pem"))
