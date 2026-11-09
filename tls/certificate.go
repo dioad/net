@@ -57,7 +57,9 @@ func LoadKeyPairFromFiles(certPath, keyPath string) (*tls.Certificate, error) {
 	return &cert, nil
 }
 
-func saveBlockToPEMFile(filename string, perm int, blockType string, data []byte) error {
+// saveBlocksToPEMFile writes each of blocks to filename as a PEM block of
+// blockType, in order.
+func saveBlocksToPEMFile(filename string, perm int, blockType string, blocks ...[]byte) error {
 	filenameClean := filepath.Clean(filename)
 
 	f, err := os.OpenFile(filenameClean, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(perm)) // #nosec G115 -- perm is a caller-supplied Unix permission mode (e.g. 0600), always a small positive value
@@ -65,15 +67,21 @@ func saveBlockToPEMFile(filename string, perm int, blockType string, data []byte
 		return err
 	}
 
-	err = encodeBlock(f, blockType, data)
-	if err != nil {
-		_ = f.Close()
+	for _, data := range blocks {
+		err = encodeBlock(f, blockType, data)
+		if err != nil {
+			_ = f.Close()
 
-		return err
+			return err
+		}
 	}
 
 	return f.Close()
 }
+
+// errNoCertificate is returned when asked to save a tls.Certificate that
+// holds no certificate.
+var errNoCertificate = errors.New("tls certificate has no certificate to save")
 
 func encodeBlock(w io.Writer, blockType string, data []byte) error {
 	err := pem.Encode(w, &pem.Block{Type: blockType, Bytes: data})
@@ -102,8 +110,13 @@ func encodePrivateKeyBlock(w io.Writer, data crypto.PrivateKey) error {
 	return nil
 }
 
-// SaveTLSCertificateToFile saves a tls.Certificate to a file.
+// SaveTLSCertificateToFile saves a tls.Certificate to a file: its whole
+// certificate chain, leaf first, then its private key.
 func SaveTLSCertificateToFile(cert *tls.Certificate, filename string, perm int) error {
+	if len(cert.Certificate) == 0 {
+		return errNoCertificate
+	}
+
 	filenameClean := filepath.Clean(filename)
 
 	f, err := os.OpenFile(filenameClean, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(perm)) // #nosec G115 -- perm is a caller-supplied Unix permission mode (e.g. 0600), always a small positive value
@@ -111,11 +124,13 @@ func SaveTLSCertificateToFile(cert *tls.Certificate, filename string, perm int) 
 		return err
 	}
 
-	err = encodeCertificateBlock(f, cert.Certificate[0])
-	if err != nil {
-		_ = f.Close()
+	for _, der := range cert.Certificate {
+		err = encodeCertificateBlock(f, der)
+		if err != nil {
+			_ = f.Close()
 
-		return err
+			return err
+		}
 	}
 
 	err = encodePrivateKeyBlock(f, cert.PrivateKey)
@@ -128,9 +143,15 @@ func SaveTLSCertificateToFile(cert *tls.Certificate, filename string, perm int) 
 	return f.Close()
 }
 
-// SaveTLSCertificateToFiles saves a tls.Certificate to a certificate and key file.
+// SaveTLSCertificateToFiles saves a tls.Certificate to a certificate and key
+// file. The certificate file holds the whole chain, leaf first, so a server
+// that loads it sends clients the intermediates they need to verify the leaf.
 func SaveTLSCertificateToFiles(cert *tls.Certificate, certPath, keyPath string) error {
-	err := saveBlockToPEMFile(certPath, 0644, "CERTIFICATE", cert.Certificate[0])
+	if len(cert.Certificate) == 0 {
+		return errNoCertificate
+	}
+
+	err := saveBlocksToPEMFile(certPath, 0644, "CERTIFICATE", cert.Certificate...)
 	if err != nil {
 		return err
 	}
@@ -140,7 +161,7 @@ func SaveTLSCertificateToFiles(cert *tls.Certificate, certPath, keyPath string) 
 		return err
 	}
 
-	return saveBlockToPEMFile(keyPath, 0600, "PRIVATE KEY", privateBytes)
+	return saveBlocksToPEMFile(keyPath, 0600, "PRIVATE KEY", privateBytes)
 }
 
 // LoadKeyPairAndCertsFromFile From: https://gist.github.com/ukautz/cd118e298bbd8f0a88fc
