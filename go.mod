@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	github.com/coredns/coredns v1.14.7
-	github.com/dioad/config v0.1.0
+	github.com/dioad/config v0.2.0
 	github.com/dioad/filter v0.6.1
 	github.com/dioad/generics v0.0.9
 	github.com/dioad/util v0.7.0
