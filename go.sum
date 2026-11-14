@@ -7,6 +7,8 @@ github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/coredns/coredns v1.14.7 h1:UPDkn4QN+xyNfjz3U5ldgoLszDYpMZEJoy3+ze9au4Q=
 github.com/coredns/coredns v1.14.7/go.mod h1:ABNpFbWAas3/CDYRyzlVYLqX/gSVq/5yDr7wm5fjafA=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
+github.com/dioad/config v0.1.0 h1:xPgvHhE/iKGGno3nLMTFFoWQfxIPxPaveJNDyhdAfj0=
+github.com/dioad/config v0.1.0/go.mod h1:+jhrrmiriV+47gmI+cGS2paADCuWICxTHGjcmLbcBOA=
 github.com/dioad/filter v0.6.1 h1:iEX/ztIXrI+udLt94N55TAIOd7JjCzIiIbYKG9B96sY=
 github.com/dioad/filter v0.6.1/go.mod h1:s8x3fpSsovtPo0tM8YEpzA3Y3bQtGAZwsHpzAVT1qBA=
 github.com/dioad/generics v0.0.9 h1:886ArS3vNm+c6usRuQmEhhyqxVLbJSdM5NMPnM49Ya8=
@@ -21,6 +23,8 @@ github.com/go-acme/lego/v5 v5.5.2 h1:SJ5cMZDoyg5hB6tYpZoFcwgzkJVJI1yu5f0N8gAEeVs
 github.com/go-acme/lego/v5 v5.5.2/go.mod h1:d6S2VCJAVcPBSGAy+diFoCZbvfWo80tt0ZPSXDiq6PM=
 github.com/go-jose/go-jose/v4 v4.1.5 h1:RjgjO2LOtWOJKUC5wpwY9LR3B3vwVAz6JS2YHfYU6eA=
 github.com/go-jose/go-jose/v4 v4.1.5/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
+github.com/go-viper/mapstructure/v2 v2.5.0 h1:vM5IJoUAy3d7zRSVtIwQgBj7BiWtMPfmPEgAXnvj1Ro=
+github.com/go-viper/mapstructure/v2 v2.5.0/go.mod h1:oJDH3BJKyqBA2TXFhDsKDGDTlndYOZ6rGS0BRZIxGhM=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/google/gofuzz v1.2.0 h1:xRy4A+RhZaiKjJ1bPfwQ8sedCA+YS2YcCHW6ec7JMi0=
