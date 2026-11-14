@@ -3,10 +3,10 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -17,90 +17,83 @@ import (
 	"github.com/dioad/net/ratelimit"
 )
 
-func main() {
-	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+const listenAddress = ":8080"
 
-	// Create a generic rate limiter (10 connections per second, burst of 20)
-	rl := ratelimit.NewRateLimiterWithOptions(
+func main() {
+	logger := zerolog.New(os.Stderr).With().Timestamp().Str("service", "rate-limiting-network").Logger()
+
+	if err := run(logger); err != nil {
+		logger.Fatal().Err(err).Msg("server failed")
+	}
+}
+
+// run accepts connections until the process is interrupted.
+func run(logger zerolog.Logger) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Ten connections per second with a burst of twenty, for each source IP.
+	limiter := ratelimit.NewRateLimiterWithOptions(
 		ratelimit.WithRateLimiterStaticLimits(10.0, 20),
 		ratelimit.WithRateLimiterLogger(logger),
 	)
+	defer limiter.Stop()
 
-	// Create a listener
-	//nolint:noctx // binding a local listen socket is instant, no context needed for a demo
-	ln, err := net.Listen("tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
+	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", listenAddress)
 	if err != nil {
-		log.Fatalf("Error creating listener: %v\n", err)
+		return fmt.Errorf("failed to listen on %s: %w", listenAddress, err)
 	}
-	defer func() { _ = ln.Close() }()
+	listener := ratelimit.NewListener(ln, limiter, logger)
+	logger.Info().Str("address", ln.Addr().String()).Msg("try: nc localhost 8080")
 
-	// Wrap an existing listener with rate limiting (by source IP)
-	rlListener := ratelimit.NewListener(ln, rl, logger)
-
-	fmt.Println("Starting TCP server with network rate limiting on :8080")
-	fmt.Println("Rate limit: 10 connections/second with burst of 20 per source IP")
-	fmt.Println("Try: nc localhost 8080 (or telnet localhost 8080)")
-
-	// Handle shutdown gracefully
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
+	// Closing the listener is what ends the accept loop below.
 	go func() {
-		<-sigChan
-		fmt.Println("\nShutting down server...")
-		_ = rlListener.Close()
+		<-ctx.Done()
+		_ = listener.Close()
 	}()
 
-	// Accept and handle connections
 	for {
-		conn, err := rlListener.Accept()
+		conn, err := listener.Accept()
+		if errors.Is(err, net.ErrClosed) {
+			logger.Info().Msg("listener stopped")
+
+			return nil
+		}
 		if err != nil {
-			// Check if we're shutting down
-			if errors.Is(err, net.ErrClosed) {
-				break
-			}
-			log.Printf("Error accepting connection: %v\n", err)
+			logger.Error().Err(err).Msg("failed to accept connection")
 
 			continue
 		}
 
-		// Handle connection in goroutine
-		go handleConnection(conn)
+		go echo(conn, logger.With().Str("remote_addr", conn.RemoteAddr().String()).Logger())
 	}
 }
 
-func handleConnection(conn net.Conn) {
+// echo writes back what the client sends until it sends "quit".
+func echo(conn net.Conn, logger zerolog.Logger) {
 	defer func() { _ = conn.Close() }()
+	logger.Info().Msg("connection accepted")
 
-	fmt.Printf("New connection from %s\n", conn.RemoteAddr())
+	_, _ = io.WriteString(conn, "Hello! This connection is rate-limited by source IP.\nType 'quit' to disconnect.\n\n")
 
-	// Send welcome message
-	_, _ = io.WriteString(conn, "Hello! You've connected to the rate-limited server.\n")
-	_, _ = io.WriteString(conn, "This connection is rate-limited by source IP.\n")
-	_, _ = io.WriteString(conn, "Type 'quit' to disconnect.\n\n")
-
-	// Echo server
 	buf := make([]byte, 1024)
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				log.Printf("Error reading from connection: %v\n", err)
+				logger.Error().Err(err).Msg("failed to read from connection")
 			}
 
 			break
 		}
 
-		if n > 0 {
-			msg := string(buf[:n])
-			if msg == "quit\n" || msg == "quit\r\n" {
-				_, _ = io.WriteString(conn, "Goodbye!\n")
+		if msg := string(buf[:n]); msg == "quit\n" || msg == "quit\r\n" {
+			_, _ = io.WriteString(conn, "Goodbye!\n")
 
-				break
-			}
-			_, _ = conn.Write(buf[:n])
+			break
 		}
+		_, _ = conn.Write(buf[:n])
 	}
 
-	fmt.Printf("Connection from %s closed\n", conn.RemoteAddr())
+	logger.Info().Msg("connection closed")
 }

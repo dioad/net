@@ -40,6 +40,9 @@ jobs:
     - name: Test Race Conditions
       run: go test -race -v ./...
 
+    - name: Run Examples
+      run: .github/scripts/run-examples.sh
+
   build:
     name: Build
     needs: test

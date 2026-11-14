@@ -5,105 +5,88 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"net"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
+
+	"github.com/rs/zerolog"
 
 	diohttp "github.com/dioad/net/http"
 	diotls "github.com/dioad/net/tls"
 )
 
+const (
+	listenAddress   = ":8443"
+	shutdownTimeout = 10 * time.Second
+)
+
 func main() {
-	// Create temporary directory for certificates
+	logger := zerolog.New(os.Stderr).With().Timestamp().Str("service", "tls-config").Logger()
+
+	if err := run(logger); err != nil {
+		logger.Fatal().Err(err).Msg("server failed")
+	}
+}
+
+// run serves until the process is interrupted or the server fails.
+func run(logger zerolog.Logger) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	ctx = logger.WithContext(ctx)
+
 	tmpDir, err := os.MkdirTemp("", "tls-example-*")
 	if err != nil {
-		log.Fatalf("Error creating temp dir: %v\n", err)
+		return fmt.Errorf("failed to create temp dir: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	certFile := filepath.Join(tmpDir, "cert.pem")
 	keyFile := filepath.Join(tmpDir, "key.pem")
 
-	fmt.Println("Generating self-signed certificate...")
-
-	// Generate self-signed certificate
-	selfSignedConfig := diotls.SelfSignedConfig{
-		Subject: diotls.CertificateSubject{
-			CommonName: "localhost",
-		},
-		SAN: diotls.SANConfig{
-			DNSNames: []string{"localhost"},
-		},
-		Bits:     2048,  // RSA key size
-		Duration: "24h", // Certificate validity
-	}
-
-	_, _, err = diotls.CreateAndSaveSelfSignedKeyPair(selfSignedConfig, certFile, keyFile)
+	_, _, err = diotls.CreateAndSaveSelfSignedKeyPair(diotls.SelfSignedConfig{
+		Subject:  diotls.CertificateSubject{CommonName: "localhost"},
+		SAN:      diotls.SANConfig{DNSNames: []string{"localhost"}},
+		Bits:     2048,
+		Duration: "24h",
+	}, certFile, keyFile)
 	if err != nil {
-		// log.Fatalf exits immediately, so the defer registered above for
-		// tmpDir would never run - remove it explicitly first.
-		_ = os.RemoveAll(tmpDir)
-		log.Fatalf("Error generating certificate: %v\n", err) //nolint:gocritic // tmpDir is already removed above; gocritic can't see that
+		return fmt.Errorf("failed to generate certificate: %w", err)
 	}
+	logger.Info().Str("certificate", certFile).Str("key", keyFile).Msg("generated self-signed certificate")
 
-	fmt.Printf("Certificate saved to: %s\n", certFile)
-	fmt.Printf("Key saved to: %s\n", keyFile)
-
-	// Configure TLS with local certificate files
-	tlsServerConfig := diotls.ServerConfig{
-		LocalConfig: diotls.LocalConfig{
-			Certificate: certFile,
-			Key:         keyFile,
-		},
-	}
-
-	tlsConfig, err := diotls.NewServerTLSConfig(context.Background(), tlsServerConfig)
+	// A server that already has a certificate on disk starts here.
+	tlsConfig, err := diotls.NewServerTLSConfig(ctx, diotls.ServerConfig{
+		LocalConfig: diotls.LocalConfig{Certificate: certFile, Key: keyFile},
+	})
 	if err != nil {
-		log.Fatalf("Error creating TLS config: %v\n", err)
+		return fmt.Errorf("failed to create TLS config: %w", err)
 	}
 
-	// Create a simple handler
-	myHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = fmt.Fprintf(w, "Hello from secure HTTPS server!\n")
+	server := diohttp.NewServer(
+		diohttp.Config{ListenAddress: listenAddress, TLSConfig: tlsConfig},
+		diohttp.WithLogger(logger),
+	)
+	server.AddHandlerFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "Hello from secure HTTPS server!\n")
 	})
 
-	// Create server with TLS
-	config := diohttp.Config{
-		ListenAddress: ":8443",
-		TLSConfig:     tlsConfig,
+	if err := server.Start(ctx); err != nil {
+		return err
 	}
-	server := diohttp.NewServer(config)
-	server.AddHandler("/", myHandler)
+	logger.Info().Msg("try: curl -k https://localhost:8443/ (-k because the certificate is self-signed)")
 
-	// Create listener
-	//nolint:noctx // binding a local listen socket is instant, no context needed for a demo
-	ln, err := net.Listen("tcp", ":8443") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
-	if err != nil {
-		log.Fatalf("Error creating listener: %v\n", err)
+	select {
+	case <-ctx.Done():
+	case err := <-server.Failed():
+		return err
 	}
-	defer func() { _ = ln.Close() }()
 
-	fmt.Println("\nStarting HTTPS server with TLS on :8443")
-	fmt.Println("Note: Using self-signed certificate")
-	fmt.Println("Try: curl -k https://localhost:8443/")
-	fmt.Println("     (use -k to skip certificate verification)")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
 
-	// Start server in goroutine
-	go func() {
-		err := server.Serve(ln)
-		if err != nil {
-			log.Printf("Server error: %v\n", err)
-		}
-	}()
-
-	// Wait for interrupt signal
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	<-sigChan
-
-	fmt.Println("\nShutting down server...")
+	return server.Shutdown(shutdownCtx)
 }

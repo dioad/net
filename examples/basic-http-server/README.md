@@ -1,6 +1,6 @@
-# Basic HTTP Server with Authentication
+# Basic HTTP Server
 
-This example demonstrates how to create an HTTP server with basic authentication.
+This example is a minimal HTTP server built with `dioad/net/http`.
 
 ## Running the Example
 
@@ -17,15 +17,17 @@ go build
 
 Then test with:
 ```bash
-curl -u user1:password1 http://localhost:8080/protected
+curl http://localhost:8080/hello
 ```
+
+Stop it with Ctrl+C or `SIGTERM`. It exits with status 0 after a clean shutdown.
 
 ## What It Demonstrates
 
-- Creating a basic authentication map with username/password
-- Setting up an HTTP server with basic auth middleware
-- Protecting specific routes with authentication
-- Graceful shutdown handling
+- Creating a server and adding a route
+- `Start`, which returns a bind failure to the caller, and `Failed`, which reports a serve loop that ends unexpectedly
+- Graceful shutdown on `SIGINT` or `SIGTERM`
+- Structured logging with zerolog: a `service` field, and `zerolog.Ctx` in the handler
 
 ## Code
 
