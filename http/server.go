@@ -123,6 +123,9 @@ type Server struct {
 	instrument       Instrument
 	rootResource     RootResource
 	middlewares      []Middleware
+
+	// lifecycle tracks the serve loop Start launches.
+	lifecycle serveLifecycle
 }
 
 func newDefaultServer(config Config) *Server {
@@ -574,8 +577,16 @@ func (s *Server) RegisterOnShutdown(f func()) {
 
 // Shutdown gracefully shuts down the server without interrupting any active connections
 // It waits for all connections to finish or for the context to be canceled.
+//
+// If the server was started with Start, Shutdown also waits for the serve loop
+// to return, and reports the error that ended it unless that error is the one
+// Shutdown itself causes.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.initialiseServer()
 
-	return s.server.Shutdown(ctx)
+	if err := s.server.Shutdown(ctx); err != nil {
+		return err
+	}
+
+	return s.lifecycle.wait(ctx)
 }
