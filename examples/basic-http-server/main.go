@@ -8,17 +8,15 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/rs/zerolog"
+
+	"github.com/dioad/lifecycle"
 
 	diohttp "github.com/dioad/net/http"
 )
 
-const (
-	listenAddress   = ":8080"
-	shutdownTimeout = 10 * time.Second
-)
+const listenAddress = ":8080"
 
 func main() {
 	logger := zerolog.New(os.Stderr).With().Timestamp().Str("service", "basic-http-server").Logger()
@@ -41,21 +39,14 @@ func run(logger zerolog.Logger) error {
 		_, _ = io.WriteString(w, "Hello from dioad/net!\n")
 	})
 
-	// Start returns once the listener is bound, so a port that is already in
-	// use is an error here, not a log line from a goroutine.
-	if err := server.Start(ctx); err != nil {
+	app := lifecycle.New()
+	if err := app.Add("server", server); err != nil {
 		return err
 	}
 	logger.Info().Msg("try: curl http://localhost:8080/hello")
 
-	select {
-	case <-ctx.Done():
-	case err := <-server.Failed():
-		return err
-	}
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	return server.Shutdown(shutdownCtx)
+	// Run starts the server, then blocks until the process is interrupted or
+	// the server fails, and stops it. A port that is already in use is an
+	// error from Run, not a log line from a goroutine.
+	return app.Run(ctx)
 }

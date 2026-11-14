@@ -201,6 +201,7 @@ For more comprehensive, executable examples, see the [`examples/`](examples/) di
 
 - **[Basic HTTP Server](examples/basic-http-server/)** - HTTP server setup and routing
 - **[API Server](examples/api-server/)** - API and management listeners, readiness checks and drain on SIGTERM
+- **[Worker Daemon](examples/worker-daemon/)** - A daemon with no listener, run by `dioad/lifecycle`
 - **[IP-based Access Control](examples/ip-acl/)** - Network ACLs for IP filtering
 - **[HTTP Rate Limiting](examples/rate-limiting-http/)** - Per-principal HTTP rate limiting
 - **[Dynamic Rate Limiting](examples/rate-limiting-dynamic/)** - Rate limiting with custom sources

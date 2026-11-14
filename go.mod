@@ -7,6 +7,7 @@ require (
 	github.com/dioad/config v0.2.0
 	github.com/dioad/filter v0.6.1
 	github.com/dioad/generics v0.0.9
+	github.com/dioad/lifecycle v0.1.0
 	github.com/dioad/util v0.7.0
 	github.com/emersion/go-msgauth v0.7.0
 	github.com/go-acme/lego/v5 v5.6.0
@@ -30,7 +31,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/dioad/lifecycle v0.1.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.9 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect

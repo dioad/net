@@ -25,8 +25,8 @@ Stop it with Ctrl+C or `SIGTERM`. It exits with status 0 after a clean shutdown.
 ## What It Demonstrates
 
 - Creating a server and adding a route
-- `Start`, which returns a bind failure to the caller, and `Failed`, which reports a serve loop that ends unexpectedly
-- Graceful shutdown on `SIGINT` or `SIGTERM`
+- A `*http.Server` run by `lifecycle.App`: no adapter, and a bind failure is an error from `Run`
+- Graceful shutdown on `SIGINT` or `SIGTERM`, and an unexpected end of the serve loop ending the process
 - Structured logging with zerolog: a `service` field, and `zerolog.Ctx` in the handler
 
 ## Code
