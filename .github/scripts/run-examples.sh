@@ -15,8 +15,9 @@ set -o errexit -o nounset -o pipefail
 readonly START_TIMEOUT_SECONDS=20
 readonly STOP_TIMEOUT_SECONDS=20
 
-# Each entry is "<example>|<probe>|<arguments>". A probe is either a URL that
-# must answer 200 or "tcp:<port>", a local port that must accept a connection.
+# Each entry is "<example>|<probe>|<arguments>". A probe is a URL that must
+# answer 200, "tcp:<port>", a local port that must accept a connection, or
+# "log:<text>", text the example must have logged, for one with no listener.
 readonly EXAMPLES=(
   "basic-http-server|http://127.0.0.1:8080/hello|"
   "rate-limiting-http|http://127.0.0.1:8080/limited|"
@@ -25,6 +26,7 @@ readonly EXAMPLES=(
   "ip-acl|tcp:9001|"
   "tls-config|https://127.0.0.1:8443/|"
   "api-server|http://127.0.0.1:8081/health/ready|-drain-delay 1s"
+  "worker-daemon|log:worker started|"
 )
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -41,9 +43,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# probe reports whether the example answers yet.
+# probe reports whether the example answers yet. log is where the running
+# example writes its output.
 probe() {
-  local target="$1"
+  local target="$1" log="$2"
+
+  if [[ "${target}" == log:* ]]; then
+    grep --quiet --fixed-strings -- "${target#log:}" "${log}"
+    return
+  fi
 
   if [[ "${target}" == tcp:* ]]; then
     (exec 3<>"/dev/tcp/127.0.0.1/${target#tcp:}") 2>/dev/null
@@ -56,9 +64,9 @@ probe() {
 
 # wait_until_serving waits for the probe to pass while the example is running.
 wait_until_serving() {
-  local name="$1" target="$2" deadline=$((SECONDS + START_TIMEOUT_SECONDS))
+  local name="$1" target="$2" log="$3" deadline=$((SECONDS + START_TIMEOUT_SECONDS))
 
-  until probe "${target}"; do
+  until probe "${target}" "${log}"; do
     if ! kill -0 "${pid}" 2>/dev/null; then
       echo "FAIL ${name}: exited before serving ${target}" >&2
       return 1
@@ -107,7 +115,7 @@ run_example() {
   "${bin_dir}/${name}" "${args[@]+"${args[@]}"}" >"${log}" 2>&1 &
   pid=$!
 
-  if wait_until_serving "${name}" "${target}" && stop "${name}"; then
+  if wait_until_serving "${name}" "${target}" "${log}" && stop "${name}"; then
     echo "ok   ${name}"
     return 0
   fi

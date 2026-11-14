@@ -9,17 +9,15 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/rs/zerolog"
+
+	"github.com/dioad/lifecycle"
 
 	diohttp "github.com/dioad/net/http"
 )
 
-const (
-	listenAddress   = ":8080"
-	shutdownTimeout = 10 * time.Second
-)
+const listenAddress = ":8080"
 
 func main() {
 	logger := zerolog.New(os.Stderr).With().Timestamp().Str("service", "rate-limiting-http").Logger()
@@ -47,19 +45,13 @@ func run(logger zerolog.Logger) error {
 		_, _ = io.WriteString(w, "Request processed successfully\n")
 	})))
 
-	if err := server.Start(ctx); err != nil {
+	app := lifecycle.New()
+	if err := app.Add("server", server); err != nil {
 		return err
 	}
 	logger.Info().Msg("try: curl http://localhost:8080/limited, several times quickly")
 
-	select {
-	case <-ctx.Done():
-	case err := <-server.Failed():
-		return err
-	}
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	return server.Shutdown(shutdownCtx)
+	// Run starts the server, then blocks until the process is interrupted or
+	// the server fails, and stops it.
+	return app.Run(ctx)
 }

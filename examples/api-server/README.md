@@ -1,7 +1,7 @@
 # API Server
 
-This example is what a Dioad API server looks like using only `dioad/net`: an API listener, a management listener for
-the platform's health checks and metrics scrapes, a readiness gate, and a drain on `SIGTERM`.
+This example is what a Dioad API server looks like using only `dioad/net` and `dioad/lifecycle`: an API listener, a
+management listener for the platform's health checks and metrics scrapes, readiness, and a drain on `SIGTERM`.
 
 ## Running the Example
 
@@ -28,11 +28,11 @@ process exits with status 0.
 
 ## What It Demonstrates
 
-- `build` wires the application without binding a listener; `run` starts it
+- `build` wires the application without binding a listener; `Run` starts it
 - A resource mounted with `AddResource`, answering with `http/json`
 - `NewOperationalServer`: health, metrics and status on a listener of their own
-- A readiness gate added with `AddHealthSource`: not ready while starting and while draining
-- `Start`, `Failed` and `Shutdown` for both servers, with either server's failure ending the process
+- `lifecycle.App` running both servers: started in order, stopped in reverse, and either server's failure ending the process
+- `app.Readiness()` as a health source of the API server: not ready while starting and while draining, and a place to add checks for what the API depends on
 - Metrics registered with `metrics.RegisterAll` before any server starts
 - Structured logging with zerolog: `service` and `component` fields, and `json.LogField` to put a field on the access log line
 

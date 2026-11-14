@@ -11,18 +11,16 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/rs/zerolog"
+
+	"github.com/dioad/lifecycle"
 
 	diohttp "github.com/dioad/net/http"
 	diotls "github.com/dioad/net/tls"
 )
 
-const (
-	listenAddress   = ":8443"
-	shutdownTimeout = 10 * time.Second
-)
+const listenAddress = ":8443"
 
 func main() {
 	logger := zerolog.New(os.Stderr).With().Timestamp().Str("service", "tls-config").Logger()
@@ -74,19 +72,13 @@ func run(logger zerolog.Logger) error {
 		_, _ = io.WriteString(w, "Hello from secure HTTPS server!\n")
 	})
 
-	if err := server.Start(ctx); err != nil {
+	app := lifecycle.New()
+	if err := app.Add("server", server); err != nil {
 		return err
 	}
 	logger.Info().Msg("try: curl -k https://localhost:8443/ (-k because the certificate is self-signed)")
 
-	select {
-	case <-ctx.Done():
-	case err := <-server.Failed():
-		return err
-	}
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	return server.Shutdown(shutdownCtx)
+	// Run starts the server, then blocks until the process is interrupted or
+	// the server fails, and stops it.
+	return app.Run(ctx)
 }

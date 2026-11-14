@@ -27,7 +27,7 @@ curl -k https://localhost:8443/
 - Configuring TLS with local certificate files
 - Setting up an HTTPS server with TLS
 - Certificate subject and SAN configuration
-- Graceful shutdown handling
+- Running the server under `lifecycle.App`, with graceful shutdown on `SIGINT` or `SIGTERM`
 
 ## Code
 

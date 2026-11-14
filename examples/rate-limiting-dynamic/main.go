@@ -9,17 +9,15 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/rs/zerolog"
+
+	"github.com/dioad/lifecycle"
 
 	diohttp "github.com/dioad/net/http"
 )
 
-const (
-	listenAddress   = ":8080"
-	shutdownTimeout = 10 * time.Second
-)
+const listenAddress = ":8080"
 
 // tierSource implements RateLimitSource: it gives each principal its own
 // limit.
@@ -69,19 +67,13 @@ func run(logger zerolog.Logger) error {
 	server.AddHandler("GET /premium", handler)
 	server.AddHandler("GET /standard", handler)
 
-	if err := server.Start(ctx); err != nil {
+	app := lifecycle.New()
+	if err := app.Add("server", server); err != nil {
 		return err
 	}
 	logger.Info().Msg("try: curl http://localhost:8080/premium (100 requests/second) and /standard (1 request/second)")
 
-	select {
-	case <-ctx.Done():
-	case err := <-server.Failed():
-		return err
-	}
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	return server.Shutdown(shutdownCtx)
+	// Run starts the server, then blocks until the process is interrupted or
+	// the server fails, and stops it.
+	return app.Run(ctx)
 }

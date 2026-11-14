@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dioad/lifecycle"
 )
 
 // freeAddress returns a loopback address nothing is listening on.
@@ -142,4 +145,78 @@ func TestServer_Start_RecordsTheBoundAddress(t *testing.T) {
 
 	status, _ := getPath(t, server.ListenAddr.String(), "/ping")
 	assert.Equal(t, http.StatusNoContent, status)
+}
+
+// A *Server is a lifecycle.Service, with Failed and Live, and needs no adapter.
+var (
+	_ lifecycle.Service  = (*Server)(nil)
+	_ lifecycle.Failer   = (*Server)(nil)
+	_ lifecycle.Liveness = (*Server)(nil)
+)
+
+func TestServer_RunsUnderALifecycleApp(t *testing.T) {
+	t.Parallel()
+	api := newLifecycleServer(t, Config{ListenAddress: "127.0.0.1:0"})
+	management := newLifecycleServer(t, Config{ListenAddress: "127.0.0.1:0"})
+	app := lifecycle.New()
+	require.NoError(t, app.Add("management", management))
+	require.NoError(t, app.Add("api", api))
+	ctx, cancel := context.WithCancel(t.Context())
+	result := make(chan error, 1)
+	go func() { result <- app.Run(ctx) }()
+
+	require.Eventually(t, func() bool {
+		_, err := app.Readiness().Ready(t.Context())
+
+		return err == nil
+	}, 5*time.Second, time.Millisecond)
+	status, _ := getPath(t, api.ListenAddr.String(), "/ping")
+	assert.Equal(t, http.StatusNoContent, status)
+	require.NoError(t, app.Live(t.Context()))
+
+	cancel()
+	select {
+	case err := <-result:
+		require.NoError(t, err, "a clean stop of both servers")
+	case <-time.After(5 * time.Second):
+		t.Fatal("Run did not return")
+	}
+}
+
+func TestServer_AServeFailureEndsALifecycleApp(t *testing.T) {
+	t.Parallel()
+	management := newLifecycleServer(t, Config{ListenAddress: "127.0.0.1:0"})
+	// An unknown policy makes Serve return before it accepts anything.
+	api := newLifecycleServer(t, Config{
+		ListenAddress:       "127.0.0.1:0",
+		EnableProxyProtocol: true,
+		ProxyProtocolPolicy: ProxyProtocolPolicy("nonsense"),
+	})
+	app := lifecycle.New()
+	require.NoError(t, app.Add("management", management))
+	require.NoError(t, app.Add("api", api))
+
+	var err error
+	within(t, func() { err = app.Run(t.Context()) })
+
+	failure, ok := errors.AsType[*lifecycle.ServiceError](err)
+	require.True(t, ok, "Run returns the failure of the serve loop")
+	assert.Equal(t, "api", failure.Service)
+	require.ErrorContains(t, err, `unknown proxy protocol policy "nonsense"`)
+}
+
+// within fails the test if fn does not return in time.
+func within(t *testing.T, fn func()) {
+	t.Helper()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		fn()
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("did not return in time")
+	}
 }
