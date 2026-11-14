@@ -898,3 +898,97 @@ func TestNotFoundWithMessages(t *testing.T) {
 		t.Errorf("Expected error message %q, got %q", "client not found", result["error"])
 	}
 }
+
+// logEvents decodes the newline-delimited JSON events written to buf.
+func logEvents(t *testing.T, buf *bytes.Buffer) []map[string]any {
+	t.Helper()
+
+	var events []map[string]any
+	for line := range strings.SplitSeq(strings.TrimSpace(buf.String()), "\n") {
+		if line == "" {
+			continue
+		}
+		var event map[string]any
+		require.NoError(t, json.Unmarshal([]byte(line), &event))
+		events = append(events, event)
+	}
+
+	return events
+}
+
+func TestLogField_IsOnTheRequestsLaterLogEvents(t *testing.T) {
+	t.Parallel()
+	var logOutput bytes.Buffer
+	ctxLogger := zerolog.New(&logOutput)
+	req := httptest.NewRequestWithContext(ctxLogger.WithContext(t.Context()), http.MethodPost, "/events", nil)
+	w := httptest.NewRecorder()
+
+	NewResponseFromRequest(w, req).Accepted(
+		LogField("event_type", "agent.registered"),
+		LogField("attempt", 2),
+	)
+	// Stands in for the access log line, which the server writes from the
+	// request's context logger once the handler has returned.
+	zerolog.Ctx(req.Context()).Info().Msg("accessLog")
+
+	events := logEvents(t, &logOutput)
+	require.Len(t, events, 1)
+	assert.Equal(t, "agent.registered", events[0]["event_type"])
+	assert.InDelta(t, 2, events[0]["attempt"], 0)
+	assert.NotContains(t, w.Body.String(), "event_type", "a log field must not reach the client")
+}
+
+func TestLogField_IsOnTheErrorTheResponseLogs(t *testing.T) {
+	t.Parallel()
+	var logOutput bytes.Buffer
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+
+	NewResponseWithLogger(httptest.NewRecorder(), req, zerolog.New(&logOutput)).
+		InternalServerError(LogErr(errors.New("boom")), LogField("event_type", "agent.registered"))
+
+	events := logEvents(t, &logOutput)
+	require.Len(t, events, 1)
+	assert.Equal(t, "boom", events[0]["error"])
+	assert.Equal(t, "agent.registered", events[0]["event_type"])
+}
+
+func TestLogField_IsOnTheErrorAProblemLogs(t *testing.T) {
+	t.Parallel()
+	var logOutput bytes.Buffer
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+
+	NewResponseWithLogger(httptest.NewRecorder(), req, zerolog.New(&logOutput)).
+		Problem(http.StatusConflict, Problem{Title: "conflict"}, LogErr(errors.New("boom")), LogField("tunnel_id", "t-1"))
+
+	events := logEvents(t, &logOutput)
+	require.Len(t, events, 1)
+	assert.Equal(t, "t-1", events[0]["tunnel_id"])
+}
+
+func TestLogField_IsIgnoredWithoutALogger(t *testing.T) {
+	t.Parallel()
+	w := httptest.NewRecorder()
+
+	NewResponse(w).OK(LogField("event_type", "agent.registered"))
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+// Not parallel: it replaces zerolog.DefaultContextLogger for its duration.
+func TestLogField_DoesNotChangeTheDefaultContextLogger(t *testing.T) {
+	var logOutput bytes.Buffer
+	fallback := zerolog.New(&logOutput)
+	previous := zerolog.DefaultContextLogger
+	zerolog.DefaultContextLogger = &fallback
+	t.Cleanup(func() { zerolog.DefaultContextLogger = previous })
+
+	// A request with no logger in its context gets the shared fallback,
+	// which must not pick up one request's fields.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	NewResponseFromRequest(httptest.NewRecorder(), req).OK(LogField("event_type", "agent.registered"))
+	fallback.Info().Msg("unrelated")
+
+	events := logEvents(t, &logOutput)
+	require.Len(t, events, 1)
+	assert.NotContains(t, events[0], "event_type")
+}

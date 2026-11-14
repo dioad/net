@@ -3,67 +3,63 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net"
+	"context"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/rs/zerolog"
 
 	diohttp "github.com/dioad/net/http"
 )
 
-func main() {
-	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+const (
+	listenAddress   = ":8080"
+	shutdownTimeout = 10 * time.Second
+)
 
-	// Create rate limiter (1 request per second, burst of 5)
+func main() {
+	logger := zerolog.New(os.Stderr).With().Timestamp().Str("service", "rate-limiting-http").Logger()
+
+	if err := run(logger); err != nil {
+		logger.Fatal().Err(err).Msg("server failed")
+	}
+}
+
+// run serves until the process is interrupted or the server fails.
+func run(logger zerolog.Logger) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// One request per second with a burst of five. For the demo every
+	// request belongs to the principal "user1".
 	limiter := diohttp.NewRateLimiter(
 		diohttp.WithStaticRateLimit(1.0, 5),
-		diohttp.WithPrincipalFunc(diohttp.StaticPrincipalFunc("user1")), // For demo, all requests are from "user1"
+		diohttp.WithPrincipalFunc(diohttp.StaticPrincipalFunc("user1")),
 		diohttp.WithRateLimitLogger(logger),
 	)
 
-	// Create a simple handler
-	myHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = fmt.Fprintf(w, "Request processed successfully\n")
-	})
+	server := diohttp.NewServer(diohttp.Config{ListenAddress: listenAddress}, diohttp.WithLogger(logger))
+	server.AddHandler("GET /limited", limiter.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "Request processed successfully\n")
+	})))
 
-	// Use as middleware for a specific principal
-	handler := limiter.Middleware(myHandler)
-
-	// Create server
-	config := diohttp.Config{ListenAddress: ":8080"}
-	server := diohttp.NewServer(config)
-	server.AddHandler("/limited", handler)
-
-	// Create listener
-	//nolint:noctx // binding a local listen socket is instant, no context needed for a demo
-	ln, err := net.Listen("tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
-	if err != nil {
-		log.Fatalf("Error creating listener: %v\n", err)
+	if err := server.Start(ctx); err != nil {
+		return err
 	}
-	defer func() { _ = ln.Close() }()
+	logger.Info().Msg("try: curl http://localhost:8080/limited, several times quickly")
 
-	fmt.Println("Starting HTTP server with rate limiting on :8080")
-	fmt.Println("Rate limit: 1 request/second with burst of 5 for principal 'user1'")
-	fmt.Println("Try: curl http://localhost:8080/limited")
-	fmt.Println("Try multiple times quickly to see rate limiting in action")
+	select {
+	case <-ctx.Done():
+	case err := <-server.Failed():
+		return err
+	}
 
-	// Start server in goroutine
-	go func() {
-		err := server.Serve(ln)
-		if err != nil {
-			log.Printf("Server error: %v\n", err)
-		}
-	}()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
 
-	// Wait for interrupt signal
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	<-sigChan
-
-	fmt.Println("\nShutting down server...")
+	return server.Shutdown(shutdownCtx)
 }

@@ -28,6 +28,8 @@ type responseConfig struct {
 	logMessage    string
 	publicMessage string
 	headers       map[string]string
+	// logFields holds the LogField options as alternating keys and values.
+	logFields []any
 }
 
 // Private option implementations
@@ -63,6 +65,15 @@ func (w withHeader) apply(cfg *responseConfig) {
 	cfg.headers[w.key] = w.value
 }
 
+type withLogField struct {
+	key   string
+	value any
+}
+
+func (w withLogField) apply(cfg *responseConfig) {
+	cfg.logFields = append(cfg.logFields, w.key, w.value)
+}
+
 // Public option factory functions
 
 // LogErr includes an underlying error for server-side logging.
@@ -73,6 +84,18 @@ func LogErr(err error) ResponseOption {
 // LogMessage provides a custom message for server logs (separate from public message).
 func LogMessage(msg string) ResponseOption {
 	return withLogMessage{msg}
+}
+
+// LogField adds a structured field to the Response's logger, so it appears on
+// every event the Response logs. On a Response from NewResponseFromRequest
+// that logger is the request's context logger, so the field is also on the
+// access log line and on anything else logged for the request afterwards.
+// The field is never sent to the client.
+//
+// Use a snake_case key, and do not log secrets or credentials. A Response
+// with no logger ignores it.
+func LogField(key string, value any) ResponseOption {
+	return withLogField{key, value}
 }
 
 // PublicMessage sets the message sent to the client (overrides default).
@@ -145,6 +168,8 @@ func (r *Response) respondWithStatus(code int, defaultMessage string, opts ...Re
 	for _, opt := range opts {
 		opt.apply(cfg)
 	}
+
+	r.addLogFields(cfg.logFields)
 
 	// Log error if provided
 	if cfg.logErr != nil {
@@ -324,7 +349,7 @@ type Problem struct {
 // sets the HTTP status line; p.Status is set to status when p.Status is
 // zero, since RFC 9457 requires the two to match.
 //
-// opts accepts LogErr, LogMessage and Header/Location for side effects,
+// opts accepts LogErr, LogMessage, LogField and Header/Location for side effects,
 // exactly as the other Response methods do. Data and PublicMessage do not
 // apply to a Problem body -- there is no message-merging step to plug them
 // into -- and are dropped with a logged warning if passed.
@@ -334,6 +359,7 @@ func (r *Response) Problem(status int, p Problem, opts ...ResponseOption) {
 		opt.apply(cfg)
 	}
 
+	r.addLogFields(cfg.logFields)
 	r.logProblemConfig(cfg, p.Title)
 
 	for k, v := range cfg.headers {
@@ -518,6 +544,19 @@ func (r *Response) ConflictWithMessage(message string) {
 // Deprecated: Use Conflict() with options instead.
 func (r *Response) ConflictWithMessages(responseMessage, logMessage string) {
 	r.Conflict(PublicMessage(responseMessage), LogMessage(logMessage))
+}
+
+// addLogFields adds fields, as alternating keys and values, to the
+// Response's logger. The process-wide default context logger is left alone:
+// it is shared by every request that has no logger of its own.
+func (r *Response) addLogFields(fields []any) {
+	if r.logger == nil || len(fields) == 0 || r.logger == zerolog.DefaultContextLogger {
+		return
+	}
+
+	r.logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Fields(fields)
+	})
 }
 
 func (r *Response) logError(err error, message string) {

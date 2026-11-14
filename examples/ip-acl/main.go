@@ -4,16 +4,15 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/rs/zerolog"
 
@@ -21,149 +20,94 @@ import (
 )
 
 func main() {
-	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	logger := zerolog.New(os.Stderr).With().Timestamp().Str("service", "ip-acl").Logger()
 
-	fmt.Println("=== IP-based Access Control Demo ===")
-	fmt.Println()
-
-	// Demonstration 1: Simple IP authorization checks
-	fmt.Println("Part 1: IP Authorization Checks")
-	fmt.Println("--------------------------------")
-	demonstrateIPChecks()
-	fmt.Println()
-
-	// Demonstration 2: ACL-protected listeners
-	fmt.Println("Part 2: ACL-Protected Network Listeners")
-	fmt.Println("---------------------------------------")
-
-	// Create ACL that allows localhost/localnet
-	allowLocalACL, err := authz.NewNetworkACL(authz.NetworkACLConfig{
-		AllowedNets: []string{"127.0.0.0/8"},
-	})
-	if err != nil {
-		log.Fatalf("Error creating allow-local ACL: %v\n", err)
-	}
-
-	// Create ACL that denies localhost/localnet
-	denyLocalACL, err := authz.NewNetworkACL(authz.NetworkACLConfig{
-		DeniedNets: []string{"127.0.0.0/8"},
-	})
-	if err != nil {
-		log.Fatalf("Error creating deny-local ACL: %v\n", err)
-	}
-
-	// Create listener that ALLOWS localhost connections
-	allowListener, err := net.Listen("tcp", "127.0.0.1:9001") //nolint:noctx // binding a local listen socket is instant, no context needed for a demo
-	if err != nil {
-		log.Fatalf("Error creating allow listener: %v\n", err)
-	}
-	defer func() { _ = allowListener.Close() }()
-
-	aclAllowListener := authz.NewListener(allowListener, allowLocalACL, logger)
-
-	// Create listener that DENIES localhost connections
-	denyListener, err := net.Listen("tcp", "127.0.0.1:9002") //nolint:noctx // binding a local listen socket is instant, no context needed for a demo
-	if err != nil {
-		// log.Fatalf exits immediately, so the defer registered above for
-		// allowListener would never run - close it explicitly first.
-		_ = allowListener.Close()
-		log.Fatalf("Error creating deny listener: %v\n", err) //nolint:gocritic // allowListener is already closed above; gocritic can't see that
-	}
-	defer func() { _ = denyListener.Close() }()
-
-	aclDenyListener := authz.NewListener(denyListener, denyLocalACL, logger)
-
-	fmt.Println("Started two ACL-protected listeners:")
-	fmt.Println()
-	fmt.Println("  Listener 1 (Port 9001): ALLOWS localhost (127.0.0.0/8)")
-	fmt.Println("  Listener 2 (Port 9002): DENIES localhost (127.0.0.0/8)")
-	fmt.Println()
-	fmt.Println("Test these listeners with:")
-	fmt.Println("  nc localhost 9001  # Should connect successfully")
-	fmt.Println("  nc localhost 9002  # Connection will be rejected")
-	fmt.Println()
-	fmt.Println("Or use telnet:")
-	fmt.Println("  telnet localhost 9001")
-	fmt.Println("  telnet localhost 9002")
-	fmt.Println()
-	fmt.Println("Press Ctrl+C to stop the servers")
-	fmt.Println()
-
-	// Handle connections in goroutines
-	var wg sync.WaitGroup
-
-	// Start accepting on allow listener
-	wg.Go(func() {
-		acceptConnections(aclAllowListener, "ALLOW", logger)
-	})
-
-	// Start accepting on deny listener
-	wg.Go(func() {
-		acceptConnections(aclDenyListener, "DENY", logger)
-	})
-
-	// Wait for interrupt signal
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	<-sigChan
-
-	fmt.Println("\nShutting down listeners...")
-	_ = aclAllowListener.Close()
-	_ = aclDenyListener.Close()
-
-	// Wait for goroutines to finish with timeout
-	done := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		fmt.Println("All listeners stopped")
-	case <-time.After(2 * time.Second):
-		fmt.Println("Timeout waiting for listeners to stop")
+	if err := run(logger); err != nil {
+		logger.Fatal().Err(err).Msg("server failed")
 	}
 }
 
-func demonstrateIPChecks() {
-	// Create network ACL
+// run prints the authorization checks, then accepts connections on two
+// ACL-protected listeners until the process is interrupted.
+func run(logger zerolog.Logger) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	fmt.Println("Part 1: IP authorization checks")
+	if err := demonstrateIPChecks(); err != nil {
+		return err
+	}
+	fmt.Println()
+	fmt.Println("Part 2: ACL-protected listeners")
+	fmt.Println("  nc localhost 9001  # allows localhost: connects")
+	fmt.Println("  nc localhost 9002  # denies localhost: closed at once")
+	fmt.Println()
+
+	allowListener, err := listenWithACL(ctx, "127.0.0.1:9001", authz.NetworkACLConfig{AllowedNets: []string{"127.0.0.0/8"}}, logger)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = allowListener.Close() }()
+
+	denyListener, err := listenWithACL(ctx, "127.0.0.1:9002", authz.NetworkACLConfig{DeniedNets: []string{"127.0.0.0/8"}}, logger)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = denyListener.Close() }()
+
+	var wg sync.WaitGroup
+	wg.Go(func() { acceptConnections(allowListener, "allow", logger) })
+	wg.Go(func() { acceptConnections(denyListener, "deny", logger) })
+
+	// Closing the listeners is what ends the accept loops.
+	<-ctx.Done()
+	_ = allowListener.Close()
+	_ = denyListener.Close()
+	wg.Wait()
+	logger.Info().Msg("listeners stopped")
+
+	return nil
+}
+
+// listenWithACL listens on address and wraps the listener so that only
+// connections the ACL authorises are served.
+func listenWithACL(ctx context.Context, address string, cfg authz.NetworkACLConfig, logger zerolog.Logger) (*authz.Listener, error) {
+	acl, err := authz.NewNetworkACL(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ACL for %s: %w", address, err)
+	}
+
+	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen on %s: %w", address, err)
+	}
+
+	return authz.NewListener(ln, acl, logger), nil
+}
+
+func demonstrateIPChecks() error {
 	acl, err := authz.NewNetworkACL(authz.NetworkACLConfig{
 		AllowedNets: []string{"10.0.0.0/8"},
 		DeniedNets:  []string{"10.0.0.5"},
 	})
 	if err != nil {
-		log.Fatalf("Error creating ACL: %v\n", err)
+		return fmt.Errorf("failed to create ACL: %w", err)
 	}
 
-	fmt.Println("Network ACL created with:")
-	fmt.Println("  Allowed: 10.0.0.0/8")
-	fmt.Println("  Denied: 10.0.0.5")
-	fmt.Println()
+	fmt.Println("  allowed: 10.0.0.0/8, denied: 10.0.0.5")
 
-	// Check if IP is authorised
-	clientIP := "10.0.1.1:12345"
-	if err := acl.AuthoriseFromString(clientIP); err != nil {
-		fmt.Printf("✗ %s - Access denied: %v\n", clientIP, err)
-	} else {
-		fmt.Printf("✓ %s - Access allowed\n", clientIP)
+	// An address inside the allowed network, the denied address, and an
+	// address outside the allowed network.
+	for _, addr := range []string{"10.0.1.1:12345", "10.0.0.5:12345", "192.168.1.1:12345"} {
+		if err := acl.AuthoriseFromString(addr); err != nil {
+			fmt.Printf("  %s: denied (%v)\n", addr, err)
+
+			continue
+		}
+		fmt.Printf("  %s: allowed\n", addr)
 	}
 
-	// Check denied IP
-	deniedIP := "10.0.0.5:12345"
-	if err := acl.AuthoriseFromString(deniedIP); err != nil {
-		fmt.Printf("✗ %s - Access denied: %v\n", deniedIP, err)
-	} else {
-		fmt.Printf("✓ %s - Access allowed\n", deniedIP)
-	}
-
-	// Check IP outside allowed range
-	outsideIP := "192.168.1.1:12345"
-	if err := acl.AuthoriseFromString(outsideIP); err != nil {
-		fmt.Printf("✗ %s - Access denied: %v\n", outsideIP, err)
-	} else {
-		fmt.Printf("✓ %s - Access allowed\n", outsideIP)
-	}
+	return nil
 }
 
 func acceptConnections(listener *authz.Listener, listenerType string, logger zerolog.Logger) {
@@ -184,7 +128,7 @@ func acceptConnections(listener *authz.Listener, listenerType string, logger zer
 		logger.Info().
 			Str("type", listenerType).
 			Str("remote_addr", conn.RemoteAddr().String()).
-			Msg("Connection received")
+			Msg("connection received")
 
 		// Handle the connection (it may already be closed if denied by ACL)
 		go handleConnection(conn, logger)
@@ -226,5 +170,5 @@ func handleConnection(conn net.Conn, logger zerolog.Logger) {
 
 	logger.Info().
 		Str("remote_addr", conn.RemoteAddr().String()).
-		Msg("Connection closed")
+		Msg("connection closed")
 }

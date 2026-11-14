@@ -3,23 +3,29 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net"
+	"context"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/rs/zerolog"
 
 	diohttp "github.com/dioad/net/http"
 )
 
-// mySource implements RateLimitSource for dynamic rate limiting.
-type mySource struct{}
+const (
+	listenAddress   = ":8080"
+	shutdownTimeout = 10 * time.Second
+)
 
-func (s *mySource) GetLimit(principal string) (float64, int, bool) {
+// tierSource implements RateLimitSource: it gives each principal its own
+// limit.
+type tierSource struct{}
+
+func (tierSource) GetLimit(principal string) (float64, int, bool) {
 	if principal == "premium" {
 		return 100.0, 100, true
 	}
@@ -27,7 +33,9 @@ func (s *mySource) GetLimit(principal string) (float64, int, bool) {
 	return 1.0, 5, true
 }
 
-func myPrincipalFunc(r *http.Request) (string, error) {
+// principalFromPath names the principal a request is limited as. A real
+// server would take it from the authenticated identity.
+func principalFromPath(r *http.Request) (string, error) {
 	if r.URL.Path == "/premium" {
 		return "premium", nil
 	}
@@ -36,58 +44,44 @@ func myPrincipalFunc(r *http.Request) (string, error) {
 }
 
 func main() {
-	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	logger := zerolog.New(os.Stderr).With().Timestamp().Str("service", "rate-limiting-dynamic").Logger()
 
-	// Create rate limiter with dynamic source
+	if err := run(logger); err != nil {
+		logger.Fatal().Err(err).Msg("server failed")
+	}
+}
+
+// run serves until the process is interrupted or the server fails.
+func run(logger zerolog.Logger) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	limiter := diohttp.NewRateLimiter(
-		diohttp.WithRateLimitSource(&mySource{}),
-		diohttp.WithPrincipalFunc(myPrincipalFunc),
+		diohttp.WithRateLimitSource(tierSource{}),
+		diohttp.WithPrincipalFunc(principalFromPath),
 		diohttp.WithRateLimitLogger(logger),
 	)
+	handler := limiter.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "Request processed successfully\n")
+	}))
 
-	// Create a simple handler
-	myHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = fmt.Fprintf(w, "Request processed successfully\n")
-	})
+	server := diohttp.NewServer(diohttp.Config{ListenAddress: listenAddress}, diohttp.WithLogger(logger))
+	server.AddHandler("GET /premium", handler)
+	server.AddHandler("GET /standard", handler)
 
-	// Use as middleware for premium users
-	handler := limiter.Middleware(myHandler)
-
-	// // Use as middleware for standard users
-	// standardHandler := limiter.Middleware(myHandler)
-
-	// Create server
-	config := diohttp.Config{ListenAddress: ":8080"}
-	server := diohttp.NewServer(config)
-	server.AddHandler("/premium", handler)
-	server.AddHandler("/standard", handler)
-
-	// Create listener
-	//nolint:noctx // binding a local listen socket is instant, no context needed for a demo
-	ln, err := net.Listen("tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces for local demo purposes
-	if err != nil {
-		log.Fatalf("Error creating listener: %v\n", err)
+	if err := server.Start(ctx); err != nil {
+		return err
 	}
-	defer func() { _ = ln.Close() }()
+	logger.Info().Msg("try: curl http://localhost:8080/premium (100 requests/second) and /standard (1 request/second)")
 
-	fmt.Println("Starting HTTP server with dynamic rate limiting on :8080")
-	fmt.Println("Premium users (/premium): 100 requests/second with burst of 100")
-	fmt.Println("Standard users (/standard): 1 request/second with burst of 5")
-	fmt.Println("Try: curl http://localhost:8080/premium")
-	fmt.Println("Try: curl http://localhost:8080/standard")
+	select {
+	case <-ctx.Done():
+	case err := <-server.Failed():
+		return err
+	}
 
-	// Start server in goroutine
-	go func() {
-		err := server.Serve(ln)
-		if err != nil {
-			log.Printf("Server error: %v\n", err)
-		}
-	}()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
 
-	// Wait for interrupt signal
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	<-sigChan
-
-	fmt.Println("\nShutting down server...")
+	return server.Shutdown(shutdownCtx)
 }

@@ -105,7 +105,8 @@ func isUnexpectedServeError(err error) bool {
 // goroutine, using the TLS configuration in Config.TLSConfig, if any. It
 // returns once the listener is bound, so a bind failure (port in use, bad
 // address) is returned to the caller instead of being logged from a goroutine
-// after the caller has moved on.
+// after the caller has moved on. ListenAddr then holds the bound address,
+// which is how to learn the port when ListenAddress asks for port 0.
 //
 // After Start, Failed reports a serve loop that ends unexpectedly, Live reports
 // whether it is still running, and Shutdown waits for it to return. A Server
@@ -123,8 +124,10 @@ func (s *Server) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to listen on %s: %w", s.Config.ListenAddress, err)
 	}
 
+	s.ListenAddr = ln.Addr()
+
 	go func() {
-		s.lifecycle.end(s.Serve(ln))
+		s.lifecycle.end(s.serve(ln))
 	}()
 
 	return nil

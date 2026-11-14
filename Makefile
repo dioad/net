@@ -15,4 +15,7 @@ lint:
 test:
 	go test -race ./...
 
+run-examples:
+	.github/scripts/run-examples.sh
+
 verify: lint test build
