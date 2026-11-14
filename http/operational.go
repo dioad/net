@@ -31,7 +31,7 @@ type OperationalConfig struct {
 	// connection without a header is refused.
 	EnableProxyProtocol bool
 	// ProxyProtocolPolicy applies when EnableProxyProtocol is set; see
-	// Config.ProxyProtocolPolicy.
+	// WithProxyProtocol.
 	ProxyProtocolPolicy ProxyProtocolPolicy
 }
 
@@ -52,16 +52,7 @@ type OperationalConfig struct {
 // opts are applied last, so WithLogger or WithMetricsGatherers can override
 // the defaults.
 func NewOperationalServer(primary *Server, cfg OperationalConfig, opts ...ServerOption) *Server {
-	s := NewServer(Config{
-		ListenAddress:           cfg.ListenAddress,
-		EnablePrometheusMetrics: cfg.EnablePrometheusMetrics,
-		EnableStatus:            cfg.EnableStatus,
-		EnableDebug:             cfg.EnableDebug,
-		EnableHealth:            true,
-		TLSConfig:               cfg.TLSConfig,
-		EnableProxyProtocol:     cfg.EnableProxyProtocol,
-		ProxyProtocolPolicy:     cfg.ProxyProtocolPolicy,
-	})
+	s := NewServer(Config{ListenAddress: cfg.ListenAddress, TLSConfig: cfg.TLSConfig}, operationalOptions(cfg)...)
 	s.HealthRegistry = primary.HealthRegistry
 	// The operational server's own request metrics are left out: they carry
 	// the same series names as primary's, and a probe of a path primary also
@@ -71,6 +62,26 @@ func NewOperationalServer(primary *Server, cfg OperationalConfig, opts ...Server
 		opt(s)
 	}
 	return s
+}
+
+// operationalOptions returns the options that turn on the endpoints and
+// listener behaviour cfg asks for. Health is always on.
+func operationalOptions(cfg OperationalConfig) []ServerOption {
+	opts := []ServerOption{WithHealth()}
+	if cfg.EnablePrometheusMetrics {
+		opts = append(opts, WithPrometheusMetrics())
+	}
+	if cfg.EnableStatus {
+		opts = append(opts, WithStatus())
+	}
+	if cfg.EnableDebug {
+		opts = append(opts, WithDebug())
+	}
+	if cfg.EnableProxyProtocol {
+		opts = append(opts, WithProxyProtocol(cfg.ProxyProtocolPolicy))
+	}
+
+	return opts
 }
 
 // dedupGatherer gathers from each gatherer in turn and keeps the first copy

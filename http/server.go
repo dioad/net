@@ -43,18 +43,36 @@ type Config struct {
 	// ReadTimeout.
 	IdleTimeout time.Duration
 	// EnablePrometheusMetrics enables the /metrics endpoint for Prometheus metrics
+	//
+	// Deprecated: Use the WithPrometheusMetrics option. The field will be
+	// removed in the next major version.
 	EnablePrometheusMetrics bool
 	// EnableDebug enables the /debug endpoint for pprof debugging
+	//
+	// Deprecated: Use the WithDebug option. The field will be removed in the
+	// next major version.
 	EnableDebug bool
 	// EnableStatus enables the /status endpoint for server status
+	//
+	// Deprecated: Use the WithStatus option. The field will be removed in the
+	// next major version.
 	EnableStatus bool
 	// EnableProxyProtocol enables the PROXY protocol for client IP forwarding
+	//
+	// Deprecated: Use the WithProxyProtocol option. The field will be removed
+	// in the next major version.
 	EnableProxyProtocol bool
 	// ProxyProtocolPolicy says what happens to a connection without a PROXY
 	// header when EnableProxyProtocol is set. Empty means
 	// ProxyProtocolRequire.
+	//
+	// Deprecated: Pass the policy to the WithProxyProtocol option. The field
+	// will be removed in the next major version.
 	ProxyProtocolPolicy ProxyProtocolPolicy
 	// EnableHealth enables the /health/live and /health/ready endpoints for health checks
+	//
+	// Deprecated: Use the WithHealth option. The field will be removed in the
+	// next major version.
 	EnableHealth bool
 }
 
@@ -253,6 +271,9 @@ func WithCORS(options cors.Options) ServerOption {
 
 // NewServer creates a new HTTP server with the given configuration and options
 // Options can be used to customize the server, such as adding a logger, authentication, or metrics.
+//
+// The operational endpoints are off unless an option turns them on: see
+// WithHealth, WithStatus, WithPrometheusMetrics and WithDebug.
 func NewServer(config Config, opts ...ServerOption) *Server {
 	server := newDefaultServer(config)
 
@@ -261,6 +282,51 @@ func NewServer(config Config, opts ...ServerOption) *Server {
 	}
 
 	return server
+}
+
+// WithPrometheusMetrics returns a ServerOption that serves Prometheus metrics
+// at /metrics. See WithMetricsGatherers for what it serves.
+func WithPrometheusMetrics() ServerOption {
+	return func(s *Server) {
+		s.Config.EnablePrometheusMetrics = true
+	}
+}
+
+// WithDebug returns a ServerOption that serves pprof under /debug. pprof
+// exposes memory contents, so keep it off a listener that untrusted clients
+// can reach.
+func WithDebug() ServerOption {
+	return func(s *Server) {
+		s.Config.EnableDebug = true
+	}
+}
+
+// WithStatus returns a ServerOption that serves the aggregate status of the
+// server's resources and health sources at /status.
+func WithStatus() ServerOption {
+	return func(s *Server) {
+		s.Config.EnableStatus = true
+	}
+}
+
+// WithHealth returns a ServerOption that serves /health/live and
+// /health/ready, aggregated from the server's resources and health sources.
+func WithHealth() ServerOption {
+	return func(s *Server) {
+		s.Config.EnableHealth = true
+	}
+}
+
+// WithProxyProtocol returns a ServerOption that makes the server read a PROXY
+// protocol header from each connection, so that it sees the address of the
+// client rather than of the proxy in front of it. policy says what happens to
+// a connection without a header; see ProxyProtocolRequire and
+// ProxyProtocolOptional.
+func WithProxyProtocol(policy ProxyProtocolPolicy) ServerOption {
+	return func(s *Server) {
+		s.Config.EnableProxyProtocol = true
+		s.Config.ProxyProtocolPolicy = policy
+	}
 }
 
 // WithTelemetryInstrument returns a ServerOption that configures the server to use the given
