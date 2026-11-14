@@ -126,6 +126,15 @@ type Server struct {
 
 	// lifecycle tracks the serve loop Start launches.
 	lifecycle serveLifecycle
+
+	// baseLogger is the logger WithLogger set, before WithComponent enriched
+	// it; component is the name WithComponent set.
+	baseLogger    zerolog.Logger
+	hasBaseLogger bool
+	component     string
+	// logHandlerFollowsLogger is true while LogHandler was derived from the
+	// logger, rather than set by WithLogWriter or the caller.
+	logHandlerFollowsLogger bool
 }
 
 func newDefaultServer(config Config) *Server {
@@ -162,20 +171,55 @@ func WithLogWriter(w io.Writer) ServerOption {
 	return func(s *Server) {
 		if w != nil {
 			s.LogHandler = DefaultCombinedLogHandler(w)
+			s.logHandlerFollowsLogger = false
 		}
 	}
 }
 
 // WithLogger returns a ServerOption that configures the server to use the given logger
 // for both server logs and request logs.
+//
+// Options that set the logger can be given in any order with WithComponent.
 func WithLogger(l zerolog.Logger) ServerOption {
 	return func(s *Server) {
-		s.Logger = l
-		if s.LogHandler == nil {
-			s.LogHandler = ZerologStructuredLogHandler(l)
-		}
-		s.HealthRegistry.logger = l
+		s.baseLogger = l
+		s.hasBaseLogger = true
+		s.refreshLogger()
 	}
+}
+
+// WithComponent returns a ServerOption that adds a "component" field to every
+// log event the server emits: its own lifecycle and error events, its request
+// log, and its health registry's. It tells servers apart when several run in
+// one process, such as a control server and a management server. It applies
+// whether it is given before or after WithLogger, and a logger that already
+// carries a component is replaced by name.
+func WithComponent(name string) ServerOption {
+	return func(s *Server) {
+		s.component = name
+		s.refreshLogger()
+	}
+}
+
+// refreshLogger derives the server's logger from the logger given to
+// WithLogger and the component given to WithComponent, and points the request
+// log and health registry at it. A request log the caller set with
+// WithLogWriter is left alone.
+func (s *Server) refreshLogger() {
+	l := s.Logger
+	if s.hasBaseLogger {
+		l = s.baseLogger
+	}
+	if s.component != "" {
+		l = l.With().Str("component", s.component).Logger()
+	}
+
+	s.Logger = l
+	if s.LogHandler == nil || s.logHandlerFollowsLogger {
+		s.LogHandler = ZerologStructuredLogHandler(l)
+		s.logHandlerFollowsLogger = true
+	}
+	s.HealthRegistry.logger = l
 }
 
 // CORSHandler returns a middleware that handles Cross-Origin Resource Sharing (CORS).
