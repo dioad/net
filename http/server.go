@@ -125,7 +125,8 @@ type Server struct {
 	Logger zerolog.Logger
 	// ResourceMap maps path prefixes to resources
 	ResourceMap map[string]Resource
-	// ListenAddr is the address the server is listening on
+	// ListenAddr is the address the server is listening on. It is set once
+	// Start has returned, or once Serve has been called.
 	ListenAddr net.Addr
 	// LogHandler is the handler wrapper for logging requests
 	LogHandler HandlerWrapper
@@ -628,6 +629,13 @@ func (s *Server) ListenAndServeTLS(tlsConfig *tls.Config) error {
 // and starts serving HTTP or HTTPS requests.
 func (s *Server) Serve(ln net.Listener) error {
 	s.ListenAddr = ln.Addr()
+
+	return s.serve(ln)
+}
+
+// serve is Serve without recording the listener's address, which Start does
+// itself before it launches the serve loop.
+func (s *Server) serve(ln net.Listener) error {
 	s.initialiseServer()
 	s.server.TLSConfig = s.Config.TLSConfig
 

@@ -132,3 +132,14 @@ func ExampleServer_Start() {
 	// live: <nil>
 	// shutdown: <nil>
 }
+
+func TestServer_Start_RecordsTheBoundAddress(t *testing.T) {
+	t.Parallel()
+	server := newLifecycleServer(t, Config{ListenAddress: "127.0.0.1:0"})
+
+	require.NoError(t, server.Start(t.Context()))
+	t.Cleanup(func() { _ = server.Shutdown(context.Background()) })
+
+	status, _ := getPath(t, server.ListenAddr.String(), "/ping")
+	assert.Equal(t, http.StatusNoContent, status)
+}
