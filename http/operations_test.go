@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dioad/config/configcheck"
+
+	dtls "github.com/dioad/net/tls"
 )
 
 func TestOperationsConfig_Check(t *testing.T) {
@@ -27,11 +29,27 @@ func TestOperationsConfig_Check(t *testing.T) {
 		{name: "localhost", cfg: OperationsConfig{ManagementListenAddress: "localhost:9000"}},
 		{name: "acknowledged non-loopback", cfg: OperationsConfig{ManagementListenAddress: ":9000", ManagementAllowNonLoopback: true}},
 		{
+			name: "non-loopback that requires client certificates",
+			cfg: OperationsConfig{ManagementListenAddress: ":9000", ManagementTLSServer: dtls.ServerConfig{
+				ClientAuthType: "RequireAndVerifyClientCert", ClientCAFile: "ca.pem",
+			}},
+		},
+		{
+			name: "client certificates requested but not verified against a CA",
+			cfg: OperationsConfig{ManagementListenAddress: ":9000", ManagementTLSServer: dtls.ServerConfig{
+				ClientAuthType: "RequireAndVerifyClientCert",
+			}},
+			want: []configcheck.Finding{{
+				Path:    "management-listen-address",
+				Message: `":9000" is not a loopback address, and the management listener has no authentication; bind 127.0.0.1, require client certificates (management-tls-server client-auth-type RequireAndVerifyClientCert with client-ca-file), or set management-allow-unauthenticated-non-loopback: true to confirm the port is reachable only on a private network`,
+			}},
+		},
+		{
 			name: "wildcard host without acknowledgement",
 			cfg:  OperationsConfig{ManagementListenAddress: ":9000"},
 			want: []configcheck.Finding{{
 				Path:    "management-listen-address",
-				Message: `":9000" is not a loopback address, and the management listener has no authentication; bind 127.0.0.1 or set management-allow-unauthenticated-non-loopback: true to confirm the port is reachable only on a private network`,
+				Message: `":9000" is not a loopback address, and the management listener has no authentication; bind 127.0.0.1, require client certificates (management-tls-server client-auth-type RequireAndVerifyClientCert with client-ca-file), or set management-allow-unauthenticated-non-loopback: true to confirm the port is reachable only on a private network`,
 			}},
 		},
 		{
@@ -65,12 +83,38 @@ func TestOperationsConfig_Check(t *testing.T) {
 	}
 }
 
-func TestOperationsConfig_OperationalServesMetricsAndHonoursDebug(t *testing.T) {
+func TestOperationsConfig_Operational(t *testing.T) {
 	t.Parallel()
 
-	got := OperationsConfig{ManagementListenAddress: "127.0.0.1:9000", EnableDebug: true}.Operational()
+	off := false
+	tests := []struct {
+		name string
+		cfg  OperationsConfig
+		want OperationalConfig
+	}{
+		{
+			name: "metrics are on unless turned off, and debug follows the flag",
+			cfg:  OperationsConfig{ManagementListenAddress: "127.0.0.1:9000", EnableDebug: true},
+			want: OperationalConfig{ListenAddress: "127.0.0.1:9000", EnablePrometheusMetrics: true, EnableDebug: true},
+		},
+		{
+			name: "metrics can be turned off",
+			cfg:  OperationsConfig{ManagementListenAddress: "127.0.0.1:9000", EnablePrometheusMetrics: &off},
+			want: OperationalConfig{ListenAddress: "127.0.0.1:9000"},
+		},
+		{
+			name: "PROXY protocol is carried over",
+			cfg:  OperationsConfig{ManagementListenAddress: "127.0.0.1:9000", ManagementEnableProxyProtocol: true},
+			want: OperationalConfig{ListenAddress: "127.0.0.1:9000", EnablePrometheusMetrics: true, EnableProxyProtocol: true},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	assert.Equal(t, OperationalConfig{ListenAddress: "127.0.0.1:9000", EnablePrometheusMetrics: true, EnableDebug: true}, got)
+			assert.Equal(t, tc.want, tc.cfg.Operational())
+		})
+	}
 }
 
 type readyStub struct{ err error }
