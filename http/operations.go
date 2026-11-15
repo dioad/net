@@ -68,8 +68,9 @@ func (o OperationsConfig) Check(c *configcheck.Collector) {
 }
 
 // Operational returns the OperationalConfig for the management listener:
-// health, /metrics, and /debug when EnableDebug is set. Set Readiness and any
-// TLS or PROXY protocol settings on the result.
+// health, /metrics, and /debug when EnableDebug is set. Pass WithReadiness to
+// NewOperationalServer so /health/ready reports the service's readiness, and set
+// any TLS or PROXY protocol settings on the result.
 func (o OperationsConfig) Operational() OperationalConfig {
 	return OperationalConfig{
 		ListenAddress:           o.ManagementListenAddress,

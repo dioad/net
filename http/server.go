@@ -318,6 +318,22 @@ func WithHealth() ServerOption {
 	}
 }
 
+// readinessSourceName is the health source name WithReadiness registers under.
+const readinessSourceName = "readiness"
+
+// WithReadiness returns a ServerOption that makes /health/ready report r, such
+// as a service's lifecycle.Readiness, in addition to its resources. r is
+// registered on the server's health registry under "readiness", and registering
+// again replaces it. On a server built by NewOperationalServer that is the
+// primary's registry, so the primary and any other operational server built
+// from it report r too.
+func WithReadiness(r ReadinessResource) ServerOption {
+	return func(s *Server) {
+		// A ReadinessResource is always an accepted health source.
+		_ = s.AddHealthSource(readinessSourceName, r)
+	}
+}
+
 // WithProxyProtocol returns a ServerOption that makes the server read a PROXY
 // protocol header from each connection, so that it sees the address of the
 // client rather than of the proxy in front of it. policy says what happens to
