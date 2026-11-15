@@ -7,7 +7,7 @@ require (
 	github.com/dioad/config v0.2.0
 	github.com/dioad/filter v0.6.1
 	github.com/dioad/generics v0.0.9
-	github.com/dioad/lifecycle v0.1.0
+	github.com/dioad/lifecycle v0.3.0
 	github.com/dioad/util v0.7.0
 	github.com/emersion/go-msgauth v0.7.0
 	github.com/go-acme/lego/v5 v5.6.0
