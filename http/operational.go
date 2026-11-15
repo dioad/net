@@ -9,10 +9,6 @@ import (
 	dto "github.com/prometheus/client_model/go"
 )
 
-// readinessSourceName is the health source name OperationalConfig.Readiness
-// is registered under.
-const readinessSourceName = "readiness"
-
 // OperationalConfig configures an operational server built by
 // NewOperationalServer.
 type OperationalConfig struct {
@@ -37,12 +33,6 @@ type OperationalConfig struct {
 	// ProxyProtocolPolicy applies when EnableProxyProtocol is set; see
 	// WithProxyProtocol.
 	ProxyProtocolPolicy ProxyProtocolPolicy
-	// Readiness, when set, is what /health/ready reports for primary, so a
-	// service's own readiness gate (a lifecycle.Readiness, say) decides the
-	// answer. NewOperationalServer registers it on primary's health registry
-	// under "readiness", where primary's own routes and any other operational
-	// server built from it see it too. Registering again replaces it.
-	Readiness ReadinessResource
 }
 
 // NewOperationalServer returns a server that serves primary's operational
@@ -60,14 +50,11 @@ type OperationalConfig struct {
 // with client verification.
 //
 // opts are applied last, so WithLogger or WithMetricsGatherers can override
-// the defaults.
+// the defaults. Pass WithReadiness to make /health/ready report a service's own
+// readiness gate.
 func NewOperationalServer(primary *Server, cfg OperationalConfig, opts ...ServerOption) *Server {
 	s := NewServer(Config{ListenAddress: cfg.ListenAddress, TLSConfig: cfg.TLSConfig}, operationalOptions(cfg)...)
 	s.HealthRegistry = primary.HealthRegistry
-	if cfg.Readiness != nil {
-		// A ReadinessResource is always an accepted health source.
-		_ = primary.AddHealthSource(readinessSourceName, cfg.Readiness)
-	}
 	// The operational server's own request metrics are left out: they carry
 	// the same series names as primary's, and a probe of a path primary also
 	// serves would otherwise make the gather fail on a duplicate series.

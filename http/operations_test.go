@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -76,14 +77,12 @@ type readyStub struct{ err error }
 
 func (r readyStub) Ready(context.Context) (any, error) { return "stub", r.err }
 
-func TestNewOperationalServer_ReportsTheConfiguredReadiness(t *testing.T) {
+func TestWithReadiness_ReportsReadinessOnTheOperationalServer(t *testing.T) {
 	t.Parallel()
 
 	primary := newPrimary()
-	mgmt := NewOperationalServer(primary, OperationalConfig{
-		ListenAddress: "127.0.0.1:0",
-		Readiness:     readyStub{err: errors.New("database down")},
-	})
+	mgmt := NewOperationalServer(primary, OperationalConfig{ListenAddress: "127.0.0.1:0"},
+		WithReadiness(readyStub{err: errors.New("database down")}))
 	addr := serveOn(t, mgmt)
 
 	status, body := getPath(t, addr, "/health/ready")
@@ -91,4 +90,16 @@ func TestNewOperationalServer_ReportsTheConfiguredReadiness(t *testing.T) {
 	assert.Equal(t, http.StatusServiceUnavailable, status)
 	assert.Contains(t, body, "database down")
 	require.NoError(t, primary.AddHealthSource("readiness", readyStub{}), "the source sits under the name readiness on primary")
+}
+
+func TestWithReadiness_ServesOnAServerOfItsOwn(t *testing.T) {
+	t.Parallel()
+
+	s := NewServer(Config{}, WithLogger(zerolog.Nop()), WithHealth(), WithReadiness(readyStub{err: errors.New("starting")}))
+	addr := serveOn(t, s)
+
+	status, body := getPath(t, addr, "/health/ready")
+
+	assert.Equal(t, http.StatusServiceUnavailable, status)
+	assert.Contains(t, body, "starting")
 }
