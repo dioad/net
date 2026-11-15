@@ -17,6 +17,10 @@ func convertTLSVersion(version string) uint16 {
 	}
 }
 
+// clientAuthRequireAndVerify is the client-auth-type that makes every client
+// present a certificate that verifies against client-ca-file.
+const clientAuthRequireAndVerify = "RequireAndVerifyClientCert"
+
 func convertClientAuthType(authType string) tls.ClientAuthType {
 	switch authType {
 	case "RequestClientCert":
@@ -25,7 +29,7 @@ func convertClientAuthType(authType string) tls.ClientAuthType {
 		return tls.RequireAnyClientCert
 	case "VerifyClientCertIfGiven":
 		return tls.VerifyClientCertIfGiven
-	case "RequireAndVerifyClientCert":
+	case clientAuthRequireAndVerify:
 		return tls.RequireAndVerifyClientCert
 	default:
 		return tls.NoClientCert

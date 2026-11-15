@@ -15,7 +15,7 @@ var clientAuthTypes = []string{
 	"RequestClientCert",
 	"RequireAnyClientCert",
 	"VerifyClientCertIfGiven",
-	"RequireAndVerifyClientCert",
+	clientAuthRequireAndVerify,
 }
 
 // Check reports the problems in a tls-server block to findings, which should be
@@ -94,4 +94,11 @@ func (c *ClientConfig) Check(findings *configcheck.Collector) {
 	if (c.Certificate == "") != (c.Key == "") {
 		findings.Errorf("needs both cert and key for a client certificate")
 	}
+}
+
+// RequiresClientCertificate reports whether the config makes every client
+// present a certificate that verifies against client-ca-file, so that a
+// listener using it authenticates its callers.
+func (c *ServerConfig) RequiresClientCertificate() bool {
+	return c.ClientAuthType == clientAuthRequireAndVerify && c.ClientCAFile != ""
 }
