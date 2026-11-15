@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"testing"
 
+	"github.com/dioad/config/configcheck"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -188,12 +189,12 @@ func TestClientIPResolver_TrustedProxyCIDRs(t *testing.T) {
 		assert.Equal(t, "10.0.0.2", resolver.ClientIP(req))
 	})
 
-	t.Run("skips a malformed XFF entry and continues walking left", func(t *testing.T) {
+	t.Run("a malformed XFF entry ends the walk at the nearest trusted hop", func(t *testing.T) {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
-		req.Header.Set("X-Forwarded-For", "198.51.100.1, not-an-ip, 10.0.0.2")
+		req.Header.Set("X-Forwarded-For", "198.51.100.1, not-an-ip, 10.0.0.3")
 		req.RemoteAddr = "10.0.0.2:12345"
 
-		assert.Equal(t, "198.51.100.1", resolver.ClientIP(req))
+		assert.Equal(t, "10.0.0.3", resolver.ClientIP(req), "an address left of a malformed hop was not vouched for by a trusted proxy")
 	})
 }
 
@@ -216,4 +217,143 @@ func TestClientIPResolver_PrincipalFunc(t *testing.T) {
 	principal, err := resolver.PrincipalFunc(req)
 	require.NoError(t, err)
 	assert.Equal(t, "203.0.113.5", principal)
+}
+
+func clientAddrRequest(t *testing.T, remote string, headers map[string][]string) *http.Request {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
+	req.RemoteAddr = remote
+	for k, vs := range headers {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
+	}
+
+	return req
+}
+
+func TestClientIPResolver_ClientAddr_UntrustedPeerCannotChooseAddress(t *testing.T) {
+	resolver := NewClientIPResolver(WithTrustedProxyCIDRs(mustPrefix(t, "10.0.0.0/8")))
+
+	for _, header := range []string{"X-Forwarded-For", "Forwarded", "X-Real-IP"} {
+		t.Run(header, func(t *testing.T) {
+			value := "1.2.3.4"
+			if header == "Forwarded" {
+				value = "for=1.2.3.4"
+			}
+			req := clientAddrRequest(t, "203.0.113.9:4000", map[string][]string{header: {value}})
+
+			assert.Equal(t, netip.MustParseAddr("203.0.113.9"), resolver.ClientAddr(req))
+		})
+	}
+}
+
+func TestClientIPResolver_ClientAddr_NoTrustMode(t *testing.T) {
+	resolver := NewClientIPResolver()
+	req := clientAddrRequest(t, "[2001:db8::7]:4000", map[string][]string{"X-Forwarded-For": {"1.2.3.4"}})
+
+	assert.Equal(t, netip.MustParseAddr("2001:db8::7"), resolver.ClientAddr(req))
+}
+
+func TestClientIPResolver_ClientAddr_TrustedProxyChains(t *testing.T) {
+	resolver := NewClientIPResolver(WithTrustedProxyCIDRs(mustPrefix(t, "10.0.0.0/8"), mustPrefix(t, "fd00::/8")))
+
+	tests := []struct {
+		name    string
+		remote  string
+		headers map[string][]string
+		want    string
+	}{
+		{"multiple hops", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {"198.51.100.1, 10.0.0.3, 10.0.0.2"}}, "198.51.100.1"},
+		{"client-forged left entries are ignored", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {"9.9.9.9, 198.51.100.1, 10.0.0.2"}}, "198.51.100.1"},
+		{"repeated XFF header lines", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {"9.9.9.9", "198.51.100.1, 10.0.0.2"}}, "198.51.100.1"},
+		{"IPv6 client", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {"2001:db8::5, 10.0.0.2"}}, "2001:db8::5"},
+		{"IPv6 proxies", "[fd00::1]:1", map[string][]string{"X-Forwarded-For": {"2001:db8::5, fd00::2"}}, "2001:db8::5"},
+		{"bracketed IPv6 with port", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {`[2001:db8::5]:4711, 10.0.0.2`}}, "2001:db8::5"},
+		{"IPv4 with port", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {"198.51.100.1:5000"}}, "198.51.100.1"},
+		{"IPv4-mapped IPv6", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {"::ffff:198.51.100.1"}}, "198.51.100.1"},
+		{"Forwarded header", "10.0.0.1:1", map[string][]string{"Forwarded": {`for=198.51.100.1;proto=https, for=10.0.0.2`}}, "198.51.100.1"},
+		{"Forwarded quoted IPv6", "10.0.0.1:1", map[string][]string{"Forwarded": {`for="[2001:db8::5]:4711", for=10.0.0.2`}}, "2001:db8::5"},
+		{"Forwarded obfuscated identifier ends the walk", "10.0.0.1:1", map[string][]string{"Forwarded": {`for=_hidden, for=10.0.0.2`}}, "10.0.0.2"},
+		{"XFF wins over Forwarded", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {"198.51.100.1"}, "Forwarded": {"for=198.51.100.2"}}, "198.51.100.1"},
+		{"empty XFF", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {""}}, "10.0.0.1"},
+		{"whitespace only XFF", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {" , "}}, "10.0.0.1"},
+		{"only malformed entries", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {"garbage"}}, "10.0.0.1"},
+		{"all hops trusted", "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {"10.0.0.3, 10.0.0.2"}}, "10.0.0.1"},
+		{"no headers", "10.0.0.1:1", nil, "10.0.0.1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, netip.MustParseAddr(tt.want), resolver.ClientAddr(clientAddrRequest(t, tt.remote, tt.headers)))
+		})
+	}
+}
+
+func TestClientIPResolver_ClientAddr_TrustedHeader(t *testing.T) {
+	resolver := NewFlyClientIPResolver()
+
+	tests := []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{"valid", "203.0.113.5", "203.0.113.5"},
+		{"malformed falls back to the peer", "garbage", "10.0.0.5"},
+		{"absent falls back to the peer", "", "10.0.0.5"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			headers := map[string][]string{}
+			if tt.value != "" {
+				headers["Fly-Client-IP"] = []string{tt.value}
+			}
+
+			assert.Equal(t, netip.MustParseAddr(tt.want), resolver.ClientAddr(clientAddrRequest(t, "10.0.0.5:1", headers)))
+		})
+	}
+}
+
+func TestClientIPResolver_ClientAddr_UnparseableRemoteAddr(t *testing.T) {
+	resolver := NewClientIPResolver(WithTrustedProxyCIDRs(mustPrefix(t, "10.0.0.0/8")))
+	req := clientAddrRequest(t, "@", map[string][]string{"X-Forwarded-For": {"1.2.3.4"}})
+
+	assert.False(t, resolver.ClientAddr(req).IsValid())
+	assert.Equal(t, "@", resolver.ClientIP(req))
+}
+
+func TestClientIPConfig_Check(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     ClientIPConfig
+		wantErr bool
+	}{
+		{"empty", ClientIPConfig{}, false},
+		{"valid proxies", ClientIPConfig{TrustedProxies: []string{"10.0.0.0/8", "fd00::/8"}}, false},
+		{"header only", ClientIPConfig{TrustedHeader: "Fly-Client-IP"}, false},
+		{"bad prefix", ClientIPConfig{TrustedProxies: []string{"10.0.0.0/8", "10.0.0.1"}}, true},
+		{"both modes", ClientIPConfig{TrustedHeader: "Fly-Client-IP", TrustedProxies: []string{"10.0.0.0/8"}}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := configcheck.NewCollector()
+			tt.cfg.Check(c)
+
+			if tt.wantErr {
+				require.Error(t, c.Err())
+			} else {
+				require.NoError(t, c.Err())
+			}
+		})
+	}
+}
+
+func TestClientIPConfig_Resolver(t *testing.T) {
+	resolver, err := ClientIPConfig{TrustedProxies: []string{"10.0.0.0/8"}}.Resolver()
+	require.NoError(t, err)
+
+	req := clientAddrRequest(t, "10.0.0.1:1", map[string][]string{"X-Forwarded-For": {"198.51.100.1"}})
+	assert.Equal(t, netip.MustParseAddr("198.51.100.1"), resolver.ClientAddr(req))
+
+	_, err = ClientIPConfig{TrustedProxies: []string{"nope"}}.Resolver()
+	require.Error(t, err)
 }
