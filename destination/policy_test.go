@@ -43,6 +43,13 @@ func Test_Policy_Check(t *testing.T) {
 		{"only ignores allow", Policy{OnlyPrefixes: prefixes("10.0.0.0/8"), AllowPrefixes: prefixes("192.168.0.0/16")}, "192.168.0.1:80", true},
 		{"only denies metadata", Policy{OnlyPrefixes: prefixes("169.254.0.0/16")}, "169.254.169.254:80", true},
 		{"only with flag permits metadata", Policy{OnlyPrefixes: prefixes("169.254.0.0/16"), AllowCloudMetadata: true}, "169.254.169.254:80", false},
+		{"deny beats only", Policy{OnlyPrefixes: prefixes("fdaa::/16"), DenyPrefixes: prefixes("fdaa::3/128")}, "[fdaa::3]:4223", true},
+		{"only permits the rest of the range", Policy{OnlyPrefixes: prefixes("fdaa::/16"), DenyPrefixes: prefixes("fdaa::3/128")}, "[fdaa::4]:80", false},
+		{"deny beats allow", Policy{AllowPrefixes: prefixes("10.0.0.0/8"), DenyPrefixes: prefixes("10.1.0.0/16")}, "10.1.1.1:80", true},
+		{"deny beats public default", Policy{DenyPrefixes: prefixes("8.8.8.0/24")}, "8.8.8.8:80", true},
+		{"deny refuses mapped form", Policy{AllowPrefixes: prefixes("10.0.0.0/8"), DenyPrefixes: prefixes("10.1.0.0/16")}, "[::ffff:10.1.1.1]:80", true},
+		{"deny refuses NAT64 form", Policy{AllowPrefixes: prefixes("10.0.0.0/8"), DenyPrefixes: prefixes("10.1.0.0/16")}, "[64:ff9b::a01:101]:80", true},
+		{"deny beats metadata flag", Policy{AllowCloudMetadata: true, DenyPrefixes: prefixes("169.254.169.254/32")}, "169.254.169.254:80", true},
 		{"allowed port", Policy{AllowedPorts: []int{443}}, "8.8.8.8:443", false},
 		{"other port", Policy{AllowedPorts: []int{443}}, "8.8.8.8:80", true},
 		{"port checked with only", Policy{OnlyPrefixes: prefixes("10.0.0.0/8"), AllowedPorts: []int{443}}, "10.0.0.1:80", true},
@@ -80,4 +87,11 @@ func Test_Policy_Control(t *testing.T) {
 		require.ErrorIs(t, err, ErrDenied)
 		assert.Error(t, err)
 	})
+}
+
+func Test_Policy_Control_Deny(t *testing.T) {
+	policy := Policy{OnlyPrefixes: prefixes("fdaa::/16"), DenyPrefixes: prefixes("fdaa::3/128")}
+
+	require.ErrorIs(t, policy.Control("tcp6", "[fdaa::3]:4223", nil), ErrDenied)
+	require.NoError(t, policy.Control("tcp6", "[fdaa::4]:4223", nil))
 }
