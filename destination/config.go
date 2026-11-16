@@ -15,6 +15,11 @@ type Config struct {
 	// allowed unless listed.
 	OnlyPrefixes []string `desc:"the only CIDR ranges allowed, replacing the public-address default" mapstructure:"only"`
 
+	// DenyPrefixes are CIDR ranges refused even when allow or only contains
+	// them. The order of evaluation is cloud metadata, then deny, then only,
+	// or allow and the public-address default.
+	DenyPrefixes []string `desc:"CIDR ranges refused even inside an allowed range" mapstructure:"deny"`
+
 	// AllowedPorts restricts destination ports when set.
 	AllowedPorts []int `desc:"destination ports allowed, any when empty" mapstructure:"allowed-ports"`
 
@@ -28,6 +33,7 @@ type Config struct {
 func (cfg Config) Check(c *configcheck.Collector) {
 	checkPrefixes(c.Field("allow"), cfg.AllowPrefixes)
 	checkPrefixes(c.Field("only"), cfg.OnlyPrefixes)
+	checkPrefixes(c.Field("deny"), cfg.DenyPrefixes)
 	if len(cfg.AllowPrefixes) > 0 && len(cfg.OnlyPrefixes) > 0 {
 		c.Field("allow").Errorf("has no effect with only set, remove one")
 	}
@@ -58,9 +64,15 @@ func (cfg Config) Policy() (Policy, error) {
 		return Policy{}, err
 	}
 
+	deny, err := parsePrefixes(cfg.DenyPrefixes)
+	if err != nil {
+		return Policy{}, err
+	}
+
 	return Policy{
 		AllowPrefixes:      allow,
 		OnlyPrefixes:       only,
+		DenyPrefixes:       deny,
 		AllowedPorts:       cfg.AllowedPorts,
 		AllowCloudMetadata: cfg.AllowCloudMetadata,
 	}, nil

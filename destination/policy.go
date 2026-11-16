@@ -20,6 +20,11 @@ var ErrDenied = errors.New("destination not allowed")
 // Cloud metadata endpoints are denied unless AllowCloudMetadata is set,
 // whatever the prefixes say, so a broad allow-list cannot expose them by
 // accident.
+//
+// An address is judged in this order: cloud metadata (unless
+// AllowCloudMetadata), then DenyPrefixes, then OnlyPrefixes, or AllowPrefixes
+// and the public-address default. A deny range is final: no allow range
+// overrides it.
 type Policy struct {
 	// AllowPrefixes are exceptions to the default deny of non-public
 	// addresses, for example the private network of a deployment.
@@ -28,6 +33,11 @@ type Policy struct {
 	// OnlyPrefixes, when set, allows only these ranges and replaces the
 	// public-address default. AllowPrefixes has no effect with it.
 	OnlyPrefixes []netip.Prefix
+
+	// DenyPrefixes are refused even when OnlyPrefixes or AllowPrefixes contains
+	// them, for an address inside an allowed range that must stay unreachable,
+	// such as a platform service on a private network.
+	DenyPrefixes []netip.Prefix
 
 	// AllowedPorts, when set, restricts destination ports.
 	AllowedPorts []int
@@ -58,6 +68,10 @@ func (p Policy) checkAddr(addr netip.Addr) error {
 	metadata := IsCloudMetadataAddress(addr)
 	if metadata && !p.AllowCloudMetadata {
 		return fmt.Errorf("%w: %s is a cloud metadata endpoint", ErrDenied, addr)
+	}
+
+	if containsAddr(p.DenyPrefixes, addr) {
+		return fmt.Errorf("%w: %s is in a denied range", ErrDenied, addr)
 	}
 
 	if len(p.OnlyPrefixes) > 0 {

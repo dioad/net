@@ -1,6 +1,8 @@
 package http
 
 import (
+	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -38,8 +40,8 @@ type OperationsConfig struct {
 	// ManagementTLSServer serves the management listener over TLS. With
 	// client-auth-type RequireAndVerifyClientCert and a client-ca-file it also
 	// authenticates callers, which lets the listener bind beyond loopback
-	// without the acknowledgement. Convert it with tls.NewServerTLSConfig and
-	// set the result as OperationalConfig.TLSConfig.
+	// without the acknowledgement. OperationalWithTLS converts it into the
+	// TLSConfig of the OperationalConfig it returns.
 	ManagementTLSServer dtls.ServerConfig `desc:"TLS settings of the management listener" mapstructure:"management-tls-server"`
 
 	// EnablePrometheusMetrics serves /metrics on the management listener. Unset
@@ -95,8 +97,8 @@ func (o OperationsConfig) Check(c *configcheck.Collector) {
 // Operational returns the OperationalConfig for the management listener:
 // health, /metrics unless turned off, and /debug when EnableDebug is set. Pass
 // WithReadiness to NewOperationalServer so /health/ready reports the service's
-// readiness, and set TLSConfig on the result from ManagementTLSServer and
-// EnableStatus where the service has a status resource.
+// readiness. It leaves TLSConfig unset: use OperationalWithTLS to serve the
+// listener over ManagementTLSServer.
 func (o OperationsConfig) Operational() OperationalConfig {
 	return OperationalConfig{
 		ListenAddress:           o.ManagementListenAddress,
@@ -104,4 +106,20 @@ func (o OperationsConfig) Operational() OperationalConfig {
 		EnableDebug:             o.EnableDebug,
 		EnableProxyProtocol:     o.ManagementEnableProxyProtocol,
 	}
+}
+
+// OperationalWithTLS is Operational with ManagementTLSServer converted into
+// TLSConfig. With ManagementTLSServer unset it equals Operational. It returns
+// the error from building the TLS configuration, so a service never serves the
+// management listener in plaintext while its configuration asks for TLS.
+func (o OperationsConfig) OperationalWithTLS(ctx context.Context) (OperationalConfig, error) {
+	operational := o.Operational()
+
+	tlsConfig, err := dtls.NewServerTLSConfig(ctx, o.ManagementTLSServer)
+	if err != nil {
+		return OperationalConfig{}, fmt.Errorf("management-tls-server: %w", err)
+	}
+	operational.TLSConfig = tlsConfig
+
+	return operational, nil
 }

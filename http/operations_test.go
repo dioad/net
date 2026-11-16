@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"net/http"
 	"testing"
@@ -146,4 +147,61 @@ func TestWithReadiness_ServesOnAServerOfItsOwn(t *testing.T) {
 
 	assert.Equal(t, http.StatusServiceUnavailable, status)
 	assert.Contains(t, body, "starting")
+}
+
+func selfSignedManagementTLS() dtls.ServerConfig {
+	return dtls.ServerConfig{SelfSigned: dtls.SelfSignedConfig{
+		Subject:  dtls.CertificateSubject{CommonName: "management"},
+		SAN:      dtls.SANConfig{IPAddresses: []string{"127.0.0.1"}},
+		Duration: "1h",
+		Bits:     2048,
+	}}
+}
+
+func TestOperationsConfig_OperationalWithTLS_UnsetEqualsOperational(t *testing.T) {
+	t.Parallel()
+
+	cfg := OperationsConfig{ManagementListenAddress: "127.0.0.1:9000", EnableDebug: true}
+
+	got, err := cfg.OperationalWithTLS(t.Context())
+
+	require.NoError(t, err)
+	assert.Equal(t, cfg.Operational(), got)
+	assert.Nil(t, got.TLSConfig)
+}
+
+func TestOperationsConfig_OperationalWithTLS_ServesOverTLS(t *testing.T) {
+	t.Parallel()
+
+	cfg := OperationsConfig{ManagementListenAddress: "127.0.0.1:0", ManagementTLSServer: selfSignedManagementTLS()}
+	operational, err := cfg.OperationalWithTLS(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, operational.TLSConfig)
+
+	addr := serveOn(t, NewOperationalServer(newPrimary(), operational, WithLogger(zerolog.Nop())))
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}} //nolint:gosec // self-signed test certificate
+	t.Cleanup(client.CloseIdleConnections)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://"+addr+"/health/live", nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NotNil(t, resp.TLS)
+}
+
+func TestOperationsConfig_OperationalWithTLS_ReturnsTheTLSError(t *testing.T) {
+	t.Parallel()
+
+	tlsCfg := selfSignedManagementTLS()
+	tlsCfg.SelfSigned.Duration = "not-a-duration"
+	cfg := OperationsConfig{ManagementListenAddress: "127.0.0.1:9000", ManagementTLSServer: tlsCfg}
+
+	got, err := cfg.OperationalWithTLS(t.Context())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "management-tls-server")
+	assert.Equal(t, OperationalConfig{}, got)
 }
