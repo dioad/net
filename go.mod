@@ -4,10 +4,10 @@ go 1.27.0
 
 require (
 	github.com/coredns/coredns v1.15.0
-	github.com/dioad/config v0.2.0
+	github.com/dioad/config v0.3.0
 	github.com/dioad/filter v0.6.1
 	github.com/dioad/generics v0.0.9
-	github.com/dioad/lifecycle v0.3.0
+	github.com/dioad/lifecycle v0.4.0
 	github.com/dioad/util v0.7.0
 	github.com/emersion/go-msgauth v0.7.0
 	github.com/go-acme/lego/v5 v5.6.0
@@ -44,7 +44,6 @@ require (
 	github.com/pandatix/go-abnf v0.5.5 // indirect
 	github.com/prometheus/common v0.74.0 // indirect
 	github.com/prometheus/procfs v0.23.0 // indirect
-	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/sys v0.50.0 // indirect
