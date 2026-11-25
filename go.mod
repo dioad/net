@@ -10,7 +10,7 @@ require (
 	github.com/dioad/lifecycle v0.4.0
 	github.com/dioad/util v0.7.0
 	github.com/emersion/go-msgauth v0.7.0
-	github.com/go-acme/lego/v5 v5.6.0
+	github.com/go-acme/lego/v5 v5.7.0
 	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/sessions v1.4.0
@@ -22,7 +22,7 @@ require (
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/crypto v0.59.0
-	golang.org/x/net v0.62.0
+	golang.org/x/net v0.63.0
 	golang.org/x/sync v0.25.0
 	golang.org/x/time v0.16.0
 )
